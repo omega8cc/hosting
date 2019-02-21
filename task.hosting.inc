@@ -6,6 +6,93 @@
  */
 
 /**
+ * Run a command, sending output to drush logs in real time.
+ *
+ * The Symfony\Component\Process\Process Object is used to run this command.
+ * After implementing provision_process(), you can get the Process result object
+ * via drush context:
+ *
+ *   $process = drush_get_context('provision_process_result');
+ *   print $process->getExitCode();
+ *
+ * @param string|array $command_input
+ *   The command to run
+ * @param null $cwd
+ *   The directory to run the command in.
+ * @param string $label
+ *   A string to display above the command block in the front-end.
+ * @param array $env
+ *   A list of environment variables to set for the process.
+ * @param bool $log_output
+ *   Whether or not to send output to drush_log in real time.
+ * @param null $error_message
+ *   The error message to show after a failure. Defaults to NULL because the UI turning red and the error output is usually enough.
+ * @param bool $throw_drush_error
+ *   Whether or not to throw a drush error if the process fails. Defaults to TRUE.
+ *
+ * @return string|void
+ *   The output or error output of the command.
+ */
+function hosting_process($command, $cwd = null, $label = 'Process', $env = array(), $log_output = TRUE, $error_message = NULL, $throw_drush_error = TRUE, $log_type = 'p_info') {
+  if (empty($command)) {
+    return;
+  }
+
+  // @TODO: new Process() below isn't accepting an array.
+  if (is_array($command)) {
+    $command = implode(' ', $command);
+  }
+
+  // Merge in env vars, inheriting the CLI's
+  if (is_array($env)) {
+    $env = array_merge($_SERVER, $env);
+  }
+  else {
+    $env = $_SERVER;
+  }
+
+  // Make sure colors always come through
+  $env['TERM'] = 'xterm';
+
+  $process = new \Symfony\Component\Process\Process(escapeshellcmd($command), $cwd, $env);
+  $process->setTimeout(NULL);
+  if ($log_output) {
+    drush_log("[$label] $command", 'p_command');
+
+    $exit_code = $process->run(function ($type, $buffer) use ($log_type) {
+      drush_log($buffer, $log_type);
+    });
+  }
+  else {
+    $exit_code = $process->run();
+  }
+
+  // Save the Provision Process object to Drush Context so that implementors can access the full object.
+  drush_set_context('provision_process_result', $process);
+  drush_log("Provision process command exited with $exit_code", 'debug');
+
+  // check exit code
+  if ($exit_code === 0) {
+
+    if ($log_output) {
+      drush_log('', 'p_ok');
+    }
+    return $process->getOutput();
+  }
+  else {
+
+    if ($log_output) {
+      drush_log('', 'p_error');
+    }
+
+    if ($throw_drush_error) {
+      drush_set_error('PROVISION_PROCESS_ERROR', !empty($error_message)? $error_message: $process->getErrorOutput());
+    }
+    return $process->getErrorOutput();
+  }
+}
+
+/**
  * Log a message to the current task's node if possible, the screen otherwise.
  */
 function _hosting_task_log($entry) {
@@ -73,7 +160,6 @@ function drush_hosting_task_validate($id, $type = NULL) {
     $task->options = array();
     $task->context_options = array(
       'context_type' => $task->ref->type,
-      'master_url' => url('', array('absolute' => TRUE)),
       'root' => NULL,
       'uri' => NULL,
     );
@@ -142,7 +228,16 @@ function drush_hosting_task() {
       call_user_func_array($function, array(&$task));
     }
 
-    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
+    // Call provision context:save command.
+    $command = array(variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'), 'context:save', "--context={$task->ref->hosting_name}");
+    foreach ($task->context_options as $name => $value) {
+      $command[] = "--{$name}={$value}";
+    }
+
+    $command[] = '-n';
+    $command[] = '--ansi';
+
+    hosting_process($command);
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
@@ -157,14 +252,16 @@ function drush_hosting_task() {
   }
 
   // Run the actual command. Adding alias here to work around Drush API.
-  $output = provision_backend_invoke($alias, 'provision-' . $task->task_type, $task->args, $task->options, $mode);
+// @TODO: Convert from Legacy
+//  $output = provision_backend_invoke($alias, 'provision-' . $task->task_type, $task->args, $task->options, $mode);
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
   drush_set_context('HOSTING_DRUSH_OUTPUT', $output);
 
   // On succesful delete, remove the named context.
   if ($task->task_type === 'delete' && !drush_get_error()) {
-    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
+// @TODO: Convert from Legacy
+//    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
   }
 
   // New revision is created at the beginning of function.
