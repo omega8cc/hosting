@@ -795,11 +795,16 @@ function hosting_task_outstanding($nid, $type) {
         INNER JOIN {node} n ON t.vid = n.vid
       WHERE
         t.rid = :rid
-        AND t.task_status = :status
+        AND (t.task_status = :status_queued OR t.task_status = :status_processing)
         AND t.task_type = :type
         ORDER BY t.vid DESC
         LIMIT 1",
-        array(':rid' => $nid, ':status' => HOSTING_TASK_QUEUED, ':type' => $type))->fetchField();
+        array(
+          ':rid' => $nid,
+          ':status_queued' => HOSTING_TASK_QUEUED,
+          ':status_processing' => HOSTING_TASK_PROCESSING,
+          ':type' => $type
+        ))->fetchField();
   return $return;
 }
 
@@ -815,7 +820,7 @@ function hosting_task_count() {
  * Return the amount of items running in the queue.
  */
 function hosting_task_count_running() {
-  return db_query("SELECT COUNT(t.nid) FROM {node} n INNER JOIN {hosting_task} t ON n.vid = t.vid WHERE type = :type AND t.task_status = :task_status AND t.executed > (NOW() - :timeout)",
+  return db_query("SELECT COUNT(t.nid) FROM {node} n INNER JOIN {hosting_task} t ON n.vid = t.vid WHERE type = :type AND t.task_status = :task_status AND t.executed > (UNIX_TIMESTAMP() - :timeout)",
     array(
       ':type' => 'task',
       ':task_status' => HOSTING_TASK_PROCESSING,
@@ -854,7 +859,10 @@ function hosting_available_tasks($type = NULL, $reset = FALSE) {
   static $cache = array();
 
   if (!count($cache) || $reset) {
+    // Invoke hook_hosting_tasks().
     $cache = module_invoke_all('hosting_tasks');
+
+    // Invoke hook_hosting_tasks_alter().
     drupal_alter('hosting_tasks', $cache);
   }
   if (isset($type)) {
@@ -862,6 +870,23 @@ function hosting_available_tasks($type = NULL, $reset = FALSE) {
   }
   else {
     return $cache;
+  }
+}
+
+/**
+ * Implements hook_hosting_tasks_alter()
+ *
+ * Set 'command' property for tasks that don't implement it.
+ */
+function hosting_task_hosting_tasks_alter(&$cache) {
+
+  // For any task type that doesn't use "command", add it as 'provision-$TYPE'.
+  foreach ($cache as &$tasks) {
+    foreach ($tasks as $type => &$task_type) {
+      if (!isset($task_type['command']) || empty($task_type['command'])) {
+        $task_type['command'] = 'provision-' . $type;
+      }
+    }
   }
 }
 
@@ -920,6 +945,7 @@ function hosting_task_insert($node) {
         ->execute();
     }
   }
+  module_invoke_all('hosting_task_update_status', $node, $node->task_status);
   hosting_task_set_title($node);
 }
 
@@ -963,6 +989,7 @@ function hosting_task_update($node) {
           ->execute();
       }
     }
+    module_invoke_all('hosting_task_update_status', $node, $node->task_status);
   }
 }
 
@@ -1010,8 +1037,13 @@ function hosting_task_delete_related_tasks($nid) {
  * Implements hook_load().
  */
 function hosting_task_load($nodes) {
+  // Invoke hook_hosting_tasks().
+  $types = module_invoke_all('hosting_tasks');
+
+  // Invoke hook_hosting_tasks_alter().
+  drupal_alter('hosting_tasks', $types);
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query('SELECT task_type, executed, delta, rid, task_status FROM {hosting_task} WHERE vid = :vid', array(':vid' => $node->vid))->fetch();
+    $additions = db_query('SELECT task_type, executed, delta, rid, task_status, r.type as ref_type FROM {hosting_task} t LEFT JOIN {node} r ON t.rid = r.nid WHERE t.vid = :vid', array(':vid' => $node->vid))->fetch();
     $result = db_query("SELECT name, value FROM {hosting_task_arguments} WHERE vid = :vid", array(':vid' => $node->vid));
     if ($result) {
       while ($arg = $result->fetch()) {
@@ -1019,8 +1051,11 @@ function hosting_task_load($nodes) {
       }
     }
     foreach ($additions as $property => &$value) {
-      $node->$property = $value;
+      $node->$property = is_numeric($value) ? (int) $value : $value;
     }
+
+    // Load task_command property from hook_hosting_tasks data.
+    $node->task_command = $types[$node->ref_type][$node->task_type]['command'];
   }
 }
 
@@ -1076,6 +1111,16 @@ function hosting_task_update_status_form_submit($form, &$form_state) {
   if (module_exists('overlay')) {
     overlay_close_dialog();
   }
+  if (module_exists('hosting_queued')) {
+    // Release the hosting_queued lock.
+    // Cannot use lock release because it uses semaphore value, which only works in a single request.
+    global $locks;
+    unset($locks['hosting_queue_tasks_running']);
+    db_delete('semaphore')
+      ->condition('name', 'hosting_queue_tasks_running')
+      ->execute();
+  }
+
 }
 
 /**
@@ -1198,9 +1243,18 @@ function hosting_task_view($node, $view_mode, $langcode = NULL) {
  */
 function _hosting_task_log_table($node, $last_position = 0) {
 
-  $types = explode(' ', variable_get('hosting_task_logs_types_display', 'error warning info message ok status success warning'));
+  $query_args = array(':vid' => $node->vid, ':lid' => $last_position);
 
-  $result = db_query("SELECT * FROM {hosting_task_log} WHERE vid = :vid AND lid > :lid AND type IN (:types) ORDER BY lid", array(':vid' => $node->vid, ':lid' => $last_position, ':types' => $types));
+  $types_string = variable_get('hosting_task_logs_types_display', 'ALL');
+  if ($types_string == 'ALL') {
+    $type_query = "";
+  }
+  else {
+    $type_query = "AND type IN (:types)";
+    $query_args[':types'] = explode(' ', $types_string);
+  }
+
+  $result = db_query("SELECT * FROM {hosting_task_log} WHERE vid = :vid AND lid > :lid $type_query ORDER BY lid", $query_args);
   if ($result) {
     $headers = array('data' => 'Log message', 'execution_time' => 'Execution time', '');
     $rows = array();
@@ -1347,7 +1401,7 @@ function _hosting_task_log_class($type) {
  * This is used for documenting issues with verification.
  */
 function hosting_get_most_recent_task($rid, $type) {
-  $nid = db_query("SELECT t.nid FROM {hosting_task} t INNER JOIN {node} n ON n.vid = t.vid WHERE task_type = !task_type and t.rid = !t.rid ORDER BY t.vid DESC limit 1", array('!task_type' => $type, '!t.rid' => $rid))->fetchField();
+  $nid = db_query("SELECT t.nid FROM {hosting_task} t INNER JOIN {node} n ON n.vid = t.vid WHERE task_type = :task_type and t.rid = :t_rid ORDER BY t.vid DESC limit 1", array(':task_type' => $type, ':t_rid' => $rid))->fetchField();
   if ($nid) {
     return node_load($nid);
   }
@@ -1741,31 +1795,37 @@ function hosting_task_fetch_tasks($rid) {
 }
 
 /**
- * Traslate a task status code into a css class.
+ * Return a machine name for each state.
+ */
+function hosting_task_status_name($hosting_task_status = NULL) {
+  $codes = array(
+    HOSTING_TASK_SUCCESS    => 'success',
+    HOSTING_TASK_QUEUED     => 'queued',
+    HOSTING_TASK_ERROR      => 'error',
+    HOSTING_TASK_PROCESSING => 'processing',
+    HOSTING_TASK_WARNING    => 'warning',
+  );
+  if (!is_null($hosting_task_status) && isset($codes[$hosting_task_status])) {
+    return $codes[$hosting_task_status];
+  }
+  elseif (!is_null($hosting_task_status) && !isset($codes[$hosting_task_status])) {
+    return '';
+  }
+  else {
+    return $codes;
+  }
+}
+
+/**
+ * Return a css class from a hosting task status integer value.
  */
 function hosting_task_status_class($status = NULL) {
-  $class = NULL;
-  if (!is_null($status)) {
-    switch ($status) {
-      case HOSTING_TASK_SUCCESS:
-        $class = 'hosting-success';
-        break;
-      case HOSTING_TASK_ERROR:
-        $class = 'hosting-error';
-        break;
-      case HOSTING_TASK_QUEUED:
-        $class = 'hosting-queue';
-        break;
-      case HOSTING_TASK_PROCESSING:
-        $class = 'hosting-processing';
-        break;
-      case HOSTING_TASK_WARNING:
-        $class = 'hosting-warning';
-        break;
-    }
+  if (!is_null($status) && $name = hosting_task_status_name($status)) {
+    return 'hosting-' . $name;
   }
-
-  return $class;
+  else {
+    return '';
+  }
 }
 
 /**
