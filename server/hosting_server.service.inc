@@ -214,6 +214,10 @@ class hostingService {
     }
   }
 
+  /**
+   * Return service properties to Provision CLI.
+   * @return array
+   */
   function provisionProperties() {
     return array();
   }
