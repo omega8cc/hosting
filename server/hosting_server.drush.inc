@@ -19,7 +19,8 @@ function hosting_hosting_server_context_options(&$task) {
     if (isset($task->ref->services[$type])) {
       $service = $task->ref->services[$type];
       if ($service->available) {
-        $service->context_options($task->task_type, $task->ref->type, $task);
+        // @TODO: Legacy
+        // $service->context_options($task->task_type, $task->ref->type, $task);
       }
     }
     else {
@@ -31,7 +32,8 @@ function hosting_hosting_server_context_options(&$task) {
       // so we cannot set this to NULL. 0 or the like. Therefore, we explicitely
       // set it to value that we check for in
       // Provision_Context_server::spawn_service().
-      $task->context_options["{$type}_service_type"] = 'NONE';
+      // @TODO: Legacy
+      // $task->context_options["{$type}_service_type"] = 'NONE';
     }
   }
 }
