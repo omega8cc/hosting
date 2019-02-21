@@ -239,7 +239,7 @@ function drush_hosting_task() {
     foreach ($task->context_options as $name => $value) {
       $command[] = "--{$name}={$value}";
     }
-    hosting_process($command);
+    hosting_process($command, null, t('Saving metadata...'));
 
     // Save services to the context
     foreach ($task->ref->services as $service_type => $service_class) {
@@ -258,7 +258,7 @@ function drush_hosting_task() {
         $value = escapeshellarg($value);
         $command[] = "--{$name}={$value}";
       }
-      hosting_process($command);
+      hosting_process($command, null, t('Saving service metadata...'));
     }
   }
 
@@ -298,7 +298,7 @@ function drush_hosting_task() {
     $value = escapeshellarg($value);
     $command[] = "--{$name}={$value}";
   }
-  hosting_process($command);
+  hosting_process($command, null, t('Running Task...'));
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
