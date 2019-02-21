@@ -229,15 +229,37 @@ function drush_hosting_task() {
     }
 
     // Call provision context:save command.
-    $command = array(variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'), 'context:save', "--context={$task->ref->hosting_name}");
+    $command = array(
+      variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
+      "-n",
+      "--ansi",
+      "context:save",
+      "--context={$task->ref->hosting_name}"
+    );
     foreach ($task->context_options as $name => $value) {
       $command[] = "--{$name}={$value}";
     }
-
-    $command[] = '-n';
-    $command[] = '--ansi';
-
     hosting_process($command);
+
+    // Save services to the context
+    foreach ($task->ref->services as $service_type => $service_class) {
+      $command = array(
+        variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
+        "@{$task->ref->hosting_name}",
+        "-n",
+        "--ansi",
+        'service',
+        'add',
+        $service_type,
+        "--service_type={$service_class->type}"
+      );
+
+      foreach ($service_class->provisionProperties() as $name => $value) {
+        $value = escapeshellarg($value);
+        $command[] = "--{$name}={$value}";
+      }
+      hosting_process($command);
+    }
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
