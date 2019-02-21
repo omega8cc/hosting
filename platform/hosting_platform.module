@@ -684,7 +684,20 @@ function hosting_platform_path_exists($path) {
  */
 function hosting_platform_load($nodes) {
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query('SELECT publish_path, makefile, verified, web_server, status AS platform_status, make_working_copy FROM {hosting_platform} WHERE vid = :vid', array(':vid' => $node->vid))->fetch();
+    $additions = db_query('
+      SELECT 
+        publish_path, 
+        makefile, 
+        verified, 
+        web_server,
+        c.name as web_server_name,
+        status AS platform_status, 
+        make_working_copy 
+      FROM {hosting_platform} p
+      LEFT JOIN {hosting_context} c ON p.web_server = c.nid
+      WHERE vid = :vid
+    
+    ', array(':vid' => $node->vid))->fetch();
     // Avoid PHP 5.4 warning when platform doesn't exist yet.
     // See: https://drupal.org/node/1940378
     $additions = $additions ? $additions : new stdClass();
@@ -720,6 +733,12 @@ function hosting_platform_load($nodes) {
         $additions->clients[$record->cid] = $record->cid;
       }
     }
+
+    // @TODO: Legacy Refactor
+    // Load service_subscriptions.
+    $additions->service_subscriptions['http'] = array(
+      'server' => $additions->web_server_name,
+    );
 
     foreach ($additions as $property => &$value) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
