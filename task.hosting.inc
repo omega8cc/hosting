@@ -242,23 +242,47 @@ function drush_hosting_task() {
     hosting_process($command, null, t('Saving metadata...'));
 
     // Save services to the context
-    foreach ($task->ref->services as $service_type => $service_class) {
-      $command = array(
-        variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
-        "@{$task->ref->hosting_name}",
-        "-n",
-        "--ansi",
-        'service',
-        'add',
-        $service_type,
-        "--service_type={$service_class->type}"
-      );
+    // Servers have services, platforms and sites have service subscriptions.
+    if (is_array($task->ref->services)) {
+      foreach ($task->ref->services as $service_type => $service_class) {
+        $command = array(
+          variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
+          "@{$task->ref->hosting_name}",
+          "-n",
+          "--ansi",
+          'service',
+          'add',
+          $service_type,
+          "--service_type={$service_class->type}"
+        );
 
-      foreach ($service_class->provisionProperties() as $name => $value) {
-        $value = escapeshellarg($value);
-        $command[] = "--{$name}={$value}";
+        foreach ($service_class->provisionProperties() as $name => $value) {
+          $value = escapeshellarg($value);
+          $command[] = "--{$name}={$value}";
+        }
+        hosting_process($command, null, t('Saving service metadata...'));
       }
-      hosting_process($command, null, t('Saving service metadata...'));
+    }
+    elseif (is_array($task->ref->service_subscriptions)) {
+      foreach ($task->ref->service_subscriptions as $service_type => $subscription) {
+        $command = array(
+          variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
+          "@{$task->ref->hosting_name}",
+          "-n",
+          "--ansi",
+          "service",
+          "add",
+          $service_type,
+          $subscription['server']
+        );
+
+        // @TODO: Provision4 support for properties.
+//        foreach ($subscription->properties as $name => $value) {
+//          $value = escapeshellarg($value);
+//          $command[] = "--{$name}={$value}";
+//        }
+        hosting_process($command, null, t('Assigning servers...'));
+      }
     }
   }
 
