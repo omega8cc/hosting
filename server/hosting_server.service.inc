@@ -214,5 +214,8 @@ class hostingService {
     }
   }
 
+  function provisionProperties() {
+    return array();
+  }
 }
 
