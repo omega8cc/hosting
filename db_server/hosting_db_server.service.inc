@@ -130,4 +130,12 @@ class hostingService_db_mysql extends hostingService_db {
     $this->db_user = urldecode($matches[1]);
     $this->db_passwd = urldecode($matches[2]);
   }
+
+  function provisionProperties() {
+    return array(
+      'db_port' => $this->default_port(),
+      'db_grant_all_hosts' => TRUE,
+      'master_db' => 'mysql' . '://' . urlencode($this->db_user) . ':' . urlencode($this->db_passwd) . '@' . $this->server->title,
+    );
+  }
 }
