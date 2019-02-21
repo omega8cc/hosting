@@ -279,7 +279,26 @@ function drush_hosting_task() {
 
   // Run the actual command. Adding alias here to work around Drush API.
 // @TODO: Convert from Legacy
-  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
+//  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
+
+  // Build the task command.
+  // @TODO: Create a function for this?
+  $command = array(
+    variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
+    "@{$task->ref->hosting_name}",
+    "-n",
+    "--ansi",
+    $task->task_command
+  );
+
+  foreach ($task->args as $argument) {
+    $command[] = $argument;
+  }
+  foreach ($task->options as $name => $value) {
+    $value = escapeshellarg($value);
+    $command[] = "--{$name}={$value}";
+  }
+  hosting_process($command);
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
