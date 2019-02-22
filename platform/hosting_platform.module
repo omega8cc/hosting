@@ -726,8 +726,8 @@ function hosting_platform_load($nodes) {
 
     if (module_exists('hosting_package')) {
       $additions->release = hosting_package_instance_load($iid);
+      $additions->profiles = hosting_get_profiles($node->nid, 'short_name');
     }
-    $additions->profiles = hosting_get_profiles($node->nid, 'short_name');
 
     if (hosting_feature('client')) {
       $result = db_query("SELECT cid FROM {hosting_platform_client_access} WHERE pid = :pid", array(':pid' => $node->nid));
