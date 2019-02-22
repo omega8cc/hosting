@@ -9,27 +9,31 @@
  * Implements hook_hosting_TASK_OBJECT_context_options().
  */
 function hosting_hosting_site_context_options(&$task) {
-  $task->context_options['db_server'] = hosting_context_name($task->ref->db_server);
+  $task->context_options['server_db'] = hosting_context_name($task->ref->db_server);
   $task->context_options['platform'] = hosting_context_name($task->ref->platform);
 
   $task->context_options['uri'] = strtolower(trim($task->ref->title));
   $task->context_options['language'] = $task->ref->site_language;
 
   $profile = node_load($task->ref->profile);
-  $task->context_options['profile'] = $profile->short_name;
-
-  $client = node_load($task->ref->client);
-  $user = user_load($task->uid);
-  if ($task->task_type != 'import' && $task->task_type != 'delete' && $task->task_type != 'verify') {
-    $task->options['client_email'] = $user->mail;
+  if (!empty($profile->short_name)) {
+    $task->context_options['profile'] = $profile->short_name;
   }
-  $task->context_options['client_name'] = $client->uname;
 
+  // @TODO: Legacy refactor needed. Move to Hosting Client module.
+//  $client = node_load($task->ref->client);
+//  $user = user_load($task->uid);
+//  if ($task->task_type != 'import' && $task->task_type != 'delete' && $task->task_type != 'verify') {
+//    $task->options['client_email'] = $user->mail;
+//  }
+//  $task->context_options['client_name'] = $client->uname;
+
+  // @TODO: Move to Hosting Drupal module... when it exists.
   // Set "install_method" property, only if there is one present on the site node.
   // "profile" is used by default, we don't have to set it here.
-  if (isset($task->ref->install_method) && !empty($task->ref->install_method)) {
-    $task->context_options['install_method'] = $task->ref->install_method;
-  }
+//  if (isset($task->ref->install_method) && !empty($task->ref->install_method)) {
+//    $task->context_options['install_method'] = $task->ref->install_method;
+//  }
 }
 
 /**
