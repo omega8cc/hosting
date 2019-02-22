@@ -724,7 +724,9 @@ function hosting_platform_load($nodes) {
       $node->frommakefile['make_working_copy'] = $additions->make_working_copy;
     }
 
-    $additions->release = hosting_package_instance_load($iid);
+    if (module_exists('hosting_package')) {
+      $additions->release = hosting_package_instance_load($iid);
+    }
     $additions->profiles = hosting_get_profiles($node->nid, 'short_name');
 
     if (hosting_feature('client')) {
