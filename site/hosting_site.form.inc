@@ -96,6 +96,10 @@ function hosting_site_available_options($node, $platform = NULL) {
   $user = user_load($GLOBALS['user']->uid);
 
   // Install profiles.
+  if (!module_exists('hosting_package')) {
+    return $return;
+  }
+
   $profiles = hosting_get_profiles();
   $platform_profiles = array();
   foreach ($profiles as $id => $name) {
@@ -421,17 +425,17 @@ function hosting_site_validate($node, &$form) {
     }
   }
 
-  if (!in_array($node->profile, $valid_options['profile']) && !isset($node->nid)) {
+  if (module_exists('hosting_package') && !in_array($node->profile, $valid_options['profile']) && !isset($node->nid)) {
     form_set_error('profile', t('Please choose a valid profile'));
   }
 
-  if (!in_array($node->platform, $valid_options['platform']) && !isset($node->nid)) {
+  if (module_exists('hosting_package') && !in_array($node->platform, $valid_options['platform']) && !isset($node->nid)) {
     form_set_error('platform', t('Please choose a valid platform'));
   }
 
   // Check that we are selecting a valid language for this profile,
   // but only when a new site is created.
-  if (!in_array($node->site_language, $valid_options['site_language']) && empty($node->nid)) {
+  if (module_exists('hosting_package') && !in_array($node->site_language, $valid_options['site_language']) && empty($node->nid)) {
     form_set_error('site_language', t('Please fill in a valid language'));
   }
 

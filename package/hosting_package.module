@@ -373,16 +373,6 @@ function hosting_package_hosting_site_site_list_filters() {
   return array('profile');
 }
 
-/**
- * Return names of the languages available
- */
-function _hosting_language_names($languages) {
-  foreach ($languages as $language) {
-    // Try to use verbose language name
-    $return[$language] = _hosting_language_name($language);
-  }
-  return $return;
-}
 
 /**
  * Lookup a language name based on the iso language code.
