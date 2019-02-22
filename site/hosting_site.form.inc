@@ -229,66 +229,91 @@ function hosting_site_form($node, &$form_state) {
     '#autocomplete_path' => 'hosting_client/autocomplete/client',
   ), 'filter_xss', $editable);
 
-  // Install profiles.
-  $profiles = hosting_get_profiles();
-  foreach ($profiles as $id => $name) {
-    $profile = hosting_package_instance_load(array('p.nid' => $id));
-    $profiles[$id] = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
-  }
-  natcasesort($profiles);
-  reset($profiles);
-
-  _hosting_site_field($form, $node, 'profile', array(
-    '#type' => 'radios',
-    '#title' => t('Install profile'),
-    '#description' => t('The type of site to install.<br />
-                           The profile selected here determines the list of supported platforms below.'),
-    '#options' => $profiles,
-    '#default_value' => isset($node->profile) ? $node->profile : hosting_get_default_profile(key($profiles)),
-    '#required' => TRUE,
-    '#attributes' => array('class' => array("hosting-site-form-profile-options")),
-    '#ajax' => array(
-      'callback' => 'hosting_site_platform_callback',
-      'wrapper' => 'hosting-site-field-platform' ,
-      'effect' => 'fade',
-      'event' => 'change',
-      'method' => 'replace',
-    ),
-  ), '_hosting_node_link');
-
   // Override the defaults if the profile has been changed.
-  if (isset($form_state['values']['profile'])) {
-    $selected_profile = $form_state['values']['profile'];
+  if (isset($form_state['values']['platform'])) {
+    $selected_platform = $form_state['values']['platform'];
   }
   else {
-    $selected_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->nid;
+    $selected_platform = NULL;
   }
 
-  // Load platforms for the selected profile.
-  $platforms = hosting_get_profile_platforms($selected_profile);
+  // Install profiles.
+  // @TODO: Legacy refactor needed. This stuff should be moved to a "Hosting Drupal" module. The "if" here is just the first step.
+  if (module_exists('hosting_package')) {
 
-  $q = drupal_get_query_parameters();
-  if (isset($q['platform']) && is_numeric($q['platform'])) {
-    $default_platform = $q['platform'];
+    $profiles = hosting_get_profiles();
+    foreach ($profiles as $id => $name) {
+      $profile = hosting_package_instance_load(array('p.nid' => $id));
+      $profiles[$id] = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
+    }
+    natcasesort($profiles);
+    reset($profiles);
 
-    // Since platform is predetermined, limit the options based on the selected platform.
-    $selected_profile = hosting_package_instance_load(array('platform' => $default_platform, 'package_type' => 'profile'))->nid;
+    _hosting_site_field($form, $node, 'profile', array(
+      '#type' => 'radios',
+      '#title' => t('Install profile'),
+      '#description' => t('The type of site to install.<br />
+                             The profile selected here determines the list of supported platforms below.'),
+      '#options' => $profiles,
+      '#default_value' => isset($node->profile) ? $node->profile : hosting_get_default_profile(key($profiles)),
+      '#required' => TRUE,
+      '#attributes' => array('class' => array("hosting-site-form-profile-options")),
+      '#ajax' => array(
+        'callback' => 'hosting_site_platform_callback',
+        'wrapper' => 'hosting-site-field-platform',
+        'effect' => 'fade',
+        'event' => 'change',
+        'method' => 'replace',
+      ),
+    ), '_hosting_node_link');
+
+    // Override the defaults if the profile has been changed.
+    if (isset($form_state['values']['profile'])) {
+      $selected_profile = $form_state['values']['profile'];
+    } else {
+      $selected_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->nid;
+    }
+
+    // Load platforms for the selected profile.
     $platforms = hosting_get_profile_platforms($selected_profile);
 
-    $form['profile']['#default_value'] = $selected_profile;
-    $form['profile']['#options'] = hosting_get_profiles($default_platform);
-    foreach ($form['profile']['#options'] as $id => &$name) {
-      $profile = hosting_package_instance_load(array('p.nid' => $id));
-      $name = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
-    }
-    natcasesort($form['profile']['#options']);
-    reset($form['profile']['#options']);
+    $q = drupal_get_query_parameters();
+    if (isset($q['platform']) && is_numeric($q['platform'])) {
+      $default_platform = $q['platform'];
 
-    // Set page title.
-    drupal_set_title(t('Create site on platform @name', array('@name' => $platforms[$default_platform])));
+      // Since platform is predetermined, limit the options based on the selected platform.
+      $selected_profile = hosting_package_instance_load(array('platform' => $default_platform, 'package_type' => 'profile'))->nid;
+      $platforms = hosting_get_profile_platforms($selected_profile);
+
+      $form['profile']['#default_value'] = $selected_profile;
+      $form['profile']['#options'] = hosting_get_profiles($default_platform);
+      foreach ($form['profile']['#options'] as $id => &$name) {
+        $profile = hosting_package_instance_load(array('p.nid' => $id));
+        $name = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
+      }
+      natcasesort($form['profile']['#options']);
+      reset($form['profile']['#options']);
+
+      // Set page title.
+      drupal_set_title(t('Create site on platform @name', array('@name' => $platforms[$default_platform])));
+    } else {
+      $default_platform = NULL;
+    }
+
+    $languages = hosting_get_profile_languages($selected_profile, $selected_platform);
+    _hosting_site_field($form, $node, 'site_language', array(
+      '#type' => ((count($languages) > 10) ? 'select' : 'radios'),
+      '#title' => t('Language'),
+      '#description' => t('The language of site being installed.'),
+      '#options' => $languages,
+      '#required' => TRUE,
+      '#default_value' => isset($node->site_language) ? $node->site_language : 'en',
+      '#attributes' => array('class' => array("hosting-site-form-site-language-options")),
+    ), '_hosting_language_name');
   }
   else {
     $default_platform = NULL;
+    $platforms = _hosting_get_platforms(0, TRUE);
   }
 
   if (!array_key_exists($default_platform, $platforms)) {
@@ -304,32 +329,18 @@ function hosting_site_form($node, &$form_state) {
                           If a different profile is selected, this list may change automatically.'),
     '#options' => $platforms,
     '#default_value' => isset($node->platform) ? $node->platform : $default_platform,
-    '#ajax' => array(
+  ), '_hosting_node_link');
+
+  if (module_exists('hosting_package')) {
+    $form['platform']['#ajax'] =  array(
       'callback' => 'hosting_site_language_callback',
       'wrapper' => 'hosting-site-field-site-language' ,
       'effect' => 'fade',
       'event' => 'change',
       'method' => 'replace',
-    ),
-  ), '_hosting_node_link');
+    );
+  }
 
-  // Override the defaults if the profile has been changed.
-  if (isset($form_state['values']['platform'])) {
-    $selected_platform = $form_state['values']['platform'];
-  }
-  else {
-    $selected_platform = NULL;
-  }
-  $languages = hosting_get_profile_languages($selected_profile, $selected_platform);
-  _hosting_site_field($form, $node, 'site_language', array(
-    '#type' => ((count($languages) > 10) ? 'select' : 'radios'),
-    '#title' => t('Language'),
-    '#description' => t('The language of site being installed.'),
-    '#options' => $languages,
-    '#required' => TRUE,
-    '#default_value' => isset($node->site_language) ? $node->site_language : 'en',
-    '#attributes' => array('class' => array("hosting-site-form-site-language-options")),
-  ), '_hosting_language_name');
 
   _hosting_site_field($form, $node, 'db_server', array(
     '#type' => 'radios',

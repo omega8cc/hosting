@@ -53,8 +53,8 @@ function hosting_platform_drush_context_import($context, &$node) {
 function hosting_platform_post_hosting_verify_task($task, $data) {
   $node = $task->ref;
   if ($node->type == 'platform') {
-    $context = $data['context'];
-    $packages = $context['packages'];
+//    $context = $data['context'];
+//    $packages = $context['packages'];
 
     // Lock platforms by default.
     if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
@@ -77,37 +77,37 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     // Save the platform being verified.
     node_save($node);
 
-    hosting_package_sync($packages['base']);
-    hosting_package_sync($packages['sites-all']);
-    hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
-    foreach ($context['profiles'] as $profile) {
-      hosting_package_sync($packages['profiles'][$profile]);
-      $instance = hosting_package_instance_load(
-        array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
-      hosting_package_instance_sync($instance->iid, $instance->package_type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
-
-      // @todo : package instances of modules to profiles. <-- huh?
-    }
-
-    // If configured to do so, import all sites found on this platform.
-    if (variable_get('hosting_platform_automatic_site_import', TRUE)) {
-      foreach ($context['sites'] as $url) {
-        if (hosting_domain_allowed($url)) {
-          // Import any sites that have not been created yet.
-          $site = new stdClass();
-          $site->type = 'site';
-          $site->site_status = HOSTING_SITE_QUEUED;
-          $site->import = TRUE;
-          $site->title = $url;
-          $site->platform = $node->nid;
-          $site->client = HOSTING_DEFAULT_CLIENT;
-          $site->db_server = HOSTING_DEFAULT_DB_SERVER;
-          node_save($site);
-          drush_log(dt("Imported existing site !domain", array('!domain' => _hosting_node_link($site->nid))));
-          hosting_package_instance_sync($site->nid, $site->type, $packages['base']);
-        }
-      }
-    }
+//    hosting_package_sync($packages['base']);
+//    hosting_package_sync($packages['sites-all']);
+//    hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
+//    foreach ($context['profiles'] as $profile) {
+//      hosting_package_sync($packages['profiles'][$profile]);
+//      $instance = hosting_package_instance_load(
+//        array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
+//      hosting_package_instance_sync($instance->iid, $instance->package_type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
+//
+//      // @todo : package instances of modules to profiles. <-- huh?
+//    }
+//
+//    // If configured to do so, import all sites found on this platform.
+//    if (variable_get('hosting_platform_automatic_site_import', TRUE)) {
+//      foreach ($context['sites'] as $url) {
+//        if (hosting_domain_allowed($url)) {
+//          // Import any sites that have not been created yet.
+//          $site = new stdClass();
+//          $site->type = 'site';
+//          $site->site_status = HOSTING_SITE_QUEUED;
+//          $site->import = TRUE;
+//          $site->title = $url;
+//          $site->platform = $node->nid;
+//          $site->client = HOSTING_DEFAULT_CLIENT;
+//          $site->db_server = HOSTING_DEFAULT_DB_SERVER;
+//          node_save($site);
+//          drush_log(dt("Imported existing site !domain", array('!domain' => _hosting_node_link($site->nid))));
+//          hosting_package_instance_sync($site->nid, $site->type, $packages['base']);
+//        }
+//      }
+//    }
   }
 
   // When a server is verified, queue up a verify task for every platform.
