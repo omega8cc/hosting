@@ -263,8 +263,8 @@ function drush_hosting_task() {
         hosting_process($command, null, t('Saving service metadata...'));
       }
     }
-    elseif (is_array($task->ref->service_subscriptions)) {
-      foreach ($task->ref->service_subscriptions as $service_type => $subscription) {
+    elseif (is_array($task->ref->servers)) {
+      foreach ($task->ref->servers as $service_type => $server_node) {
         $command = array(
           variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
           "@{$task->ref->hosting_name}",
@@ -273,7 +273,7 @@ function drush_hosting_task() {
           "service",
           "add",
           $service_type,
-          $subscription['server']
+          $server_node->hosting_name,
         );
 
         // @TODO: Provision4 support for properties.
