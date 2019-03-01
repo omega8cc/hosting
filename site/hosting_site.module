@@ -335,6 +335,7 @@ function hosting_site_hosting_tasks() {
     'description' => t('Install a site'),
     'hidden' => TRUE,
     'provision_save' => TRUE,
+    'command' => 'install',
   );
 
   $tasks['site']['import'] = array(
