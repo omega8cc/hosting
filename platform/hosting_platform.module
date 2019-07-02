@@ -393,7 +393,7 @@ function hosting_platform_form(&$node) {
       '#machine_name' =>  array(
         'exists' => 'hosting_platform_path_exists',
         'source' => array('title'),
-        'label' => t('Publish path'),
+        'label' => t('Platform Path'),
         'standalone' => TRUE,
         'replace_pattern' => '[^a-z0-9_\.\-\/]+',
         'field_prefix' => variable_get('hosting_platform_base_path', '/var/aegir/platforms/'),
@@ -650,7 +650,7 @@ function hosting_platform_validate($node, &$form) {
     $exists = hosting_platform_path_exists($node->publish_path);
     if ($exists) {
       form_set_error('publish_path',
-        t('Path is already in use by platform %name. Platform paths must be unique across all servers.',
+        t('Path is already in use by platform %name. Platform Paths must be unique across all servers.',
         array('%name' => $result->name))
       );
     }
@@ -853,7 +853,7 @@ function hosting_platform_field_extra_fields() {
 function hosting_platform_entity_property_info() {
   $info['node']['bundles']['platform']['properties'] = array(
     'publish_path' => array(
-      'label' => t('Publish path'),
+      'label' => t('Platform Path'),
       'description' => t('The location on disk of the platform.'),
       'type' => 'text',
     ),
