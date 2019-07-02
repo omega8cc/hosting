@@ -71,7 +71,7 @@ function hosting_platform_node_info() {
     "name" => 'Platform',
     'base' => 'hosting_platform',
     "has_title" => TRUE,
-    "title_label" => t('Name'),
+    "title_label" => t('Platform Name'),
     "description" => hosting_node_help("platform"),
     "has_body" => 0,
     "body_label" => '',
@@ -357,7 +357,7 @@ function hosting_platform_form(&$node) {
   $type = node_type_get_type($node);
   $form['title'] = array(
     '#type' => 'textfield',
-    '#title' => t('Name'),
+    '#title' => t('Platform Name'),
     '#required' => TRUE,
     '#description' => t('Choose a unique descriptive name for your platform. You very likely want this to be something like "Drupal 7.21".'),
     '#size' => 40,
