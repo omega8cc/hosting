@@ -12,20 +12,14 @@ function drush_hosting_migrate_pre_hosting_task($task) {
 
     $site = $task->ref;
 
-    if (function_exists('idna_convert_encode')) {
-      if (idna_convert_encode(strtolower(trim($site->title))) != idna_convert_encode(strtolower(trim($task->task_args['new_uri'])))) {
-        $task->args[3] = '@' . idna_convert_encode(strtolower(trim($task->task_args['new_uri'])));
-      }
-    }
-    else {
-      if (strtolower(trim($site->title)) != strtolower(trim($task->task_args['new_uri']))) {
-        $task->args[3] = '@' . strtolower(trim($task->task_args['new_uri']));
-      }
+    if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
+      $task->args[3] = '@' . hosting_site_get_domain($task->task_args['new_uri']);
     }
 
     if ($site->db_server != $task->task_args['new_db_server']) {
       $task->options['new_db_server'] = hosting_context_name($task->task_args['new_db_server']);
     }
+
 
     $profile_instance = _hosting_migrate_get_target_profile_name($task);
     if (is_object($profile_instance) && isset($profile_instance->short_name)) {
@@ -68,17 +62,9 @@ function hosting_migrate_post_hosting_migrate_task($task, $data) {
     $target = $task->task_args['target_platform'];
     $site = $task->ref;
 
-    if (function_exists('idna_convert_encode')) {
-      if (idna_convert_encode(strtolower(trim($site->title))) != idna_convert_encode(strtolower(trim($task->task_args['new_uri'])))) {
-        $site->title = idna_convert_encode(strtolower(trim($task->task_args['new_uri'])));
-        hosting_context_register($site->nid, $site->title);
-      }
-    }
-    else {
-      if (strtolower(trim($site->title)) != strtolower(trim($task->task_args['new_uri']))) {
-        $site->title = strtolower(trim($task->task_args['new_uri']));
-        hosting_context_register($site->nid, $site->title);
-      }
+    if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
+      $site->title = hosting_site_clean_domain($task->task_args['new_uri']);
+      hosting_context_register($site->nid, hosting_site_get_domain($site->title));
     }
 
     if ($site->db_server != $task->task_args['new_db_server']) {

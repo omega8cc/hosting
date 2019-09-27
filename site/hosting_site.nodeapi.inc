@@ -28,6 +28,7 @@ function hosting_site_node_info() {
  */
 function hosting_site_view($node, $view_mode, $langcode = NULL) {
   hosting_set_breadcrumb($node);
+  drupal_set_title(hosting_site_canonical_url($node));
   $node->content['info']['#prefix'] = '<div id="hosting-site-info" class="hosting-info-list">';
   if ($node->site_status == HOSTING_SITE_ENABLED) {
     $node->content['info']['link'] = array(
@@ -60,7 +61,7 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
   if ($node->profile) {
     $node->content['info']['profile'] = array(
       '#type' => 'item',
-      '#title' => t('Profile'),
+      '#title' => t('Install profile'),
       '#markup' => _hosting_node_link($node->profile),
     );
   }
@@ -83,7 +84,7 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
   if ($node->db_server) {
     $node->content['info']['db_server'] = array(
       '#type' => 'item',
-      '#title' => t('DBS'),
+      '#title' => t('Database server'),
       '#markup' => _hosting_node_link($node->db_server),
     );
   }
@@ -91,7 +92,7 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
   if ($node->db_name) {
     $node->content['info']['db_name'] = array(
       '#type' => 'item',
-      '#title' => t('Database'),
+      '#title' => t('Database name'),
       '#markup' => check_plain($node->db_name),
     );
   }
@@ -231,13 +232,7 @@ function hosting_site_delete($node) {
  * Implements hook_nodeapi().
  */
 function hosting_site_nodeapi_site_presave(&$node) {
-  // Domain names are case-insensitive.
-  if (function_exists('idna_convert_encode')) {
-    $node->title = idna_convert_encode(strtolower(trim($node->title)));
-  }
-  else {
-    $node->title = strtolower(trim($node->title));
-  }
+  $node->title = hosting_site_get_domain($node->title);
 }
 
 /**
@@ -344,12 +339,6 @@ function hosting_site_insert(&$node) {
  */
 function hosting_site_node_insert($node) {
   if ($node->type == "site") {
-    if (function_exists('idna_convert_encode')) {
-      $node->title = idna_convert_encode(strtolower(trim($node->title)));
-    }
-    else {
-      $node->title = strtolower(trim($node->title));
-    }
     if ((empty($node->old_vid))) {
       hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : $node->title);
       if (isset($node->import)) {
@@ -376,9 +365,6 @@ function hosting_site_update(&$node) {
     if ($node->site_status == HOSTING_SITE_DELETED) {
       $node->no_verify = TRUE;
     }
-
-    $client = hosting_get_client($node->client);
-    $node->client = isset($client->nid) ? $client->nid : '1';
 
     db_update('hosting_site')
       ->fields(array(

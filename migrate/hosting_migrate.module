@@ -49,13 +49,13 @@ function hosting_migrate_hosting_tasks() {
   $tasks = array();
 
   $tasks['site']['migrate'] = array(
-    'title' => t('Migrate'),
-    'description' => t('You may want to read our <a href="https://omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can move your site to a new platform using this form, but <b>avoid changing its domain name here at the same time</b>. If you wish to securely change the platform this site is hosted on, always <i>Clone</i> it in its <strong>current</strong> platform, then test <i>Migrate</i> of the cloned copy first and check if the cloned/migrated copy works fine, before you will try that with your live site.'),
+    'title' => t('Migrate Site'),
+    'description' => t('Move the site to a new platform.'),
     'dialog' => TRUE,
   );
 
   $tasks['platform']['migrate'] = array(
-    'title' => t('Migrate'),
+    'title' => t('Migrate Sites'),
     'description' => t('Migrate sites to a new platform.'),
     'page arguments' => array('hosting_migrate_platform', 1),
     'dialog' => TRUE,
@@ -74,28 +74,14 @@ function hosting_task_migrate_form_validate($form, &$form_state) {
 
   $site = $form['parameters']['#node'];
 
-  if (function_exists('idna_convert_encode')) {
-    $url = idna_convert_encode(strtolower(trim($form_state['values']['parameters']['new_uri']))); // domain names are case-insensitive
-    if ($url != idna_convert_encode(strtolower(trim($site->title)))) {
-      $migrate_possible = TRUE;
-      if (!_hosting_valid_fqdn($url)) {
-        form_set_error('title', t("You have not specified a valid url for this site."));
-      }
-      if (!hosting_domain_allowed($url)) {
-        form_set_error('title', t("The domain name you have specified is not unique or not allowed."));
-      }
+  $url = hosting_site_get_domain($form_state['values']['parameters']['new_uri']);
+  if ($url != hosting_site_get_domain($site->title)) {
+    $migrate_possible = TRUE;
+    if (!_hosting_valid_fqdn($url)) {
+      form_set_error('title', t("You have not specified a valid url for this site."));
     }
-  }
-  else {
-    $url = strtolower(trim($form_state['values']['parameters']['new_uri'])); // domain names are case-insensitive
-    if ($url != strtolower(trim($site->title))) {
-      $migrate_possible = TRUE;
-      if (!_hosting_valid_fqdn($url)) {
-        form_set_error('title', t("You have not specified a valid url for this site."));
-      }
-      if (!hosting_domain_allowed($url)) {
-        form_set_error('title', t("The domain name you have specified is not unique or not allowed."));
-      }
+    if (!hosting_domain_allowed($url)) {
+      form_set_error('title', t("The domain name you have specified is not unique or not allowed."));
     }
   }
 
@@ -107,9 +93,12 @@ function hosting_task_migrate_form_validate($form, &$form_state) {
     $migrate_possible = TRUE;
   }
 
+
   if ($form_state['values']['parameters']['new_db_server'] != $site->db_server) {
     $migrate_possible = TRUE;
   }
+
+
 
   if (!$migrate_possible) {
     form_set_error('parameters][target_platform', t("To migrate a site you need to modify at least one of the following fields: Domain name, Platform or Database server"));
@@ -134,27 +123,20 @@ function hosting_task_migrate_form($node) {
   $node->check_profile_migrations =  TRUE;
   $valid_options = hosting_site_available_options($node);
 
-  if (function_exists('idna_convert_encode')) {
-    $new_uri = idna_convert_encode(strtolower(trim($node->title)));
-  }
-  else {
-    $new_uri = strtolower(trim($node->title));
-  }
-
   $form['new_uri'] = array(
     '#title' => t('Domain name'),
     '#description' => t("Changing the domain name when migrating effectively 'renames' the site."),
     '#type' => 'textfield',
     '#required' => TRUE,
     '#weight' => '-1',
-    '#default_value' => $new_uri,
+    '#default_value' => hosting_site_canonical_url($node),
   );
 
   $db_servers = hosting_get_servers('db');
-  if (count($db_servers) > 1) {
+  if (sizeof($db_servers) > 1) {
     $form['new_db_server'] = array(
       '#type' => 'radios',
-      '#title' => t('DBS'),
+      '#title' => t('Database server'),
       '#required' => TRUE,
       '#description' => t('The database server the site will use to host its content.'),
       '#options' => $db_servers,
