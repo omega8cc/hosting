@@ -833,6 +833,11 @@ function hosting_site_hosting_site_domain_alter(&$domain) {
  */
 function hosting_site_clean_domain($domain) {
   // Domain names are case-insensitive.
-  return strtolower(trim($domain));
+  if (function_exists('idna_convert_encode')) {
+    return idna_convert_encode(strtolower(trim($domain)));
+  }
+  else {
+    return strtolower(trim($domain));
+  }
 }
 
