@@ -368,6 +368,9 @@ function hosting_site_update(&$node) {
       $node->no_verify = TRUE;
     }
 
+    $client = hosting_get_client($node->client);
+    $node->client = isset($client->nid) ? $client->nid : '1';
+
     db_update('hosting_site')
       ->fields(array(
         'client' => $node->client,
