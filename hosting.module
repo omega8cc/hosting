@@ -911,15 +911,11 @@ function hosting_queues_configure($form, &$form_state) {
   $form['#tree'] = TRUE;
 
   foreach ($queues as $queue => $info) {
-    $form[$queue]['description'] = array(
-      '#type' => 'item',
-      '#value' => $info['name'],
-      '#description' => $info['description'],
-    );
-
     $form[$queue]["enabled"] = array(
       '#type' => 'checkbox',
       '#default_value' => $info['enabled'],
+      '#title' => $info['name'],
+      '#description' => $info['description'],
     );
 
     $form[$queue]["last_run"] = array(
@@ -1010,8 +1006,7 @@ function theme_hosting_queues_configure($variables) {
 
   $rows = array();
   $header = array(
-    '',
-    t('Description'),
+    t('Queue'),
     array(
       'data' => t('Frequency'),
       'class' => array('hosting-queue-frequency-head'),
@@ -1021,7 +1016,6 @@ function theme_hosting_queues_configure($variables) {
   foreach ($queues as $key => $info) {
     $row = array();
     $row[] = drupal_render($form[$key]['enabled']);
-    $row[] = drupal_render($form[$key]['description']);
     $row[] = drupal_render($form[$key]['frequency']);
     $row[] = drupal_render($form[$key]['last_run']);
     $rows[] = $row;
