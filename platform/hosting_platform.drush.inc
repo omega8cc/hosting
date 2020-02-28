@@ -116,18 +116,20 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 }
 
 /**
- * Implements hook_hosting_post_DELETE().
+ * Implements hook_post_hosting_TASK_TYPE_task().
  */
 function hosting_platform_post_hosting_delete_task($task, $data) {
-  $task->ref->platform_status = HOSTING_PLATFORM_DELETED;
-  $task->ref->no_verify = TRUE;
-  node_save($task->ref);
-  hosting_context_delete($task->ref->nid);
-  db_delete('hosting_platform_client_access')
-    ->condition('pid', $task->ref->nid)
-    ->execute();
-  // Clean up package instances.
-  hosting_package_instance_sync($task->ref->nid, 'platform');
+  if ($task->ref->type == 'platform') {
+    $task->ref->platform_status = HOSTING_PLATFORM_DELETED;
+    $task->ref->no_verify = TRUE;
+    node_save($task->ref);
+    db_delete('hosting_platform_client_access')
+      ->condition('pid', $task->ref->nid)
+      ->execute();
+
+    // Clean up package instances.
+    hosting_package_instance_sync($task->ref->nid, 'platform');
+  }
 }
 
 /**

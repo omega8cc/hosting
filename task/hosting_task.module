@@ -939,6 +939,11 @@ function hosting_task_insert($node) {
     ))
     ->execute();
 
+  // For new delete tasks, save the hosting_name into a task argument.
+  if ($node->task_type == 'delete' && !empty($node->ref_context)) {
+    $node->task_args['hosting_context'] = $node->ref_context;
+  }
+
   if (isset($node->task_args) && is_array($node->task_args)) {
     foreach ($node->task_args as $key => $value) {
       $id = db_insert('hosting_task_arguments')
@@ -951,6 +956,17 @@ function hosting_task_insert($node) {
         ->execute();
     }
   }
+
+  // If this is a delete task that was just inserted, delete the context so
+  // another entity can claim the namespace immediately.
+  if ($node->task_type == 'delete' && !empty($node->ref_context)) {
+    hosting_context_delete($node->rid);
+
+    // Add a new permanent path alias for the node.
+    $path = array('source' => "node/$node->rid", 'alias' => "hosting/c/$node->ref_context/$node->rid");
+    path_save($path);
+  }
+
   module_invoke_all('hosting_task_update_status', $node, $node->task_status);
   hosting_task_set_title($node);
 }
@@ -1049,7 +1065,7 @@ function hosting_task_load($nodes) {
   // Invoke hook_hosting_tasks_alter().
   drupal_alter('hosting_tasks', $types);
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query('SELECT task_type, executed, delta, rid, task_status, r.type as ref_type FROM {hosting_task} t LEFT JOIN {node} r ON t.rid = r.nid WHERE t.vid = :vid', array(':vid' => $node->vid))->fetch();
+    $additions = db_query('SELECT task_type, executed, delta, rid, task_status, r.type as ref_type, c.name as ref_context FROM {hosting_task} t LEFT JOIN {node} r ON t.rid = r.nid LEFT JOIN {hosting_context} c ON t.rid = c.nid WHERE t.vid = :vid', array(':vid' => $node->vid))->fetch();
     $result = db_query("SELECT name, value FROM {hosting_task_arguments} WHERE vid = :vid", array(':vid' => $node->vid));
     if ($result) {
       $additions->task_args = array();
