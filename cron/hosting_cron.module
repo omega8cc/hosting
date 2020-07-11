@@ -319,7 +319,7 @@ function hosting_cron_get_sites($limit = 5) {
       // or the cron would never run on newly created/cloned site.
       //
       if (!$site->last_cron) {
-        $this_cron_interval = $site->cron_interval ? $site->cron_interval : ADV_CRON_TURNED_OFF;
+        $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $site->nid))->fetchField();
         if ($this_cron_interval != ADV_CRON_TURNED_OFF) {
           $sites[$site->nid] = node_load($site->nid);
         }
@@ -330,7 +330,7 @@ function hosting_cron_get_sites($limit = 5) {
         // use the default hosting_cron_default_interval or
         // ADV_CRON_DEFAULT.
         //
-        $this_cron_interval = $site->cron_interval ? $site->cron_interval : variable_get('hosting_cron_default_interval', ADV_CRON_DEFAULT);
+        $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $site->nid))->fetchField();
         //
         // Run cron if it has already ran before for this site,
         // and the cron is enabled on this site, but cron interval
