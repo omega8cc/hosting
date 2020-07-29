@@ -431,10 +431,10 @@ function hosting_features_enable($features, $rebuild = TRUE, $enable = TRUE) {
 
       // Make sure the permission exists before adding it.
       $modules = user_permission_get_modules();
-      foreach ($role_perms as $role => &$perms) {
+      foreach ($role_perms as $role => $perms) {
         foreach ($perms as $i => $permission) {
           if (!isset($modules[$permission])) {
-            unset($perms[$i]);
+            unset($role_perms[$role][$i]);
           }
         }
       }
