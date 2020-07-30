@@ -851,30 +851,3 @@ function hosting_site_clean_domain($domain) {
   // Domain names are case-insensitive.
   return strtolower(trim($domain));
 }
-
-/**
- * Return names of the languages available
- */
-function _hosting_language_names($languages) {
-  foreach ($languages as $language) {
-    // Try to use verbose language name
-    $return[$language] = _hosting_language_name($language);
-  }
-  return $return;
-}
-
-/**
- * Lookup a language name based on the iso language code.
- */
-function _hosting_language_name($language) {
-  $name = $language;
-  include_once DRUPAL_ROOT . '/includes/iso.inc';
-  $locales = _locale_get_predefined_list();
-  if (isset($locales[$language])) {
-    $name = $locales[$language][0];
-    if (isset($locales[$language][1])) {
-      $name .= ' ' . t('(@language)', array('@language' => $locales[$language][1]));
-    }
-  }
-  return $name;
-}

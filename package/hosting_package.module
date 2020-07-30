@@ -373,7 +373,6 @@ function hosting_package_hosting_site_site_list_filters() {
   return array('profile');
 }
 
-
 /**
  * Lookup a language name based on the iso language code.
  */
@@ -388,6 +387,17 @@ function _hosting_language_name($language) {
     }
   }
   return $name;
+}
+
+/**
+ * Return names of the languages available
+ */
+function _hosting_language_names($languages) {
+  foreach ($languages as $language) {
+    // Try to use verbose language name
+    $return[$language] = _hosting_language_name($language);
+  }
+  return $return;
 }
 
 /**
