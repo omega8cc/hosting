@@ -911,15 +911,11 @@ function hosting_queues_configure($form, &$form_state) {
   $form['#tree'] = TRUE;
 
   foreach ($queues as $queue => $info) {
-    $form[$queue]['description'] = array(
-      '#type' => 'item',
-      '#value' => $info['name'],
-      '#description' => $info['description'],
-    );
-
     $form[$queue]["enabled"] = array(
       '#type' => 'checkbox',
       '#default_value' => $info['enabled'],
+      '#title' => $info['name'],
+      '#description' => $info['description'],
     );
 
     $form[$queue]["last_run"] = array(
@@ -1010,8 +1006,7 @@ function theme_hosting_queues_configure($variables) {
 
   $rows = array();
   $header = array(
-    '',
-    t('Description'),
+    t('Queue'),
     array(
       'data' => t('Frequency'),
       'class' => array('hosting-queue-frequency-head'),
@@ -1021,7 +1016,6 @@ function theme_hosting_queues_configure($variables) {
   foreach ($queues as $key => $info) {
     $row = array();
     $row[] = drupal_render($form[$key]['enabled']);
-    $row[] = drupal_render($form[$key]['description']);
     $row[] = drupal_render($form[$key]['frequency']);
     $row[] = drupal_render($form[$key]['last_run']);
     $rows[] = $row;
@@ -1369,6 +1363,12 @@ function hosting_settings($form, &$form_state) {
     '#title' => t('Force sites, platforms, and servers to be removed when running the Delete task.'),
     '#description' => t('If something goes wrong when deleting a site, platform, or server, the task will fail. Check this box to force contexts to be removed when Delete tasks are run.'),
     '#default_value' => variable_get('hosting_delete_force', FALSE),
+  );
+  $form['hosting_site_allow_custom_file_paths'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow sites to have custom file paths for public, private, and temporary files.'),
+    '#description' => t('When creating or editing a site, show a field for changing the default files paths.'),
+    '#default_value' => variable_get('hosting_site_allow_custom_file_paths', FALSE),
   );
   if (hosting_feature('cron')) {
     $form['hosting_cron_use_backend'] = array(
