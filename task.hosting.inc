@@ -323,6 +323,7 @@ function drush_hosting_task() {
 // @TODO: Convert from Legacy
 //  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
 
+  /** @TODO: Put back when/if pro4 gets going.
   // Build the task command.
   // @TODO: Create a function for this?
   $command = array(
@@ -332,10 +333,21 @@ function drush_hosting_task() {
     "--ansi",
     $task->task_command
   );
+   */
 
+  // Build command as an array for compatibility.
+  $command = array(
+    "drush",
+    $task->task_command,
+    "@{$task->ref->hosting_name}",
+  );
+
+  // Append each argument.
   foreach ($task->args as $argument) {
     $command[] = $argument;
   }
+
+  // Append each option.
   foreach ($task->options as $name => $value) {
     $value = escapeshellarg($value);
     $command[] = "--{$name}={$value}";
@@ -348,8 +360,14 @@ function drush_hosting_task() {
 
   // On succesful delete, remove the named context.
   if ($task->task_type === 'delete' && !drush_get_error()) {
-// @TODO: Convert from Legacy
-//    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
+    // Build command as an array for compatibility.
+    $command = array(
+      "drush",
+      "provision-save",
+      "@{$task->ref->hosting_name}",
+      "--delete"
+    );
+    hosting_process($command, null, t('Deleting metadata...'));
   }
 
   // New revision is created at the beginning of function.
