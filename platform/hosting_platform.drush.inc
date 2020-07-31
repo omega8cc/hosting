@@ -50,13 +50,10 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
   $node = $task->ref;
   if ($node->type == 'platform') {
-    // @TODO: Legacy refactor needed.
+    // @TODO: The $data from the function param seems to always be empty, if we figure out how to populate it from drush_hosting_task() remove this.
+    $data = provision_backend_invoke($task->hosting_name, "provision-packages");
+    $packages = $data['context']['packages'];
     $context = $data['context'];
-    $packages = $context['packages'];
-
-    // The $data from the function param seems to always be empty.
-    $data_packages = provision_backend_invoke($task->hosting_name, "provision-packages");
-    $packages = $data_packages['context']['packages'];
 
     // Lock platforms by default.
     if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
