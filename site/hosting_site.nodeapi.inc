@@ -401,7 +401,7 @@ function hosting_site_update(&$node) {
         'last_cron' => $node->last_cron,
         'cron_key' => $node->cron_key,
         'status' => $node->site_status,
-        'profile' => $node->profile,
+        'profile' => (int) $node->profile,
         'language' => $node->site_language,
         'verified' => $node->verified,
         'file_public_path' => $node->file_public_path,
