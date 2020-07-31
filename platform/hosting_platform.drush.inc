@@ -47,11 +47,16 @@ function hosting_platform_drush_context_import($context, &$node) {
  * Imports all the profiles and modules into package and package release nodes.
  */
 function hosting_platform_post_hosting_verify_task($task, $data) {
+
   $node = $task->ref;
   if ($node->type == 'platform') {
     // @TODO: Legacy refactor needed.
     $context = $data['context'];
     $packages = $context['packages'];
+
+    // The $data from the function param seems to always be empty.
+    $data_packages = provision_backend_invoke($task->hosting_name, "provision-packages");
+    $packages = $data_packages['context']['packages'];
 
     // Lock platforms by default.
     if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
