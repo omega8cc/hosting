@@ -134,7 +134,8 @@ function hosting_server_hosting_tasks() {
     'description' => t('Verify that the server is correctly installed and working.'),
     'weight' => 10,
     'provision_save' => TRUE,
-    'command' => 'verify'
+    // @TODO: Uncomment when "provision verify" is ready.
+    // 'command' => 'verify',
   );
 
   $tasks['server']['delete'] = array(

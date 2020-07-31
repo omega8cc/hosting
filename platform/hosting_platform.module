@@ -111,7 +111,8 @@ function hosting_platform_hosting_tasks() {
     'description' => t('Verify that the platform is correctly installed and working.'),
     'weight' => 10,
     'provision_save' => TRUE,
-    'command' => 'verify',
+    // @TODO: Uncomment when/if "provision verify" is ready.
+    // 'command' => 'verify',
   );
   $tasks['platform']['delete'] = array(
     'title' => t('Delete Platform'),
