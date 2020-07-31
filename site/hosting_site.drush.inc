@@ -67,14 +67,14 @@ function hosting_site_drush_context_import($context, &$node) {
           'p.short_name' => 'standard',
         ));
         if ($profile) {
-           drush_log(dt("Could not find the Profile !profile for Platfrom ID !platform, substituted standard", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
+          drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Using standard profile instead.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
         }
       }
     }
 
     // Log an error if there is still no profile.
     if (!$profile) {
-      drush_set_error("HOSTING_SITE_IMPORT_ERROR", dt("Could not find the Profile !profile for Platfrom ID !platform", array('!profile' => $context->profile, '!platform' => $node->platform)));
+      drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Unable to save install profile metadata for this site.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
     }
     $node->profile = $profile->package_id;
 
