@@ -78,13 +78,17 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     hosting_package_sync($packages['base']);
     hosting_package_sync($packages['sites-all']);
     hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
-    foreach ($context['profiles'] as $profile) {
-      hosting_package_sync($packages['profiles'][$profile]);
-      $instance = hosting_package_instance_load(
-        array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
-      hosting_package_instance_sync($instance->iid, $instance->package_type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
 
-      // @todo : package instances of modules to profiles. <-- huh?
+    // If there were profiles found in context data, loop and sync.
+    if (isset($context['profiles']) && is_array($context['profiles'])) {
+      foreach ($context['profiles'] as $profile) {
+        hosting_package_sync($packages['profiles'][$profile]);
+        $instance = hosting_package_instance_load(
+          array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
+        hosting_package_instance_sync($instance->iid, $instance->package_type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
+
+        // @todo : package instances of modules to profiles. <-- huh?
+      }
     }
 
     // If configured to do so, import all sites found on this platform.
