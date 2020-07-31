@@ -228,6 +228,9 @@ function drush_hosting_task() {
       call_user_func_array($function, array(&$task));
     }
 
+    // Save context to meta using a command.
+    // @TODO: Continue provision 4.x?
+    /** Commenting this out until a new branch is created or something else happens.
     // Call provision context:save command.
     $command = array(
       variable_get('provision_bin_command', '/usr/share/devshop/provision/bin/provision'),
@@ -236,11 +239,25 @@ function drush_hosting_task() {
       "context:save",
       "--context={$task->ref->hosting_name}"
     );
+    **/
+
+    // Build command as an array for compatibility.
+    $command = array(
+      "drush",
+      "provision-save",
+      "@{$task->ref->hosting_name}",
+    );
+
+    // Prepare "context_options" by converting them to command line options.
     foreach ($task->context_options as $name => $value) {
       $command[] = "--{$name}={$value}";
     }
+
+    // Run the process using "drush_log" to present output.
+    // "drush_log then saves each line to the front-end database.
     hosting_process($command, null, t('Saving metadata...'));
 
+    /** @TODO: uncomment when pro4 cli is ready.
     // Save services to the context
     // Servers have services, platforms and sites have service subscriptions.
     if (is_array($task->ref->services)) {
@@ -284,6 +301,7 @@ function drush_hosting_task() {
         hosting_process($command, null, t('Assigning servers...'));
       }
     }
+   */
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
