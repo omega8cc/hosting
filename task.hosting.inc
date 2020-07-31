@@ -338,8 +338,8 @@ function drush_hosting_task() {
   // Build command as an array for compatibility.
   $command = array(
     "drush",
-    $task->task_command,
     "@{$task->ref->hosting_name}",
+    $task->task_command,
   );
 
   // Append each argument.
