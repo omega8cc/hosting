@@ -250,6 +250,7 @@ function drush_hosting_task() {
 
     // Prepare "context_options" by converting them to command line options.
     foreach ($task->context_options as $name => $value) {
+      $value = escapeshellarg($value);
       $command[] = "--{$name}={$value}";
     }
 
@@ -344,7 +345,7 @@ function drush_hosting_task() {
 
   // Append each argument.
   foreach ($task->args as $argument) {
-    $command[] = $argument;
+    $command[] = escapeshellarg($argument);
   }
 
   // Append each option.
