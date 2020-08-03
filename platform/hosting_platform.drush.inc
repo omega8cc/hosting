@@ -51,7 +51,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
   $node = $task->ref;
   if ($node->type == 'platform') {
     // @TODO: The $data from the function param seems to always be empty, if we figure out how to populate it from drush_hosting_task() remove this.
-    $data = provision_backend_invoke($task->hosting_name, "provision-packages");
+    $data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
     $packages = $data['context']['packages'];
     $context = $data['context'];
 

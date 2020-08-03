@@ -266,7 +266,7 @@ function hosting_site_post_hosting_verify_task($task, $data) {
 
     // @TODO: The $data from the function param seems to always be empty, if we figure out how to populate it from drush_hosting_task() remove this.
     // @see hosting_platform_post_hosting_verify_task()
-    $data = provision_backend_invoke($task->hosting_name, "provision-packages");
+    $data = provision_backend_invoke($task->ref-hosting_name, "provision-packages");
     $packages = $data['context']['packages'];
     hosting_package_sync($packages);
     hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
