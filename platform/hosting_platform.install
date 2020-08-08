@@ -22,15 +22,37 @@ function hosting_platform_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'git_remote' => array(
+        'description' => 'The URL of the git repository to use when creating this platform.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ),
+      'git_reference' => array(
+        'description' => 'The desired git reference. Can be a branch, tag or SHA. Defaults to the git repository default branch.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ),
+      'git_root' => array(
+        'description' => 'The relative path within the git repository where sites will be hosted.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ),
+      'git_docroot' => array(
+         'description' => 'The relative path within the git repository to publish to the web.',
+         'type' => 'varchar',
+         'length' => 255,
+         'default' => '',
+       ),
       'publish_path' => array(
         'type' => 'text',
         'size' => 'big',
-        'not null' => FALSE,
       ),
       'makefile' => array(
         'type' => 'text',
         'size' => 'big',
-        'not null' => FALSE,
       ),
       'web_server' => array(
         'type' => 'int',
