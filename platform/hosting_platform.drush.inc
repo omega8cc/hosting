@@ -21,6 +21,12 @@ function hosting_hosting_platform_context_options(&$task) {
   else {
     $task->context_options['make_working_copy'] = 'null';
   }
+
+  // Pass git options.
+  $task->context_options['git_root'] = $task->ref->git_root;
+  $task->context_options['git_remote'] = $task->ref->git_remote;
+  $task->context_options['git_reference'] = $task->ref->git_reference;
+
 }
 
 /**
