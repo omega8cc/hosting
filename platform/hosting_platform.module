@@ -367,65 +367,46 @@ function hosting_platform_form(&$node) {
     '#maxlength' => 255,
   );
 
-  // Allow editing if the node is in creation, or if wasn't verified correctly
-  // *and* we're not using a makefile. The reason why we don't allow editing
-  // the path if the makefile was specified is that there's the possibility
-  // that the platform path was actually created when the node was saved the
-  // first time and we have cruft lying around to cleanup.
-  if (!isset($node->nid) || (!$node->verified && empty($node->makefile))) {
-    $base_path = variable_get('hosting_platform_base_path', '/var/aegir/platforms/');
-    $default_path = '';
-    $field_prefix = $base_path;
-    if (isset($node->publish_path)) {
-      // Strip the $base_path, since we prepend it in a validation handler.
-      // This enforces platform publishing under the defined base path, even if
-      // an error allows the path to be edited again.
-      if (strpos($node->publish_path, $base_path) === 0) {
-        $default_path = substr($node->publish_path, strlen($base_path));
-      }
-      else {
-        // If publish path is not inside /var/aegir/platforms, use that as the default path and remove the field prefix.
-        $default_path = $node->publish_path;
-        $field_prefix = '';
-      }
+  // Allow editing the "publish path" so that users can change their platforms if they need to.
+  $base_path = variable_get('hosting_platform_base_path', '/var/aegir/platforms/');
+  $default_path = '';
+  $field_prefix = $base_path;
+  if (isset($node->publish_path)) {
+    // Strip the $base_path, since we prepend it in a validation handler.
+    // This enforces platform publishing under the defined base path, even if
+    // an error allows the path to be edited again.
+    if (strpos($node->publish_path, $base_path) === 0) {
+      $default_path = substr($node->publish_path, strlen($base_path));
     }
+    else {
+      // If publish path is not inside /var/aegir/platforms, use that as the default path and remove the field prefix.
+      $default_path = $node->publish_path;
+      $field_prefix = '';
+    }
+  }
 
-    $form['publish_path'] = array(
-      '#type' => 'machine_name',
-      '#machine_name' =>  array(
-        'exists' => 'hosting_platform_path_exists',
-        'source' => array('title'),
-        'label' => t('Publish path'),
-        'standalone' => TRUE,
-        'replace_pattern' => '[^a-z0-9_\.\-\/]+',
-        'field_prefix' => variable_get('hosting_platform_base_path', '/var/aegir/platforms/'),
-      ),
-      '#title' => t('Publish path'),
-      '#weight' => -5,
-      '#required' => TRUE,
-      '#description' => t('The absolute path on the filesystem where the sites will be hosted. This needs to be created manually and initialized before your platform works properly. It also needs to be a unique path not already in use by a platform on any server.<br />For example, run the following shell commands:<pre>%commands</pre>Your publish path is the absolute path to the directory that gets created.<br />Alternatively, you can specify a makefile below, and the platform will be created automatically if the path specified here does not exist.<br />You are still required to enter the absolute path above, as it will be treated as the target directory by the makefile.', array('%commands' => "cd /var/aegir/platforms\ndrush dl drupal\n")),
-      '#size' => 40,
-      '#default_value' => $default_path,
-      '#maxlength' => 255,
-      '#field_prefix' => $field_prefix,
-      '#element_validate' => array(
-        'hosting_platform_form_publish_path_validate',
-      ),
-    );
-  }
-  else {
-    // Display it.
-    $form['info']['publish_path'] = array(
-      '#type' => 'item',
-      '#title' => t('Publish path'),
-      '#markup' => $node->publish_path,
-    );
-    // Send it on form submission.
-    $form['publish_path'] = array(
-      '#type' => 'hidden',
-      '#value' => hosting_path_normalize($node->publish_path),
-    );
-  }
+  $form['publish_path'] = array(
+    '#type' => 'machine_name',
+    '#machine_name' =>  array(
+      'exists' => 'hosting_platform_path_exists',
+      'source' => array('title'),
+      'label' => t('Publish path'),
+      'standalone' => TRUE,
+      'replace_pattern' => '[^a-z0-9_\.\-\/]+',
+      'field_prefix' => variable_get('hosting_platform_base_path', '/var/aegir/platforms/'),
+    ),
+    '#title' => t('Publish path'),
+    '#weight' => -5,
+    '#required' => TRUE,
+    '#description' => t('The absolute path on the filesystem where the sites will be hosted. This needs to be created manually and initialized before your platform works properly. It also needs to be a unique path not already in use by a platform on any server.<br />For example, run the following shell commands:<pre>%commands</pre>Your publish path is the absolute path to the directory that gets created.<br />Alternatively, you can specify a makefile below, and the platform will be created automatically if the path specified here does not exist.<br />You are still required to enter the absolute path above, as it will be treated as the target directory by the makefile.', array('%commands' => "cd /var/aegir/platforms\ndrush dl drupal\n")),
+    '#size' => 40,
+    '#default_value' => $default_path,
+    '#maxlength' => 255,
+    '#field_prefix' => $field_prefix,
+    '#element_validate' => array(
+      'hosting_platform_form_publish_path_validate',
+    ),
+  );
 
   $form['frommakefile'] = array(
     '#type' => 'fieldset',
