@@ -550,6 +550,10 @@ function hosting_platform_insert($node) {
     ->fields(array(
       'vid' => $node->vid,
       'nid' => $node->nid,
+      'git_remote' => $node->git_remote,
+      'git_reference' => $node->git_reference,
+      'git_root' => hosting_path_normalize($node->git_root),
+      'git_docroot' => $node->git_docroot,
       'publish_path' => hosting_path_normalize($node->publish_path),
       'makefile' => isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : ''),
       'verified' => isset($node->verified) ? $node->verified : 0,
@@ -580,6 +584,10 @@ function hosting_platform_update($node) {
     }
     db_update('hosting_platform')
       ->fields(array(
+        'git_remote' => $node->git_remote,
+        'git_reference' => $node->git_reference,
+        'git_root' => hosting_path_normalize($node->git_root),
+        'git_docroot' => $node->git_docroot,
         'publish_path' => hosting_path_normalize($node->publish_path),
         'makefile' => isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : ''),
         'web_server' => $node->web_server,
@@ -674,6 +682,15 @@ function hosting_platform_validate($node, &$form) {
       );
     }
 
+    // Make sure the git_root is unique. Can't clone two repos to the same folder.
+    $exists = hosting_platform_path_exists($node->git_root);
+    if ($exists) {
+      form_set_error('git_root',
+        t('Path is already in use by the platform %name. Platform paths must be unique across all servers.',
+        array('%name' => l($result->name, "node/{$result->name}/nid")))
+      );
+    }
+
     if (is_null($node->web_server)) {
       form_set_error('web_server', t('Platform needs to be associated with a webserver. Make sure you have a verified webserver on this Aegir install!'));
     }
@@ -685,10 +702,13 @@ function hosting_platform_validate($node, &$form) {
  * platform.
  */
 function hosting_platform_path_exists($path) {
-  $result = db_query("SELECT n.title AS name
+  $result = db_query("SELECT
+        n.title AS name,
+        nid
     FROM {hosting_platform} AS h
       INNER JOIN {node} AS n ON n.nid = h.nid
     WHERE publish_path = !publish_path
+      OR git_root = !publish_path
       AND h.status >= !h.status",
     array(
       '!publish_path' => hosting_path_normalize($path),
