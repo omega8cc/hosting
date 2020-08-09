@@ -385,6 +385,42 @@ function hosting_platform_form(&$node) {
     }
   }
 
+  $form['git'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Git Information'),
+    '#collapsible' => false,
+    '#description' => t('Create this platform using a git repository.'),
+    '#weight' => -1,
+  );
+
+  $form['git']['git_remote'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Git Repository URL'),
+    '#description' => t('The URL or path of the git repository to use when creating this platform.'),
+    '#default_value' => $node->git_remote,
+  );
+
+  $form['git']['git_reference'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Git Reference'),
+    '#description' => t('The desired git reference. Can be a branch, tag or SHA. If git repository default branch.'),
+    '#default_value' => $node->git_remote,
+  );
+
+  $form['git']['git_root'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path'),
+    '#description' => t('The full path on the server to clone the git repository to.'),
+    '#default_value' => $node->git_remote,
+  );
+
+  $form['git']['git_docroot'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Relative Docroot'),
+    '#description' => t('The relative path within the git repository to publish to the web. The path to the index.php or index.html.'),
+    '#default_value' => $node->git_docroot  ,
+  );
+
   $form['publish_path'] = array(
     '#type' => 'machine_name',
     '#machine_name' =>  array(

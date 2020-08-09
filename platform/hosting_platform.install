@@ -23,7 +23,7 @@ function hosting_platform_schema() {
         'default' => 0,
       ),
       'git_remote' => array(
-        'description' => 'The URL of the git repository to use when creating this platform.',
+        'description' => 'The URL or path of the git repository to use when creating this platform.',
         'type' => 'varchar',
         'length' => 255,
         'default' => '',
@@ -35,7 +35,7 @@ function hosting_platform_schema() {
         'default' => '',
       ),
       'git_root' => array(
-        'description' => 'The relative path within the git repository where sites will be hosted.',
+        'description' => 'The full path on the server to clone the git repository to.',
         'type' => 'varchar',
         'length' => 255,
         'default' => '',
