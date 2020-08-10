@@ -43,13 +43,12 @@ function hosting_platform_drush_context_import($context, &$node) {
     if (isset($context->make_working_copy) && !empty($context->make_working_copy)) {
       $node->make_working_copy = $context->make_working_copy;
     }
+
+    // Import git options from the context.
+    $node->git_root = $context->git_root;
+    $node->git_remote = $context->git_remote;
+    $node->git_reference = $context->git_reference;
   }
-
-  // Import git options from the context.
-  $node->git_root = $context->git_root;
-  $node->git_remote = $context->git_remote;
-  $node->git_reference = $context->git_reference;
-
 }
 
 /**
