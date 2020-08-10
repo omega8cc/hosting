@@ -821,12 +821,23 @@ function hosting_site_hosting_task_guarded_nodes() {
  * @see hosting_task_confirm_form().
  */
 function hosting_task_delete_form($node) {
-  $form['skip_backup'] = array(
-    '#title' => t('Skip site backup'),
-    '#type' => 'checkbox',
-    '#description' => t('Skip creating a backup file of this site and delete it. <em>You will not be able to recover your data if backups are skipped.</em>'),
-  );
-
+  $form = array();
+  if ($node->type == 'site') {
+    $form['confirm'] = array(
+      '#title' => t('Confirm: All data in this site will be destroyed. Check this box to confirm your intentions to do this.'),
+      '#type' => 'checkbox',
+      '#required' => TRUE,
+      '#description' => t('WARNING: Taking this action will destroy all data in the site !link.', array(
+        '!link' => l($node->title, $node->title, array(
+          'options' => array(
+            'attributes' => array(
+              'target' => '_blank',
+            ),
+          ),
+        )),
+      )),
+    );
+  }
   return $form;
 }
 
