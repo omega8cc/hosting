@@ -725,7 +725,7 @@ function hosting_platform_load($nodes) {
   foreach ($nodes as $nid => &$node) {
     $additions = db_query('
       SELECT
-        *,
+        p.*,
         c.name as web_server_name,
         status AS platform_status
       FROM {hosting_platform} p
