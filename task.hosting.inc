@@ -250,6 +250,10 @@ function drush_hosting_task() {
 
     // Prepare "context_options" by converting them to command line options.
     foreach ($task->context_options as $name => $value) {
+      // @TODO: validate hook_context_options() before objects get here.
+      if (!is_string($value)) {
+        continue;
+      }
       $value = escapeshellarg($value);
       $command[] = "--{$name}={$value}";
     }
