@@ -62,12 +62,11 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
   $node = $task->ref;
   if ($node->type == 'platform') {
 
-    // @TODO: The $data from the function param seems to always be empty, if we figure out how to populate it from drush_hosting_task() remove this.
-    // @TODO: Convert to use provision-packages.
-    // $data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
-
-    // Load packages data using drush_get_option.
-    $packages = drush_get_option('packages', array(), 'drupal');
+    // Reload DATA from the provision context: or you will get hostmaster packages!
+    // @TODO: provision_process backend invoke?
+    $data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
+    $context = $data['context'];
+    $packages = $data['context']['packages'];
 
     // Lock platforms by default.
     if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
