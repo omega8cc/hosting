@@ -357,6 +357,9 @@ function drush_hosting_task() {
     $value = escapeshellarg($value);
     $command[] = "--{$name}={$value}";
   }
+
+  // Append --strict option because... hosting tasks often pass arbitrary options.
+  $command[] = '--strict=0';
   hosting_process($command, null, t('Running Task...'));
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
