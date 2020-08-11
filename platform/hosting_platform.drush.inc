@@ -140,6 +140,9 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
  * Implements hook_hosting_post_DELETE().
  */
 function hosting_platform_post_hosting_delete_task($task, $data) {
+  if ($task->ref->type == 'platform') {
+    return;
+  }
   $task->ref->platform_status = HOSTING_PLATFORM_DELETED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
@@ -156,6 +159,9 @@ function hosting_platform_post_hosting_delete_task($task, $data) {
  * @see http://drupal.org/node/1354
  */
 function hosting_platform_post_hosting_lock_task($task, $data) {
+  if ($task->ref->type == 'platform') {
+    return;
+  }
   $task->ref->platform_status = HOSTING_PLATFORM_LOCKED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
@@ -166,6 +172,9 @@ function hosting_platform_post_hosting_lock_task($task, $data) {
  * @see http://drupal.org/node/1354
  */
 function hosting_platform_post_hosting_unlock_task($task, $data) {
+  if ($task->ref->type == 'platform') {
+    return;
+  }
   $task->ref->platform_status = HOSTING_PLATFORM_ENABLED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
