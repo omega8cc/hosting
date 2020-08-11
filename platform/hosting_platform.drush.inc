@@ -86,6 +86,12 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       $node->platform_status = HOSTING_PLATFORM_ENABLED;
     }
     $node->no_verify = TRUE;
+
+    // Load git information from context.
+    $node->git_root = d($task->ref->hosting_name)->git_root;;
+    $node->git_remote = d($task->ref->hosting_name)->git_remote;
+    $node->git_reference = d($task->ref->hosting_name)->git_reference;
+
     // Save the platform being verified.
     node_save($node);
 
