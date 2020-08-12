@@ -3,6 +3,10 @@
  * @file
  * Contains hook implementations for Hosting site module.
  */
+use TQ\Git\Repository\Repository;
+use GitWrapper\GitWrapper;
+use GitWrapper\GitWorkingCopy;
+use GitWrapper\GitException;
 
 /**
  * This site is deleted from the backend.
@@ -835,16 +839,40 @@ function hosting_task_deploy_form($node) {
     $platform_node = node_load($node->platform);
     $platform_node = hosting_platform_view($platform_node, 'full');
 
+    // Display current git information.
     $form['git_information'] = $platform_node->content['properties'];
+    $form['git_information']['#title'] = t('Current Site State');
 
-    $form['git_reference'] = array(
+    // Allow the user to change git_reference here.
+    $form['target_git_reference'] = array(
       '#title' => t('Git Reference'),
       '#type' => 'textfield',
-      '#description' => t('The git branch, tag, or SHA to check out.'),
+      '#default_value' => $platform_node->git_reference,
+      '#description' => t('Enter the git branch, tag, or SHA to deploy. This will checkout code and reset the codebase to match the remote git repository.'),
     );
 
+    // Check for working copy changes and offer to reset them for the user.
+    try {
+      $wrapper = new GitWrapper();
+      $git = $wrapper->workingCopy($platform_node->git_root);
+      $diff = $git->diff();
+      if ($diff) {
+        $form['git_reset'] = array(
+          '#prefix' => '<div class="alert alert-danger">' . t('DANGER ZONE'),
+          '#suffix' => kpr($git->diff()->getOutput(),1) . '</div>',
+          '#title' => t('Discard working copy changes.'),
+          '#type' => 'checkbox',
+          '#default_value' => FALSE,
+          '#description' => t('Uncommitted changes were detected in the codebase. Check this box to reset any changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
+        );
+      }
+    }
+    catch (GitException $e) {
+      drupal_set_message($e->getMessage(), 'error');
+    }
 
-  }
+
+    }
   // @TODO: Platform deploys? This will take a new meaning if we break free of true multisite.
   return $form;
 }
