@@ -512,5 +512,158 @@ function hosting_task_views_default_views() {
 
   $views[$view->name] = $view;
 
+  // Exported view: hosting_task_list
+  $view = new view();
+  $view->name = 'hosting_task_history';
+  $view->description = '';
+  $view->tag = 'default';
+  $view->base_table = 'node_revision';
+  $view->human_name = 'Hosting Task History';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['title'] = 'Task History';
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'none';
+  $handler->display->display_options['style_plugin'] = 'table';
+  $handler->display->display_options['style_options']['columns'] = array(
+    'timestamp' => 'timestamp',
+    'title' => 'title',
+    'executed' => 'executed',
+    'delta' => 'delta',
+    'task_status' => 'task_status',
+    'executed_1' => 'executed',
+  );
+  $handler->display->display_options['style_options']['class'] = '';
+  $handler->display->display_options['style_options']['default'] = '-1';
+  $handler->display->display_options['style_options']['info'] = array(
+    'timestamp' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'title' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'executed' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '<br />',
+      'empty_column' => 0,
+    ),
+    'delta' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'task_status' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'executed_1' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+  );
+  /* Field: Content revision: Updated date */
+  $handler->display->display_options['fields']['timestamp']['id'] = 'timestamp';
+  $handler->display->display_options['fields']['timestamp']['table'] = 'node_revision';
+  $handler->display->display_options['fields']['timestamp']['field'] = 'timestamp';
+  $handler->display->display_options['fields']['timestamp']['label'] = 'Timestamp';
+  $handler->display->display_options['fields']['timestamp']['alter']['word_boundary'] = FALSE;
+  $handler->display->display_options['fields']['timestamp']['alter']['ellipsis'] = FALSE;
+  $handler->display->display_options['fields']['timestamp']['date_format'] = 'custom';
+  $handler->display->display_options['fields']['timestamp']['custom_date_format'] = 'D M j G:i:s T Y';
+  $handler->display->display_options['fields']['timestamp']['second_date_format'] = 'medium';
+  /* Field: Content revision: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'node_revision';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['alter']['word_boundary'] = FALSE;
+  $handler->display->display_options['fields']['title']['alter']['ellipsis'] = FALSE;
+  $handler->display->display_options['fields']['title']['link_to_node_revision'] = TRUE;
+  /* Field: Hosting Task: Executed */
+  $handler->display->display_options['fields']['executed']['id'] = 'executed';
+  $handler->display->display_options['fields']['executed']['table'] = 'hosting_task';
+  $handler->display->display_options['fields']['executed']['field'] = 'executed';
+  $handler->display->display_options['fields']['executed']['date_format'] = 'custom';
+  $handler->display->display_options['fields']['executed']['custom_date_format'] = 'D M j G:i:s T Y';
+  $handler->display->display_options['fields']['executed']['second_date_format'] = 'long';
+  /* Field: Hosting Task: Execution time */
+  $handler->display->display_options['fields']['delta']['id'] = 'delta';
+  $handler->display->display_options['fields']['delta']['table'] = 'hosting_task';
+  $handler->display->display_options['fields']['delta']['field'] = 'delta';
+  $handler->display->display_options['fields']['delta']['granularity'] = '2';
+  /* Field: Hosting Task: Status */
+  $handler->display->display_options['fields']['task_status']['id'] = 'task_status';
+  $handler->display->display_options['fields']['task_status']['table'] = 'hosting_task';
+  $handler->display->display_options['fields']['task_status']['field'] = 'task_status';
+  $handler->display->display_options['fields']['task_status']['alter']['text'] = '[task_status]';
+  $handler->display->display_options['fields']['task_status']['alter']['status_mode'] = 'text';
+  /* Field: Hosting Task: Executed */
+  $handler->display->display_options['fields']['executed_1']['id'] = 'executed_1';
+  $handler->display->display_options['fields']['executed_1']['table'] = 'hosting_task';
+  $handler->display->display_options['fields']['executed_1']['field'] = 'executed';
+  $handler->display->display_options['fields']['executed_1']['date_format'] = 'time ago';
+  $handler->display->display_options['fields']['executed_1']['second_date_format'] = 'long';
+  /* Sort criterion: Content revision: Updated date */
+  $handler->display->display_options['sorts']['timestamp']['id'] = 'timestamp';
+  $handler->display->display_options['sorts']['timestamp']['table'] = 'node_revision';
+  $handler->display->display_options['sorts']['timestamp']['field'] = 'timestamp';
+  $handler->display->display_options['sorts']['timestamp']['order'] = 'DESC';
+  /* Contextual filter: Content revision: Nid */
+  $handler->display->display_options['arguments']['nid']['id'] = 'nid';
+  $handler->display->display_options['arguments']['nid']['table'] = 'node_revision';
+  $handler->display->display_options['arguments']['nid']['field'] = 'nid';
+  $handler->display->display_options['arguments']['nid']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['nid']['title_enable'] = TRUE;
+  $handler->display->display_options['arguments']['nid']['title'] = 'Task History: %1';
+  $handler->display->display_options['arguments']['nid']['breadcrumb_enable'] = TRUE;
+  $handler->display->display_options['arguments']['nid']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['nid']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['nid']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['nid']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['nid']['specify_validation'] = TRUE;
+  $handler->display->display_options['arguments']['nid']['validate']['type'] = 'node';
+  $handler->display->display_options['arguments']['nid']['validate_options']['types'] = array(
+    'task' => 'task',
+  );
+  $handler->display->display_options['arguments']['nid']['validate_options']['access'] = TRUE;
+
+  /* Display: Page */
+  $handler = $view->new_display('page', 'Page', 'page');
+  $handler->display->display_options['path'] = 'node/%/task-history';
+  $handler->display->display_options['menu']['type'] = 'tab';
+  $handler->display->display_options['menu']['title'] = 'Task History';
+  $handler->display->display_options['menu']['description'] = 'A list of changes to this task.';
+  $handler->display->display_options['menu']['weight'] = '0';
+  $handler->display->display_options['menu']['name'] = 'main-menu';
+  $handler->display->display_options['menu']['context'] = 0;
+  $handler->display->display_options['menu']['context_only_inline'] = 0;
+
+  $views[$view->name] = $view;
+
   return $views;
 }
