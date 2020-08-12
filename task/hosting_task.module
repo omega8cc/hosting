@@ -443,6 +443,9 @@ function hosting_task_permission() {
     'create restore task' => array(
       'title' => t('create restore task'),
     ),
+    'create deploy task' => array(
+      'title' => t('create deploy task'),
+    ),
     'create disable task' => array(
       'title' => t('create disable task'),
     ),

@@ -355,6 +355,14 @@ function hosting_site_hosting_tasks() {
     'hidden' => TRUE,
   );
 
+  $tasks['site']['deploy'] = array(
+    'title' => t('Deploy'),
+    'description' => t('Deploy new code and run pre- and post- deployment scripts.'),
+    'provision_save' => TRUE,
+    'dialog' => TRUE,
+    'icon' => 'truck',
+  );
+
   return $tasks;
 }
 
@@ -812,6 +820,33 @@ function hosting_site_hosting_task_guarded_nodes() {
   return array(
     hosting_get_hostmaster_site_nid()
   );
+}
+
+/**
+ * Confirmation form for site deploy.
+ *
+ * @see hosting_task_confirm_form().
+ */
+function hosting_task_deploy_form($node) {
+  $form = array();
+  if ($node->type == 'site') {
+
+    // @TODO: Load platform properties direct from site node once site entity extends platform.
+    $platform_node = node_load($node->platform);
+    $platform_node = hosting_platform_view($platform_node, 'full');
+
+    $form['git_information'] = $platform_node->content['properties'];
+
+    $form['git_reference'] = array(
+      '#title' => t('Git Reference'),
+      '#type' => 'textfield',
+      '#description' => t('The git branch, tag, or SHA to check out.'),
+    );
+
+
+  }
+  // @TODO: Platform deploys? This will take a new meaning if we break free of true multisite.
+  return $form;
 }
 
 /**
