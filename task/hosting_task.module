@@ -303,7 +303,12 @@ function hosting_task_menu_access($node, $task) {
       $deletable = ($task == "delete");
       $enabable = ($task == "enable");
 
-      $delete_or_enable = ($deletable || $enabable);
+      // @TODO: Do not allow on protected sites.
+      // @TODO: Improve UI to inform users this is a reinstall and data will be lost.
+      // @TODO: Reduce tech debt, do not add to it.
+      $installable = ($task == "install");
+
+      $delete_or_enable = ($deletable || $enabable || $installable);
 
       // If the site is not enabled, we can either delete it, or enable it again.
       if (!$site_enabled) {
