@@ -317,6 +317,10 @@ function hosting_task_menu_access($node, $task) {
       else {
         // Site is enabled.
         return (
+                 // If task is "install" and user is allowed to reinstall globally, allow re-install.
+                 // @TODO: Create a protected site property.
+                 ($installable && variable_get('hosting_allow_reinstall', TRUE))  ||
+
                  // If we can just delete a site without disabling, allow that.
                  (!variable_get('hosting_require_disable_before_delete', TRUE)) && $deletable
                  // Otherwise we must disable it first, hide the delete task and the enable task as well.

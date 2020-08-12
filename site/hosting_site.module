@@ -344,9 +344,8 @@ function hosting_site_hosting_tasks() {
   $tasks['site']['install'] = array(
     'title' => t('Install'),
     'description' => t('Install a site'),
-    'hidden' => TRUE,
     'provision_save' => TRUE,
-    // @TODO: Uncomment when "provision install" is ready.
+    'dialog' => TRUE,
     // 'command' => 'install',
   );
 
