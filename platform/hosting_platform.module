@@ -404,14 +404,14 @@ function hosting_platform_form(&$node) {
     '#type' => 'textfield',
     '#title' => t('Git Reference'),
     '#description' => t('The desired git reference. Can be a branch, tag or SHA. If git repository default branch.'),
-    '#default_value' => $node->git_remote,
+    '#default_value' => $node->git_reference,
   );
 
   $form['git']['git_root'] = array(
     '#type' => 'textfield',
     '#title' => t('Path'),
     '#description' => t('The full path on the server to clone the git repository to.'),
-    '#default_value' => $node->git_remote,
+    '#default_value' => $node->git_root,
   );
 
   $form['git']['git_docroot'] = array(
