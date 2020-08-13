@@ -434,11 +434,18 @@ function hosting_site_node_update($node) {
  */
 function hosting_site_load($nodes) {
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query(
-      'SELECT  client, db_server, db_name, platform, profile, web_server, publish_path,
-        language AS site_language, last_cron, cron_key, s.status AS site_status,
-        file_public_path, file_private_path, file_temporary_path,
-        p.status AS platform_status, s.verified, p.verified as platform_verified
+    $additions = db_query('SELECT  client, db_server, db_name, platform, profile, web_server,
+        publish_path,
+        language AS site_language,
+        last_cron,
+        cron_key,
+        s.status AS site_status,
+        file_public_path,
+        file_private_path,
+        file_temporary_path,
+        p.status AS platform_status,
+        s.verified,
+        p.verified as platform_verified
       FROM {hosting_site} s
         LEFT JOIN {hosting_platform} p ON s.platform = p.nid
       WHERE s.vid = :vid',
