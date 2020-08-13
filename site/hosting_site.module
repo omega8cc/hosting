@@ -839,44 +839,71 @@ function hosting_task_deploy_form($node) {
     $platform_node = node_load($node->platform);
     $platform_node = hosting_platform_view($platform_node, 'full');
 
+    // Allow the user to change git_reference here.
+    $form['target_git_reference'] = array(
+      '#title' => t('Git Reference to Deploy'),
+      '#type' => 'textfield',
+      '#default_value' => $platform_node->git_reference,
+      '#description' => t('Enter the git branch, tag, or SHA to deploy to the Repository Path of this site.'),
+    );
+
+    // @TODO: Platform deploys? This will take a new meaning if we break free of true multisite.
+
     // Display current git information.
     $form['git_information'] = $platform_node->content['properties'];
     $form['git_information']['#title'] = t('Current Site State');
     unset($form['git_information']['edit']);
 
-    // Allow the user to change git_reference here.
-    $form['target_git_reference'] = array(
-      '#title' => t('Git Reference'),
-      '#type' => 'textfield',
-      '#default_value' => $platform_node->git_reference,
-      '#description' => t('Enter the git branch, tag, or SHA to deploy. This will checkout code and reset the codebase to match the remote git repository.'),
-    );
-
-    // Check for working copy changes and offer to reset them for the user.
     try {
       $wrapper = new GitWrapper();
       $git = $wrapper->workingCopy($platform_node->git_root);
       $diff = $git->diff();
-      if ($diff) {
-        $form['git_reset'] = array(
-          '#prefix' => '<div class="alert alert-danger">' . t('DANGER ZONE'),
-          '#suffix' => kpr($git->diff()->getOutput(),1) . '</div>',
-          '#title' => t('Discard working copy changes.'),
-          '#type' => 'checkbox',
-          '#default_value' => FALSE,
-          '#description' => t('Uncommitted changes were detected in the codebase. Check this box to reset any changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
-        );
-      }
-    }
-    catch (GitException $e) {
+
+      $form['git_info'] = array(
+        '#title' => t('View git status in &path', array(
+          '&path' => $platform_node->git_root,
+        )),
+        '#type' => 'fieldset',
+        '#collapsed' => true,
+        '#collapsible' => true,
+        'status' => array(
+          '#prefix' => '<h4>' . t('Git Status') . '</h4><pre>',
+          '#markup' => $git->getStatus(),
+          '#suffix' => '</pre>',
+        ),
+        'diff' => array(
+          '#prefix' => '<h4>' . t('Git diff') . '</h4><pre>',
+          '#markup' => $git->diff()->getOutput(),
+          '#suffix' => '</pre>',
+        ),
+      );
+    } catch (GitException $e) {
       drupal_set_message($e->getMessage(), 'error');
     }
 
-
+    // Check for working copy changes and offer to reset them for the user.
+    $form['danger_zone'] = array(
+      '#type' => 'container',
+      'title' => array(
+        '#prefix' => '<h5>',
+        '#markup' => t('DANGER ZONE'),
+        '#suffix' => '</h5>',
+      ),
+      '#attributes' => array(
+        'class' => array(
+          'alert alert-danger'
+        ),
+      ),
+    );
+    if ($diff) {
+      $form['danger_zone']['git_reset'] = array(
+        '#title' => t('Discard working copy changes.'),
+        '#type' => 'checkbox',
+        '#default_value' => FALSE,
+        '#description' => t('Uncommitted changes were detected in the codebase. Check this box to discard changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
+      );
     }
-  // @TODO: Platform deploys? This will take a new meaning if we break free of true multisite.
-
-  dsm($form);
+  }
   return $form;
 }
 
