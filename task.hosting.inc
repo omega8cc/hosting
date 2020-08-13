@@ -254,6 +254,9 @@ function drush_hosting_task() {
       if (!is_string($value)) {
         continue;
       }
+
+      // Keep empty values here because it's being saved to context.
+      // If values don't exist here, the existing drush context properties will remain unchanged.
       $value = escapeshellarg($value);
       $command[] = "--{$name}={$value}";
     }
@@ -349,13 +352,17 @@ function drush_hosting_task() {
 
   // Append each argument.
   foreach ($task->args as $argument) {
-    $command[] = escapeshellarg($argument);
+    if (!empty($argument)) {
+      $command[] = escapeshellarg($argument);
+    }
   }
 
   // Append each option.
   foreach ($task->options as $name => $value) {
-    $value = escapeshellarg($value);
-    $command[] = "--{$name}={$value}";
+    if (!empty($value)) {
+      $value = escapeshellarg($value);
+      $command[] = "--{$name}={$value}";
+    }
   }
 
   // Append --strict option because... hosting tasks often pass arbitrary options.
