@@ -842,6 +842,7 @@ function hosting_task_deploy_form($node) {
     // Display current git information.
     $form['git_information'] = $platform_node->content['properties'];
     $form['git_information']['#title'] = t('Current Site State');
+    unset($form['git_information']['edit']);
 
     // Allow the user to change git_reference here.
     $form['target_git_reference'] = array(
@@ -874,6 +875,8 @@ function hosting_task_deploy_form($node) {
 
     }
   // @TODO: Platform deploys? This will take a new meaning if we break free of true multisite.
+
+  dsm($form);
   return $form;
 }
 
