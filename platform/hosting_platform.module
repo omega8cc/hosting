@@ -819,12 +819,12 @@ function hosting_platform_view($node, $view_mode, $langcode = NULL) {
 
   $node->content['properties']['git_remote'] = array(
     '#type' => 'item',
-    '#title' => t('Git Repository'),
+    '#title' => t('Git Remote'),
     '#markup' => $node->git_remote?: t('None'),
   );
   $node->content['properties']['git_root'] = array(
     '#type' => 'item',
-    '#title' => t('Git Repository Path'),
+    '#title' => t('Repository Path'),
     '#markup' => $node->git_root?: t('Unknown'),
   );
   $node->content['properties']['git_reference'] = array(
