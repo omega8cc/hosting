@@ -418,6 +418,7 @@ function hosting_platform_form(&$node) {
 
   $form['git']['git_root'] = array(
     '#type' => $node->nid? 'value': 'textfield',
+    '#title' => t('Path to Clone'),
     '#default_value' => $node->git_root,
     '#weight' => 10,
     '#description' => $git_root_description,
