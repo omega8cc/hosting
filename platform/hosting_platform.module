@@ -368,22 +368,22 @@ function hosting_platform_form(&$node) {
   );
 
   // Allow editing the "publish path" so that users can change their platforms if they need to.
-  $base_path = variable_get('hosting_platform_base_path', '/var/aegir/platforms/');
-  $default_path = '';
-  $field_prefix = $base_path;
-  if (isset($node->publish_path)) {
-    // Strip the $base_path, since we prepend it in a validation handler.
-    // This enforces platform publishing under the defined base path, even if
-    // an error allows the path to be edited again.
-    if (strpos($node->publish_path, $base_path) === 0) {
-      $default_path = substr($node->publish_path, strlen($base_path));
-    }
-    else {
-      // If publish path is not inside /var/aegir/platforms, use that as the default path and remove the field prefix.
-      $default_path = $node->publish_path;
-      $field_prefix = '';
-    }
-  }
+//  $base_path = variable_get('hosting_platform_base_path', '/var/aegir/platforms/');
+//  $default_path = '';
+//  $field_prefix = $base_path;
+//  if (isset($node->publish_path)) {
+//    // Strip the $base_path, since we prepend it in a validation handler.
+//    // This enforces platform publishing under the defined base path, even if
+//    // an error allows the path to be edited again.
+//    if (strpos($node->publish_path, $base_path) === 0) {
+//      $default_path = substr($node->publish_path, strlen($base_path));
+//    }
+//    else {
+//      // If publish path is not inside /var/aegir/platforms, use that as the default path and remove the field prefix.
+//      $default_path = $node->publish_path;
+//      $field_prefix = '';
+//    }
+//  }
 
   $form['git'] = array(
     '#type' => 'fieldset',
@@ -421,56 +421,41 @@ function hosting_platform_form(&$node) {
     '#default_value' => $node->git_docroot  ,
   );
 
+  // @TODO: Refactor to "Docroots".
   $form['publish_path'] = array(
-    '#type' => 'machine_name',
-    '#machine_name' =>  array(
-      'exists' => 'hosting_platform_path_exists',
-      'source' => array('title'),
-      'label' => t('Publish path'),
-      'standalone' => TRUE,
-      'replace_pattern' => '[^a-z0-9_\.\-\/]+',
-      'field_prefix' => variable_get('hosting_platform_base_path', '/var/aegir/platforms/'),
-    ),
-    '#title' => t('Publish path'),
-    '#weight' => -5,
-    '#required' => TRUE,
-    '#description' => t('The absolute path on the filesystem where the sites will be hosted. This needs to be created manually and initialized before your platform works properly. It also needs to be a unique path not already in use by a platform on any server.<br />For example, run the following shell commands:<pre>%commands</pre>Your publish path is the absolute path to the directory that gets created.<br />Alternatively, you can specify a makefile below, and the platform will be created automatically if the path specified here does not exist.<br />You are still required to enter the absolute path above, as it will be treated as the target directory by the makefile.', array('%commands' => "cd /var/aegir/platforms\ndrush dl drupal\n")),
-    '#size' => 40,
-    '#default_value' => $default_path,
-    '#maxlength' => 255,
-    '#field_prefix' => $field_prefix,
-    '#element_validate' => array(
-      'hosting_platform_form_publish_path_validate',
-    ),
+    '#type' => 'value',
+    '#default_value' => $node->publish_path,
   );
 
-  $form['frommakefile'] = array(
-    '#type' => 'fieldset',
-    '#tree' => TRUE,
-    '#title' => t('Deploy from makefile'),
-    '#collapsible' => TRUE,
-    '#description' => t('You may deploy this platform from a makefile.'),
-    '#weight' => -1,
-  );
-
-  $form['frommakefile']['makefile'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Makefile'),
-    '#description' => t('The absolute path on the filesystem or public URL of a makefile that will be used to create the platform in the directory specified above. If the directory already exists, this file will be ignored.'),
-    '#size' => 40,
-    '#default_value' => isset($node->makefile) ? $node->makefile : NULL,
-    '#maxlength' => 255,
-  );
-
-  $form['frommakefile']['make_working_copy'] = array(
-    '#type' => 'radios',
-    '#title' => t('Drush make option'),
-    '#default_value' => isset($node->make_working_copy) ? $node->make_working_copy : 0,
-    '#options' => array(
-      0 => t('Normal - Discards SCM files'),
-      1 => t('Working copy - preserves SCM files'),
-    ),
-  );
+  // @TODO: Decide to remove makefile support?
+//  $form['frommakefile'] = array(
+//    '#type' => 'fieldset',
+//    '#tree' => TRUE,
+//    '#title' => t('Deploy from makefile'),
+//    '#collapsible' => TRUE,
+//    '#description' => t('You may deploy this platform from a makefile.'),
+//    '#weight' => -1,
+//    '#access' =>
+//  );
+//
+//  $form['frommakefile']['makefile'] = array(
+//    '#type' => 'textfield',
+//    '#title' => t('Makefile'),
+//    '#description' => t('The absolute path on the filesystem or public URL of a makefile that will be used to create the platform in the directory specified above. If the directory already exists, this file will be ignored.'),
+//    '#size' => 40,
+//    '#default_value' => isset($node->makefile) ? $node->makefile : NULL,
+//    '#maxlength' => 255,
+//  );
+//
+//  $form['frommakefile']['make_working_copy'] = array(
+//    '#type' => 'radios',
+//    '#title' => t('Drush make option'),
+//    '#default_value' => isset($node->make_working_copy) ? $node->make_working_copy : 0,
+//    '#options' => array(
+//      0 => t('Normal - Discards SCM files'),
+//      1 => t('Working copy - preserves SCM files'),
+//    ),
+//  );
 
   $form['#after_build'][] = 'hosting_platform_form_platform_after_build';
 
