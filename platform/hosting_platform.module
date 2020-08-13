@@ -389,14 +389,14 @@ function hosting_platform_form(&$node) {
     '#type' => 'fieldset',
     '#title' => t('Git Information'),
     '#collapsible' => false,
-    '#description' => t('Create this platform using a git repository.'),
+    '#description' => $node->nid? t('Change the git configuration of the codebase checked out to &path.', array('&path' => $node->git_root)): t('Create this platform using a git repository.'),
     '#weight' => -1,
   );
 
   $form['git']['git_remote'] = array(
     '#type' => 'textfield',
     '#title' => t('Git Repository URL'),
-    '#description' => t('The URL or path of the git repository to use when creating this platform.'),
+    '#description' => t('The URL or path of the git repository to clone for this site.'),
     '#default_value' => $node->git_remote,
     '#required' => TRUE,
   );
@@ -404,17 +404,24 @@ function hosting_platform_form(&$node) {
   $form['git']['git_reference'] = array(
     '#type' => 'textfield',
     '#title' => t('Git Reference'),
-    '#description' => t('The desired git reference. Can be a branch, tag or SHA. If git repository default branch.'),
+    '#description' => $node->nid
+      ? t('Enter a git reference to checkout. If left blank, no changes will be made.')
+      : t('The desired git reference. Can be a branch, tag or SHA. If left blank, the default branch will be checked out.'),
     '#default_value' => $node->git_reference,
   );
 
+  // @TODO: Detect clone state instead of just saying "it worked!".
+  $git_root_description = $node->nid
+    ? '<div class="alert alert-info"><i class="fa fa-info-circle"></i> ' . t('The repository was cloned to: &path', array('&path' => $node->git_root))
+    : t('The full path on the server to clone the git repository to.') . "</div>"
+  ;
+
   $form['git']['git_root'] = array(
-    '#type' => $node->verified? 'item': 'textfield',
-    '#title' => t('Path'),
-    '#description' => $node->verified? t('The repository was cloned to this path.'): t('The full path on the server to clone the git repository to.'),
+    '#type' => $node->nid? 'value': 'textfield',
     '#default_value' => $node->git_root,
-    '#markup' => $node->git_root,
-    '#required' => TRUE,
+    '#weight' => 10,
+    '#description' => $git_root_description,
+    '#suffix' => $git_root_description,
   );
 
   $form['git']['git_docroot'] = array(
@@ -428,6 +435,7 @@ function hosting_platform_form(&$node) {
   $form['publish_path'] = array(
     '#type' => 'value',
     '#value' => $node->publish_path,
+    '#default_value' => $node->publish_path,
     '#element_validate' => array(
       'hosting_platform_form_publish_path_validate',
     ),
