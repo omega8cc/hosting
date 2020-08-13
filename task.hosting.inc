@@ -136,6 +136,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
   drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_LOGIN);
   if (is_numeric($id)) {
     $task = node_load($id);
+    drush_log(dt("Task node found: !url", array(
+      '!url' => url("node/{$task->nid}", array('absolute' => true)),
+    )), 'ok');
   }
   elseif (is_string($id) && isset($type)) {
     $ref = hosting_context_load($id);
@@ -152,6 +155,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
         $task_args[$name] = $value;
       }
       $task = hosting_add_task($ref->nid, $type, $task_args);
+      drush_log(dt("Task node created: !url", array(
+        '!url' => url("node/{$task->nid}", array('absolute' => true)),
+      )), 'ok');
     }
   }
 
