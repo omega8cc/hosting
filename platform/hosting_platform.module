@@ -408,10 +408,11 @@ function hosting_platform_form(&$node) {
   );
 
   $form['git']['git_root'] = array(
-    '#type' => 'textfield',
+    '#type' => $node->verified? 'item': 'textfield',
     '#title' => t('Path'),
-    '#description' => t('The full path on the server to clone the git repository to.'),
+    '#description' => $node->verified? t('The repository was cloned to this path.'): t('The full path on the server to clone the git repository to.'),
     '#default_value' => $node->git_root,
+    '#markup' => $node->git_root,
   );
 
   $form['git']['git_docroot'] = array(
@@ -424,7 +425,10 @@ function hosting_platform_form(&$node) {
   // @TODO: Refactor to "Docroots".
   $form['publish_path'] = array(
     '#type' => 'value',
-    '#default_value' => $node->publish_path,
+    '#value' => $node->publish_path,
+    '#element_validate' => array(
+      'hosting_platform_form_publish_path_validate',
+    ),
   );
 
   // @TODO: Decide to remove makefile support?
@@ -621,12 +625,16 @@ function hosting_platform_delete($node) {
  * (New node or failed validation and no makefile.)
  */
 function hosting_platform_form_publish_path_validate($element, &$form_state, &$form) {
-  $platform_base_path = variable_get('hosting_platform_base_path', '/var/aegir/platforms/');
 
-  // If platform path doesn't already begin with the basepath and does not begin with a "/", append default base path.
-  if (strpos($element['#value'], $platform_base_path) !== 0 && strpos($element['#value'], '/') !== 0) {
-    $full_path = hosting_path_normalize($platform_base_path . '/' . $element['#value']);
+  // Set platform_path to git_root + git_docroot.
+  if (!empty($form_state['values']['git_root'])) {
+    $path_string = $form_state['values']['git_root'] . DIRECTORY_SEPARATOR . $form_state['values']['git_docroot'];
+    $full_path = hosting_path_normalize($path_string);
     form_set_value($element, $full_path, $form_state);
+  }
+  else {
+    form_set_error('git_root', t('Exception: Git repository path must be set. The field should be required.'));
+    return false;
   }
 }
 
