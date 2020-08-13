@@ -29,6 +29,7 @@ function hosting_site_node_info() {
 function hosting_site_view($node, $view_mode, $langcode = NULL) {
   hosting_set_breadcrumb($node);
   drupal_set_title(hosting_site_canonical_url($node));
+  hosting_platform_view($node, 'full');
   $node->content['info']['#prefix'] = '<div id="hosting-site-info" class="hosting-info-list">';
   if ($node->site_status == HOSTING_SITE_ENABLED) {
     $node->content['info']['link'] = array(
@@ -445,7 +446,10 @@ function hosting_site_load($nodes) {
         file_temporary_path,
         p.status AS platform_status,
         s.verified,
-        p.verified as platform_verified
+        p.verified as platform_verified,
+        p.git_root,
+        p.git_remote,
+        p.git_reference
       FROM {hosting_site} s
         LEFT JOIN {hosting_platform} p ON s.platform = p.nid
       WHERE s.vid = :vid',
