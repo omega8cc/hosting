@@ -401,15 +401,6 @@ function hosting_platform_form(&$node) {
     '#required' => TRUE,
   );
 
-  $form['git']['git_reference'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Git Reference'),
-    '#description' => $node->nid
-      ? t('Enter a git reference to checkout. If left blank, no changes will be made.')
-      : t('The desired git reference. Can be a branch, tag or SHA. If left blank, the default branch will be checked out.'),
-    '#default_value' => $node->git_reference,
-  );
-
   // @TODO: Detect clone state instead of just saying "it worked!".
   $git_root_description = $node->nid
     ? '<div class="alert alert-info"><i class="fa fa-info-circle"></i> ' . t('The repository was cloned to: &path', array('&path' => $node->git_root))
@@ -423,6 +414,15 @@ function hosting_platform_form(&$node) {
     '#weight' => 10,
     '#description' => $git_root_description,
     '#suffix' => $git_root_description,
+  );
+
+  $form['git']['git_reference'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Git Reference'),
+    '#description' => $node->nid
+      ? t('Enter a git reference to checkout. If left blank, no changes will be made.')
+      : t('The desired git reference. Can be a branch, tag or SHA. If left blank, the default branch will be checked out.'),
+    '#default_value' => $node->git_reference,
   );
 
   $form['git']['git_docroot'] = array(
