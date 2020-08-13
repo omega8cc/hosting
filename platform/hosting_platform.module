@@ -832,10 +832,24 @@ function hosting_platform_view($node, $view_mode, $langcode = NULL) {
     '#title' => t('Git Reference'),
     '#markup' => $node->git_reference?: t('Unknown'),
   );
+
+  // Show an Edit Platform button.
+  $platform_nid = $node->type == 'platform'? $node->nid: $node->platform;
+  $platform_edit_url = $node->type == 'site'? "node/{$node->nid}/platform-edit": "node/{$platform_nid}/edit";
+
   $node->content['properties']['edit'] = array(
     '#type' => 'link',
-    '#title' => t('Edit Git Information'),
-    '#href' => "node/{$node->nid}/platform-edit",
+    '#title' => t('Edit Platform'),
+    '#href' => $platform_edit_url,
+    '#access' => drupal_valid_path($platform_edit_url),
+    '#options' => array(
+      'query' => array(
+        drupal_get_destination(),
+      ),
+      'attributes' => array(
+        'class' => array('btn btn-default')
+      )
+    )
   );
 
 
