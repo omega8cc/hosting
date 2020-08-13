@@ -398,6 +398,7 @@ function hosting_platform_form(&$node) {
     '#title' => t('Git Repository URL'),
     '#description' => t('The URL or path of the git repository to use when creating this platform.'),
     '#default_value' => $node->git_remote,
+    '#required' => TRUE,
   );
 
   $form['git']['git_reference'] = array(
@@ -413,6 +414,7 @@ function hosting_platform_form(&$node) {
     '#description' => $node->verified? t('The repository was cloned to this path.'): t('The full path on the server to clone the git repository to.'),
     '#default_value' => $node->git_root,
     '#markup' => $node->git_root,
+    '#required' => TRUE,
   );
 
   $form['git']['git_docroot'] = array(
