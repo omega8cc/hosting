@@ -81,15 +81,14 @@ function hosting_server_post_hosting_verify_task($task, $data) {
 }
 
 /**
- * Implements hook_hosting_post_DELETE().
+ * Implements hook_post_hosting_TASK_TYPE_task().
  */
 function hosting_server_post_hosting_delete_task($task, $data) {
   if ($task->ref->type == 'server') {
-    return;
+    $task->ref->server_status = HOSTING_SERVER_DELETED;
+    $task->ref->no_verify = TRUE;
+    $task->ref->services = array();
+    node_save($task->ref);
   }
-  $task->ref->server_status = HOSTING_SERVER_DELETED;
-  $task->ref->no_verify = TRUE;
-  $task->ref->services = array();
-  node_save($task->ref);
   hosting_context_delete($task->ref->nid);
 }

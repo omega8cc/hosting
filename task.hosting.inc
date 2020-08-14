@@ -329,7 +329,7 @@ function drush_hosting_task() {
     $alias = $task->ref->hosting_name;
   }
 
-  if (!isset($task->task_command)) {
+  if (empty($task->task_command)) {
     $task->task_command = 'provision-' . $task->task_type;
   }
 
@@ -379,16 +379,35 @@ function drush_hosting_task() {
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
   drush_set_context('HOSTING_DRUSH_OUTPUT', $output);
 
-  // On succesful delete, remove the named context.
-  if ($task->task_type === 'delete' && !drush_get_error()) {
-    // Build command as an array for compatibility.
-    $command = array(
-      "drush",
-      "provision-save",
-      "@{$task->ref->hosting_name}",
-      "--delete"
-    );
-    hosting_process($command, null, t('Deleting metadata...'));
+  // On successful delete, remove the named context.
+  if ($task->task_type == 'delete' && !drush_get_error()) {
+
+    // Use the task_arg if there is one, hosting_name as a backup. $node->ref->hosting_name may be missing.
+    $context_to_delete = $task->task_args['hosting_context']?:
+      ($task->ref->hosting_name?: FALSE);
+
+    // Run the "provision-save --delete" command on $context_to_delete.
+    if ($context_to_delete) {
+      drush_log(dt("Deleting back-end context file for !context.", array(
+        '!context' => $context_to_delete,
+      )), 'notice');
+
+      // Build command as an array for compatibility.
+      $command = array(
+        "drush",
+        "provision-save",
+        "@{$task->ref->hosting_name}",
+        "--delete"
+      );
+      hosting_process($command, null, t('Deleting metadata...'));
+    }
+    // If no context name was found, throw a warning.
+    else {
+      drush_log(dt('No "hosting_name" property was found on the !type node (!url). Unable to delete back-end context file.', array(
+        '!type' => $task->ref->type,
+        '!url' => url("node/$task->rid", array('absolute' => TRUE)),
+      )), 'warning');
+    }
   }
 
   // New revision is created at the beginning of function.
@@ -413,6 +432,9 @@ function drush_hosting_task_rollback() {
  * Post completion hook for the hosting-task Drush command.
  *
  * @see hook_post_hosting_TASK_TYPE_task()
+ *
+ * Used primarily to trigger hosting_context_delete() for site, platform and
+ * server nodes, but only AFTER the task has completed successfully.
  */
 function drush_hosting_post_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');

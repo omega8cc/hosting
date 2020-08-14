@@ -143,7 +143,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 }
 
 /**
- * Implements hook_hosting_post_DELETE().
+ * Implements hook_post_hosting_TASK_TYPE_task().
  */
 function hosting_platform_post_hosting_delete_task($task, $data) {
   if ($task->ref->type == 'platform') {
