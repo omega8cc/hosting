@@ -321,6 +321,10 @@ function hosting_site_insert(&$node) {
       }
 
       $node->platform_node->type = 'platform';
+
+      // Don't queue a verify task on save. Site verify now runs platform verify first.
+      $node->platform_node->no_verify = TRUE;
+
       if ($node->platform_node = node_submit($node->platform_node)) {
         node_save($node->platform_node);
       }
