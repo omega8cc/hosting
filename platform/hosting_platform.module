@@ -543,7 +543,7 @@ function hosting_platform_form_alter(&$form, &$form_state, $form_id) {
  * Implements hook_insert().
  */
 function hosting_platform_insert($node) {
-  if (!isset($node->no_verify)) {
+  if (empty($node->no_verify)) {
     hosting_add_task($node->nid, 'verify');
   }
   $id = db_insert('hosting_platform')
@@ -598,7 +598,7 @@ function hosting_platform_update($node) {
       ->condition('nid', $node->nid)
       ->execute();
   }
-  if (!empty($node->no_verify)) {
+  if (empty($node->no_verify)) {
     hosting_add_task($node->nid, 'verify');
   }
 }

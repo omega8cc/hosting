@@ -424,7 +424,7 @@ function hosting_site_update(&$node) {
  */
 function hosting_site_node_update($node) {
   if ($node->type == "site") {
-    if ((isset($node->no_verify) && $node->no_verify) == FALSE) {
+    if (empty($node->no_verify)) {
       hosting_add_task($node->nid, 'verify');
     }
   }
