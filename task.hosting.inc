@@ -248,7 +248,7 @@ function drush_hosting_task() {
         call_user_func_array($function, array(&$platform_task));
       }
 
-      drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options);
+      drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
     }
 
 
@@ -262,7 +262,7 @@ function drush_hosting_task() {
       call_user_func_array($function, array(&$task));
     }
 
-    drush_hosting_task_provision_save($task->ref->hosting_name, $task->context_options);
+    drush_hosting_task_provision_save($task->ref->hosting_name, $task->context_options, t('Saving site metadata...'));
 
     /** @TODO: uncomment when pro4 cli is ready.
     // Save services to the context
@@ -412,7 +412,7 @@ function drush_hosting_task() {
 /**
  * Helper to just run provision-save
  */
-function drush_hosting_task_provision_save($hosting_name, $context_options) {
+function drush_hosting_task_provision_save($hosting_name, $context_options, $message = NULL) {
 
   // Build command as an array for compatibility.
   $command = array(
@@ -435,7 +435,8 @@ function drush_hosting_task_provision_save($hosting_name, $context_options) {
 
   // Run the process using "drush_log" to present output.
   // "drush_log then saves each line to the front-end database.
-  hosting_process($command, null, t('Saving metadata...'));
+  $message = $message?: t('Saving metadata...');
+  hosting_process($command, null, t($message));
 }
 
 /**
