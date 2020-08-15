@@ -247,6 +247,7 @@ function drush_hosting_task() {
         $function = $module . '_' . $hook;
         call_user_func_array($function, array(&$platform_task));
       }
+      $platform_task->context_options['context_type'] = 'platform';
 
       drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
     }
