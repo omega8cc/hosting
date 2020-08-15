@@ -91,6 +91,8 @@ function hosting_site_drush_context_import($context, &$node) {
 }
 
 /**
+ * Implements drush_HOOK_pre_COMMAND()
+ *
  * Map values of site node into command line arguments
  */
 function drush_hosting_site_pre_hosting_task($task) {
@@ -109,12 +111,10 @@ function drush_hosting_site_pre_hosting_task($task) {
     }
     $task->args[1] = implode(',', $backups);
   }
-
 }
 
-
 /**
- * implementation of the hosting_post_install hook
+ * Implements hook_post_hosting_TASK_TYPE_task()
  */
 function hosting_site_post_hosting_install_task($task, $data) {
   if ($task->ref->type == 'site') {
