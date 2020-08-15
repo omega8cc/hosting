@@ -248,7 +248,6 @@ function drush_hosting_task() {
         call_user_func_array($function, array(&$platform_task));
       }
 
-      drush_log(print_r($platform_task->context_options,1), 'warning');
       drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options);
     }
 
