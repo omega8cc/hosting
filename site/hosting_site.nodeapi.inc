@@ -474,6 +474,7 @@ function hosting_site_load($nodes) {
   $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
 
   // Load default install_command, deploy_command, and test_command properties
+  $node->build_command = $node->install_command?: 'composer install --no-progress --no-suggest --ansi';
   $node->install_command = $node->install_command?: 'drush site-install';
   $node->deploy_command = $node->deploy_command?: 'composer devshop:deploy';
   $node->test_command = $node->test_command?: 'composer devshop:test';

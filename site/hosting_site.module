@@ -907,6 +907,16 @@ function hosting_task_deploy_form($node) {
         ),
       ),
     );
+    $form['hooks']['build'] = array(
+      '#title' => t("Run <code>build_command</code>: &command", array(
+        '&command' => $node->build_command,
+      )),
+      '#type' => 'checkbox',
+      '#description' => t('Run this command immediately after git checkout.'),
+      '#parents' => array(
+        'parameters', 'build',
+      ),
+    );
     $form['hooks']['install'] = array(
       '#title' => t("Run <code>install_command</code>: &command", array(
         '&command' => $node->install_command,
