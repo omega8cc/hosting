@@ -472,4 +472,10 @@ function hosting_site_load($nodes) {
   $node->file_public_path = $node->file_public_path ?: 'sites/' . $node->title . '/files';
   $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
   $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
+
+  // Load default install_command, deploy_command, and test_command properties
+  $node->install_command = $node->install_command?: 'drush site-install';
+  $node->deploy_command = $node->deploy_command?: 'composer devshop:deploy';
+  $node->test_command = $node->test_command?: 'composer devshop:test';
+
 }

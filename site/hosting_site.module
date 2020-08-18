@@ -890,13 +890,62 @@ function hosting_task_deploy_form($node) {
       drupal_set_message($e->getMessage(), 'error');
     }
 
+    // Offer users ability to control commands that will run during this deployment.
+    $form['hooks'] = array(
+      '#type' => 'container',
+      'title' => array(
+        '#prefix' => '<h4>',
+        '#markup' => t('Deploy Commands'),
+        '#suffix' => '</h4>',
+      ),
+      'description' => array(
+        '#markup' => t('Choose what commands will be run during this deploy.'),
+      ),
+      '#attributes' => array(
+        'class' => array(
+          'alert alert-info'
+        ),
+      ),
+    );
+    $form['hooks']['install_command'] = array(
+      '#title' => t("Run <code>install_command</code>: &command", array(
+        '&command' => $node->install_command,
+      )),
+      '#type' => 'checkbox',
+      '#description' => t('WARNING: All data in this environment will be destroyed if this is checked.'),
+      '#parents' => array(
+        'parameters', 'run_install_command',
+      ),
+    );
+    $form['hooks']['deploy_command'] = array(
+      '#title' => t("Run <code>deploy_command</code>: &command", array(
+        '&command' => $node->deploy_command,
+      )),
+      '#type' => 'checkbox',
+      '#default_value' => TRUE,
+      '#description' => t('Run commands on the running site after code is deployed. Database updates should take place here.'),
+      '#parents' => array(
+        'parameters', 'run_deploy_command',
+      ),
+    );
+    $form['hooks']['test_command'] = array(
+      '#title' => t("Run <code>test_command</code>: &command", array(
+        '&command' =>  $node->test_command,
+      )),
+      '#type' => 'checkbox',
+      '#description' => t('Run commands to test the functionality of the site.'),
+      '#parents' => array(
+        'parameters', 'run_test_command',
+      ),
+    );
+
     // Check for working copy changes and offer to reset them for the user.
     $form['danger_zone'] = array(
       '#type' => 'container',
       'title' => array(
-        '#prefix' => '<h5>',
+        '#prefix' => '<h4>',
         '#markup' => t('DANGER ZONE'),
-        '#suffix' => '</h5>',
+        '#suffix' => '</h4>',
       ),
       '#attributes' => array(
         'class' => array(

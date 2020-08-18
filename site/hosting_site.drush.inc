@@ -111,6 +111,21 @@ function drush_hosting_site_pre_hosting_task($task) {
     }
     $task->args[1] = implode(',', $backups);
   }
+
+  if ($task->task_type == 'deploy') {
+
+    // Drush command arguments.
+    $task->args[] = $task->task_args['target_git_reference'];
+
+    // Drush command options.
+    $task->options['reset'] = intval($task->task_args['git_reset']);
+    unset($task->task_args['git_reset']);
+
+    // Load the rest of the task args into drush options.
+    foreach ($task->task_args as $arg => $value) {
+      $task->options[$arg] = $value;
+    }
+  }
 }
 
 /**
