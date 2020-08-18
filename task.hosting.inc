@@ -250,6 +250,15 @@ function drush_hosting_task() {
       $platform_task->context_options['context_type'] = 'platform';
 
       drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
+
+      // Run platform verify task if this is a site or platform verify.
+      if ($task->task_type == 'verify' || $task->task_type == 'install') {
+        hosting_process(array(
+          "drush",
+          "@{$platform_task->ref->hosting_name}",
+          "provision-verify",
+        ), null, t('Preparing codebase...'));
+      }
     }
 
 
