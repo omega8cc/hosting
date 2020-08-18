@@ -362,7 +362,6 @@ function hosting_site_hosting_tasks() {
   $tasks['site']['deploy'] = array(
     'title' => t('Deploy'),
     'description' => t('Deploy new code and run pre- and post- deployment scripts.'),
-    'provision_save' => TRUE,
     'dialog' => TRUE,
     'icon' => 'truck',
   );
