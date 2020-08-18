@@ -857,7 +857,8 @@ function hosting_task_deploy_form($node) {
     try {
       $wrapper = new GitWrapper();
       $git = $wrapper->workingCopy($platform_node->git_root);
-      $diff = $git->diff();
+      $diff = $git->diff()->getOutput();
+      $status = $git->getStatus();
 
       $form['git_info'] = array(
         '#title' => t('View git status in &path', array(
@@ -868,14 +869,23 @@ function hosting_task_deploy_form($node) {
         '#collapsible' => true,
         'status' => array(
           '#prefix' => '<h4>' . t('Git Status') . '</h4><pre>',
-          '#markup' => $git->getStatus(),
+          '#markup' => $status,
           '#suffix' => '</pre>',
+          '#access' => !empty($status),
         ),
         'diff' => array(
           '#prefix' => '<h4>' . t('Git diff') . '</h4><pre>',
-          '#markup' => $git->diff()->getOutput(),
+          '#markup' => $diff,
           '#suffix' => '</pre>',
+          '#access' => !empty($diff),
         ),
+        'clean' => array(
+          '#prefix' => '<h4>',
+          '#markup' => t('Git working copy is clean. No changes.'),
+          '#suffix' => '</h4>',
+          '#access' => empty($diff) && empty($status),
+        ),
+
       );
     } catch (GitException $e) {
       drupal_set_message($e->getMessage(), 'error');
@@ -894,15 +904,17 @@ function hosting_task_deploy_form($node) {
           'alert alert-danger'
         ),
       ),
+      '#access' => !empty($diff) || !empty($status),
     );
-    if ($diff) {
-      $form['danger_zone']['git_reset'] = array(
-        '#title' => t('Discard working copy changes.'),
-        '#type' => 'checkbox',
-        '#default_value' => FALSE,
-        '#description' => t('Uncommitted changes were detected in the codebase. Check this box to discard changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
-      );
-    }
+    $form['danger_zone']['git_reset'] = array(
+      '#title' => t('Discard working copy changes.'),
+      '#type' => 'checkbox',
+      '#default_value' => FALSE,
+      '#description' => t('Uncommitted changes were detected in the codebase. Check this box to discard changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
+      '#parents' => array(
+        'parameters', 'git_reset'
+      )
+    );
   }
   return $form;
 }
