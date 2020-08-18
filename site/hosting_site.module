@@ -907,17 +907,17 @@ function hosting_task_deploy_form($node) {
         ),
       ),
     );
-    $form['hooks']['install_command'] = array(
+    $form['hooks']['install'] = array(
       '#title' => t("Run <code>install_command</code>: &command", array(
         '&command' => $node->install_command,
       )),
       '#type' => 'checkbox',
       '#description' => t('WARNING: All data in this environment will be destroyed if this is checked.'),
       '#parents' => array(
-        'parameters', 'run_install_command',
+        'parameters', 'install',
       ),
     );
-    $form['hooks']['deploy_command'] = array(
+    $form['hooks']['deploy'] = array(
       '#title' => t("Run <code>deploy_command</code>: &command", array(
         '&command' => $node->deploy_command,
       )),
@@ -925,17 +925,17 @@ function hosting_task_deploy_form($node) {
       '#default_value' => TRUE,
       '#description' => t('Run commands on the running site after code is deployed. Database updates should take place here.'),
       '#parents' => array(
-        'parameters', 'run_deploy_command',
+        'parameters', 'deploy',
       ),
     );
-    $form['hooks']['test_command'] = array(
+    $form['hooks']['test'] = array(
       '#title' => t("Run <code>test_command</code>: &command", array(
         '&command' =>  $node->test_command,
       )),
       '#type' => 'checkbox',
       '#description' => t('Run commands to test the functionality of the site.'),
       '#parents' => array(
-        'parameters', 'run_test_command',
+        'parameters', 'test',
       ),
     );
 
