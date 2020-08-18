@@ -114,15 +114,19 @@ function drush_hosting_site_pre_hosting_task($task) {
 
   if ($task->task_type == 'deploy') {
 
+    // Create an array so as to not disrupt task_args.
+    $task_arguments = $task->task_args;
+
     // Drush command arguments.
-    $task->args[] = $task->task_args['target_git_reference'];
+    $task->args[] = $task_arguments['target_git_reference'];
+    unset($task_arguments['target_git_reference']);
 
     // Drush command options.
-    $task->options['reset'] = intval($task->task_args['git_reset']);
-    unset($task->task_args['git_reset']);
+    $task->options['reset'] = intval($task_arguments['git_reset']);
+    unset($task_arguments['git_reset']);
 
     // Load the rest of the task args into drush options.
-    foreach ($task->task_args as $arg => $value) {
+    foreach ($task_arguments as $arg => $value) {
       $task->options[$arg] = $value;
     }
   }
