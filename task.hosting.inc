@@ -369,8 +369,14 @@ function drush_hosting_task() {
   // Append each option.
   foreach ($task->options as $name => $value) {
     if (!empty($value)) {
-      $value = escapeshellarg($value);
-      $command[] = "--{$name}={$value}";
+      // If $value is just TRUEish, don't show value in the command line
+      if ((string) $value == "1") {
+        $command[] = "--{$name}";
+      }
+      else {
+        $value = escapeshellarg($value);
+        $command[] = "--{$name}={$value}";
+      }
     }
   }
 
