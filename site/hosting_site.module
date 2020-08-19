@@ -7,6 +7,7 @@ use TQ\Git\Repository\Repository;
 use GitWrapper\GitWrapper;
 use GitWrapper\GitWorkingCopy;
 use GitWrapper\GitException;
+use DevShop\Component\PowerProcess\PowerProcess;
 
 /**
  * This site is deleted from the backend.
@@ -834,68 +835,73 @@ function hosting_task_deploy_form($node) {
   $form = array();
   if ($node->type == 'site') {
 
-    // @TODO: Load platform properties direct from site node once site entity extends platform.
-    $platform_node = node_load($node->platform);
-    $platform_node = hosting_platform_view($platform_node, 'full');
-
-    // Allow the user to change git_reference here.
-    $form['target_git_reference'] = array(
-      '#title' => t('Git Reference to Deploy'),
-      '#type' => 'textfield',
-      '#default_value' => $platform_node->git_reference,
-      '#description' => t('Enter the git branch, tag, or SHA to deploy to the Repository Path of this site.'),
-    );
-
-    // @TODO: Platform deploys? This will take a new meaning if we break free of true multisite.
-
-    // Display current git information.
-    $form['git_information'] = $platform_node->content['properties'];
-    $form['git_information']['#title'] = t('Current Site State');
-    unset($form['git_information']['edit']);
-
     try {
       $wrapper = new GitWrapper();
-      $git = $wrapper->workingCopy($platform_node->git_root);
+      $git = $wrapper->workingCopy($node->git_root);
       $diff = $git->diff()->getOutput();
       $status = $git->getStatus();
 
-      $form['git_info'] = array(
-        '#title' => t('View git status in &path', array(
-          '&path' => $platform_node->git_root,
-        )),
-        '#type' => 'fieldset',
-        '#collapsed' => true,
-        '#collapsible' => true,
-        'status' => array(
-          '#prefix' => '<h4>' . t('Git Status') . '</h4><pre>',
-          '#markup' => $status,
-          '#suffix' => '</pre>',
-          '#access' => !empty($status),
-        ),
-        'diff' => array(
-          '#prefix' => '<h4>' . t('Git diff') . '</h4><pre>',
-          '#markup' => $diff,
-          '#suffix' => '</pre>',
-          '#access' => !empty($diff),
-        ),
-        'clean' => array(
-          '#prefix' => '<h4>',
-          '#markup' => t('Git working copy is clean. No changes.'),
-          '#suffix' => '</h4>',
-          '#access' => empty($diff) && empty($status),
-        ),
-
-      );
     } catch (GitException $e) {
       drupal_set_message($e->getMessage(), 'error');
     }
+
+    $two_col_classes = array(
+      'col-sm-6',
+      'col-md-6',
+      'col-lg-6',
+    );
+
+    $form['info'] = array(
+      '#type' => 'container',
+      '#attributes' => array(
+        'class' => array('container')
+      ),
+      'current' => array(
+        '#type' => 'container',
+        '#attributes' => array(
+          'class' => $two_col_classes,
+        ),
+      ),
+      'target' => array(
+        '#type' => 'container',
+        '#attributes' => array(
+          'class' => $two_col_classes,
+        ),
+      ),
+    );
+    $form['info']['current']['current_git_reference'] = array(
+      '#title' => t('Current Git Reference'),
+      '#type' => 'item',
+      '#markup' => $node->git_reference,
+      '#description' => t('The current branch, tag, or SHA of the site code at &path.', array(
+        '&path' => $node->git_root,
+      )),
+      '#field_prefix' => '<div class="label label-default git-ref-label">',
+      '#field_suffix' => '</div>',
+    );
+
+    // Allow the user to change git_reference here.
+    $form['info']['target']['target_git_reference'] = array(
+      '#title' => t('Target Git Reference'),
+      '#type' => 'textfield',
+      '#default_value' => $node->git_reference,
+      '#description' => t('Enter the desired git branch, tag, or SHA. If a branch is entered, the git repository will pulled and reset to match the remote repository. If a tag or SHA is entered, it will be checked out, resulting in a "DETACHED HEAD" state.'),
+      '#parents' => array(
+        'parmeters', 'target_git_reference',
+      ),
+      '#attributes' => array(
+        'class' => array(
+          'col-md-6'
+        ),
+      ),
+    );
 
     // Offer users ability to control commands that will run during this deployment.
     $form['hooks'] = array(
       '#type' => 'container',
       'title' => array(
         '#prefix' => '<h4>',
-        '#markup' => t('Deploy Commands'),
+        '#markup' => t('Deployment Phases'),
         '#suffix' => '</h4>',
       ),
       'description' => array(
@@ -907,43 +913,42 @@ function hosting_task_deploy_form($node) {
         ),
       ),
     );
-    $form['hooks']['build'] = array(
-      '#title' => t("Run <code>build_command</code>: &command", array(
-        '&command' => $node->build_command,
-      )),
+    $form['hooks']['checkout'] = array(
+      '#title' => _hosting_task_deploy_command_form_title('checkout', 'git fetch; git merge FETCH_HEAD;'),
       '#type' => 'checkbox',
-      '#description' => t('Run this command immediately after git checkout.'),
+      '#default_value' => TRUE,
+      '#disabled' => TRUE,
+      '#parents' => array(
+        'parameters', 'build',
+      ),
+    );
+    $form['hooks']['build'] = array(
+      '#title' => _hosting_task_deploy_command_form_title('build', $node->commands['build']),
+      '#type' => 'checkbox',
+      // @TODO: Use site default.
+      '#default_value' => TRUE,
       '#parents' => array(
         'parameters', 'build',
       ),
     );
     $form['hooks']['install'] = array(
-      '#title' => t("Run <code>install_command</code>: &command", array(
-        '&command' => $node->install_command,
-      )),
+      '#title' => _hosting_task_deploy_command_form_title('install', $node->commands['install']),
       '#type' => 'checkbox',
-      '#description' => t('WARNING: All data in this environment will be destroyed if this is checked.'),
       '#parents' => array(
         'parameters', 'install',
       ),
     );
     $form['hooks']['deploy'] = array(
-      '#title' => t("Run <code>deploy_command</code>: &command", array(
-        '&command' => $node->deploy_command,
-      )),
+      '#title' => _hosting_task_deploy_command_form_title('deploy', $node->commands['deploy']),
       '#type' => 'checkbox',
       '#default_value' => TRUE,
-      '#description' => t('Run commands on the running site after code is deployed. Database updates should take place here.'),
       '#parents' => array(
         'parameters', 'deploy',
       ),
     );
     $form['hooks']['test'] = array(
-      '#title' => t("Run <code>test_command</code>: &command", array(
-        '&command' =>  $node->test_command,
-      )),
+      '#title' => _hosting_task_deploy_command_form_title('test', $node->commands['test']),
       '#type' => 'checkbox',
-      '#description' => t('Run commands to test the functionality of the site.'),
       '#parents' => array(
         'parameters', 'test',
       ),
@@ -962,7 +967,11 @@ function hosting_task_deploy_form($node) {
           'alert alert-danger'
         ),
       ),
-      '#access' => !empty($diff) || !empty($status),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="parameters[install]"]' => array('checked' => TRUE),
+        ),
+      ),
     );
     $form['danger_zone']['git_reset'] = array(
       '#title' => t('Discard working copy changes.'),
@@ -971,10 +980,75 @@ function hosting_task_deploy_form($node) {
       '#description' => t('Uncommitted changes were detected in the codebase. Check this box to discard changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
       '#parents' => array(
         'parameters', 'git_reset'
-      )
+      ),
+      '#access' => !empty($diff) || !empty($status),
+    );
+    $form['danger_zone']['confirm_destroy'] = array(
+      '#title' => t('I understand that all data in the site !link will be destroyed.', array(
+        '!link' => l($node->title, $node->title),
+      )),
+      '#type' => 'checkbox',
+      '#default_value' => FALSE,
+      '#description' => t('The site will be destroyed before the <code>install</code> command is run.'),
+      '#parents' => array(
+        'confirm_destroy'
+      ),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="parameters[install]"]' => array('checked' => TRUE),
+        ),
+      ),
     );
   }
+
+  $form['git_info'] = array(
+    '#title' => t('View git status in &path', array(
+      '&path' => $node->git_root,
+    )),
+    '#type' => 'fieldset',
+    '#collapsed' => true,
+    '#collapsible' => true,
+    'status' => array(
+      '#prefix' => '<h4>' . t('Git Status') . '</h4><pre>',
+      '#markup' => $status,
+      '#suffix' => '</pre>',
+      '#access' => !empty($status),
+    ),
+    'diff' => array(
+      '#prefix' => '<h4>' . t('Git diff') . '</h4><pre>',
+      '#markup' => $diff,
+      '#suffix' => '</pre>',
+      '#access' => !empty($diff),
+    ),
+    'clean' => array(
+      '#prefix' => '<h4>',
+      '#markup' => t('Git working copy is clean. No changes.'),
+      '#suffix' => '</h4>',
+      '#access' => empty($diff) && empty($status),
+    ),
+  );
+
   return $form;
+}
+
+/**
+ * Output friendly looking HTML after a deploy checkbox.
+ * @param $command_name
+ * @param $command
+ */
+function _hosting_task_deploy_command_form_title($command_name, $command) {
+    $command_title_text = '<span class="command-label"><code>!command_name</code></span> !command';
+    $missing_prefix = '<span class="alert alert-warning alert-inline"><i class="fa fa-warning"></i> ';
+    $missing_text = 'MISSING. Add desired command to <code>composer.json:extra.devshop.commands.!name</code>';
+    $missing_suffix = '</span>';
+
+    return t($command_title_text, array(
+    '!command_name' => $command_name,
+    '!command' => $command
+      ? '<kbd>' . $command . '</kbd>'
+      : $missing_prefix . t($missing_text, array('!name' => $command_name)) . $missing_suffix,
+    ));
+
 }
 
 /**

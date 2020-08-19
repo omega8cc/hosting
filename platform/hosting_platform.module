@@ -784,6 +784,10 @@ function hosting_platform_load($nodes) {
     foreach ($additions as $property => &$value) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
+
+    // Load commands for this platform.
+    $node->commands = hosting_find_deploy_commands($node);
+
   }
 }
 
