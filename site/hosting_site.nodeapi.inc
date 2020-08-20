@@ -496,6 +496,7 @@ function hosting_site_load($nodes) {
  *   1. Platform composer.json defines default composer install command. in `extra.devshop.commands.build`: composer install --no-dev --no-suggest --no-progress
  *   2. Site gets created with "install" option that overrides platform "install", which gets saved to {hosting_site_commands} entry: composer install --dev.
  *
+ * @TODO: Move to drupal/provision once hosting requires drupal/provision.
  */
 function hosting_find_deploy_commands($node) {
   $composer_json_path = $node->git_root . DIRECTORY_SEPARATOR . 'composer.json';
