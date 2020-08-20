@@ -473,8 +473,13 @@ function hosting_site_load($nodes) {
   $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
   $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
 
-  // Load default install_command, deploy_command, and test_command properties
-  $node->commands = hosting_find_deploy_commands($node);
+  // Load commands into this site from the platform.
+  // @TODO: Replace with devshop/platform or whatever.
+  _hosting_include_provision();
+  $platform = new Provision_Context_platform($node->title);
+  $platform->setProperty('git_root', $node->git_root);
+  $node->commands = $platform->findCommands();
+
 }
 
 /**
