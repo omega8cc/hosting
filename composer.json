@@ -2,6 +2,7 @@
     "name": "drupal/hosting",
     "type": "drupal-module",
     "require": {
+        "drupal/provision": "4.x-dev",
         "teqneers/php-stream-wrapper-for-git": "^2.0"
     }
 }
