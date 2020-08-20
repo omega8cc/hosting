@@ -923,7 +923,7 @@ function hosting_task_deploy_form($node) {
       ),
     );
     $form['hooks']['build'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('build', $node->commands['build']),
+      '#title' => _hosting_task_deploy_command_form_title('build', $node->commands),
       '#type' => 'checkbox',
       // @TODO: Use site default.
       '#default_value' => TRUE,
@@ -932,14 +932,14 @@ function hosting_task_deploy_form($node) {
       ),
     );
     $form['hooks']['install'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('install', $node->commands['install']),
+      '#title' => _hosting_task_deploy_command_form_title('install', $node->commands),
       '#type' => 'checkbox',
       '#parents' => array(
         'parameters', 'install',
       ),
     );
     $form['hooks']['deploy'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('deploy', $node->commands['deploy']),
+      '#title' => _hosting_task_deploy_command_form_title('deploy', $node->commands),
       '#type' => 'checkbox',
       '#default_value' => TRUE,
       '#parents' => array(
@@ -947,7 +947,7 @@ function hosting_task_deploy_form($node) {
       ),
     );
     $form['hooks']['test'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('test', $node->commands['test']),
+      '#title' => _hosting_task_deploy_command_form_title('test', $node->commands),
       '#type' => 'checkbox',
       '#parents' => array(
         'parameters', 'test',
@@ -1034,9 +1034,13 @@ function hosting_task_deploy_form($node) {
 /**
  * Output friendly looking HTML after a deploy checkbox.
  * @param $command_name
- * @param $command
+ * @param $commands array The full array of commands.
  */
-function _hosting_task_deploy_command_form_title($command_name, $command) {
+function _hosting_task_deploy_command_form_title($command_name, $commands) {
+    $command = isset($commands[$command_name])
+      ? $commands[$command_name]
+      : '';
+
     $command_title_text = '<span class="command-label"><code>!command_name</code></span> !command';
     $missing_prefix = '<span class="alert alert-warning alert-inline"><i class="fa fa-warning"></i> ';
     $missing_text = 'MISSING. Add desired command to <code>composer.json:extra.devshop.commands.!name</code>';
