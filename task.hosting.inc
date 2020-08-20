@@ -131,7 +131,11 @@ function _hosting_task_log_print($entry) {
  *
  * @see drush_hosting_task()
  */
-function drush_hosting_task_validate($id, $type = NULL) {
+function drush_hosting_task_validate($id = NULL, $type = NULL) {
+  if (empty($id)) {
+    return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Missing argument: Task NID or Type. Use --help option for more information.'));
+  }
+
   drush_set_option('user', 1);
   drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_LOGIN);
   if (is_numeric($id)) {
