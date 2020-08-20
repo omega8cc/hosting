@@ -1479,10 +1479,12 @@ function hosting_modules_disabled($modules) {
  */
 function _hosting_include_provision() {
 
-  // Load provision context classes.
-  require_once($_SERVER['DOCUMENT_ROOT'] . '/sites/all/drush/provision/provision.inc');
-  require_once($_SERVER['DOCUMENT_ROOT'] . '/sites/all/drush/provision/provision.context.inc');
-  require_once($_SERVER['DOCUMENT_ROOT'] . '/sites/all/drush/provision/Provision/Context.php');
-  require_once($_SERVER['DOCUMENT_ROOT'] . '/sites/all/drush/provision/Provision/Context/platform.php');
-  require_once($_SERVER['DOCUMENT_ROOT'] . '/sites/all/drush/provision/Provision/Context/site.php');
+  // Load provision context classes if they aren't already.
+  if (!class_exists('Provision_Context')) {
+    require_once(getcwd() . '/sites/all/drush/provision/provision.inc');
+    require_once(getcwd() . '/sites/all/drush/provision/provision.context.inc');
+    require_once(getcwd() . '/sites/all/drush/provision/Provision/Context.php');
+    require_once(getcwd() . '/sites/all/drush/provision/Provision/Context/platform.php');
+    require_once(getcwd() . '/sites/all/drush/provision/Provision/Context/site.php');
+  }
 }
