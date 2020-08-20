@@ -914,7 +914,7 @@ function hosting_task_deploy_form($node) {
       ),
     );
     $form['hooks']['checkout'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('checkout', 'git fetch; git merge FETCH_HEAD;'),
+      '#title' => _hosting_task_deploy_command_form_title('git', $node->commands),
       '#type' => 'checkbox',
       '#default_value' => TRUE,
       '#disabled' => TRUE,
