@@ -759,10 +759,10 @@ function hosting_tasks_queue($count = 20) {
     drush_log(dt("Found @count tasks (max @max) in queue. Running...", array(
       '@count' => count($tasks),
       '@max' => $count,
-    )), "notice");
+    )), "ok");
   }
   else {
-    drush_log(dt("Found no tasks in queue. Not running."), "notice");
+    drush_log(dt("Found no tasks in queue. Not running."), "ok");
   }
 
   foreach ($tasks as $task) {

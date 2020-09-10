@@ -142,7 +142,7 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
     $task = node_load($id);
     drush_log(dt("Task node found: !url", array(
       '!url' => url("node/{$task->nid}", array('absolute' => true)),
-    )), 'ok');
+    )), 'notice');
   }
   elseif (is_string($id) && isset($type)) {
     $ref = hosting_context_load($id);
