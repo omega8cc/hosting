@@ -276,7 +276,7 @@ function drush_hosting_task() {
       call_user_func_array($function, array(&$task));
     }
 
-    drush_hosting_task_provision_save($task->ref->hosting_name, $task->context_options, t('Saving site metadata...'));
+    drush_hosting_task_provision_save($task->ref->hosting_name, $task->context_options, t('Saving metadata...'));
 
     /** @TODO: uncomment when pro4 cli is ready.
     // Save services to the context
