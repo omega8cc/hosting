@@ -842,6 +842,18 @@ function hosting_task_count() {
 /**
  * Return the amount of items running in the queue.
  */
+function hosting_task_processing($rid) {
+  return db_query("SELECT t.nid FROM {hosting_task} t WHERE rid = :rid AND t.task_status = :task_status",
+    array(
+      ':rid' => $rid,
+      ':task_status' => HOSTING_TASK_PROCESSING,
+    )
+  )->fetchCol();
+}
+
+/**
+ * Return the amount of items running in the queue.
+ */
 function hosting_task_count_running() {
   return db_query("SELECT COUNT(t.nid) FROM {node} n INNER JOIN {hosting_task} t ON n.vid = t.vid WHERE type = :type AND t.task_status = :task_status AND t.executed > (UNIX_TIMESTAMP() - :timeout)",
     array(
