@@ -18,9 +18,8 @@ function hosting_hosting_platform_context_options(&$task) {
   if (isset($task->ref->make_working_copy) && !empty($task->ref->make_working_copy)) {
     $task->context_options['make_working_copy'] = $task->ref->make_working_copy;
   }
-  else {
-    $task->context_options['make_working_copy'] = 'null';
-  }
+
+
 
   // Pass git options.
   $task->context_options['git_root'] = $task->ref->git_root;
