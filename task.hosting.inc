@@ -342,9 +342,9 @@ function drush_hosting_task() {
 
   // Run the actual command. Adding alias here to work around Drush API.
 // @TODO: Convert from Legacy
-//  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
+  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
 
-  /** @TODO: Put back when/if pro4 gets going.
+  /**
   // Build the task command.
   // @TODO: Create a function for this?
   $command = array(
@@ -354,7 +354,6 @@ function drush_hosting_task() {
     "--ansi",
     $task->task_command
   );
-   */
 
   // Build command as an array for compatibility.
   $command = array(
@@ -387,6 +386,7 @@ function drush_hosting_task() {
   // Append --strict option because... hosting tasks often pass arbitrary options.
   $command[] = '--strict=0';
   hosting_process($command, null, t('Running Task...'));
+  */
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
@@ -405,6 +405,7 @@ function drush_hosting_task() {
         '!context' => $context_to_delete,
       )), 'notice');
 
+      /* Reverting modernization for now
       // Build command as an array for compatibility.
       $command = array(
         "drush",
@@ -413,6 +414,8 @@ function drush_hosting_task() {
         "--delete"
       );
       hosting_process($command, null, t('Deleting metadata...'));
+      */
+      drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
     }
     // If no context name was found, throw a warning.
     else {
@@ -456,7 +459,9 @@ function drush_hosting_task_provision_save($hosting_name, $context_options, $mes
   // Run the process using "drush_log" to present output.
   // "drush_log then saves each line to the front-end database.
   $message = $message?: t('Saving metadata...');
-  hosting_process($command, null, t($message));
+  // @TODO: Leaving legacy provision in place for this PR.
+  // hosting_process($command, null, t($message));
+
 }
 
 /**
