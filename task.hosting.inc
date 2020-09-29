@@ -459,11 +459,13 @@ function drush_hosting_task_provision_save($hosting_name, $context_options, $mes
 
   // Run the process using "drush_log" to present output.
   // "drush_log then saves each line to the front-end database.
+  // @TODO: Leaving legacy provision in place for this PR.
   $message = $message?: t('Saving metadata...');
   hosting_process($command, null, t($message));
   */
   $mode = drush_get_option('debug', FALSE) ? 'GET' : 'POST';
   drush_invoke_process('@none', 'provision-save', array('@' . $hosting_name), $context_options, array('method' => $mode, 'integrate' => TRUE));
+  // hosting_process($command, null, t($message));
 }
 
 /**
