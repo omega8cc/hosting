@@ -148,22 +148,8 @@ function drush_hosting_queued() {
           drush_log(dt('Found task to execute. Pausing before execution.'));
           sleep(1);
 
-          // If task is already running for this RID, and --force option was not set, bail out.
-          $running_tasks = hosting_task_processing($task->rid);
-          if (count($running_tasks) && !drush_get_option('force', FALSE)) {
-            drush_log(dt('Skipping Task !nid: Other tasks for !type !title are currently processing. Use --force option ignore this check.', array(
-              '!nid' => $task->nid,
-              '!type' => $task->ref->type,
-              '!title' => $task->ref->title,
-            )), 'warning');
-            continue;
-          }
-
           // Execute the task.
-          $backend_options = array();
-          $backend_options['interactive'] = TRUE;
-          $backend_options['fork'] = drush_get_option('hosting_queued_fork_tasks', TRUE);
-          hosting_task_execute($task, $backend_options);
+          hosting_task_execute($task, array('interactive' => TRUE));
 
           // Delay for a configurable amount of time.
           $delay = variable_get('hosting_queued_post_task_delay', 0);

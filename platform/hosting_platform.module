@@ -785,11 +785,8 @@ function hosting_platform_load($nodes) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
 
-    // Load commands into this platform.
-    _hosting_include_provision();
-    $platform = new Provision_Context_platform($node->title);
-    $platform->setProperty('git_root', $node->git_root);
-    $node->commands = $platform->findCommands();
+    // Load commands for this platform.
+    $node->commands = hosting_find_deploy_commands($node);
 
   }
 }
