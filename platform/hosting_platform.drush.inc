@@ -63,7 +63,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
     // Reload DATA from the provision context: or you will get hostmaster packages!
     // @TODO: provision_process backend invoke?
-    $data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
+    // $data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
     $context = $data['context'];
     $packages = $data['context']['packages'];
 
