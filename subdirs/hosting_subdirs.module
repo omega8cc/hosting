@@ -151,7 +151,7 @@ function hosting_subdirs_is_a_subdir($url) {
  *   TRUE if the $fqdn is valid or FALSE if it not valid.
  */
 function hosting_subdirs_valid_fqdn_subdir($fqdn) {
-  if (preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $fqdn)) {
+  if (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $fqdn)) {
     return FALSE;
   }
   else {
