@@ -220,6 +220,60 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
  * @see hook_hosting_TASK_OBJECT_context_options()
  */
 function drush_hosting_task() {
+
+  $task = &drush_get_context('HOSTING_TASK');
+  $output = array();
+  $mode = drush_get_option('debug', FALSE) ? 'GET' : 'POST';
+
+  // Make sure argument order is correct.
+  ksort($task->args);
+
+  // If this task type needs it, run provision-save to create the named context.
+  if (!empty($task->task_info['provision_save'])) {
+    // Invoke hook_hosting_TASK_OBJECT_context_options()
+    // We copy module_invoke_all() here because it doesn't pass by
+    // reference and it breaks under PHP 5.3
+    $hook = 'hosting_' . $task->ref->type . '_context_options';
+    foreach (module_implements($hook) as $module) {
+      $function = $module . '_' . $hook;
+      call_user_func_array($function, array(&$task));
+    }
+
+    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
+  }
+
+  if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
+    || ($task->ref->type == 'platform' && $task->ref->platform_status == HOSTING_PLATFORM_DELETED)) {
+
+    // We're performing a task on a site that has been deleted...
+    // d() will not be returning a site object.
+    $alias = '@none';
+  }
+  else {
+    $alias = $task->ref->hosting_name;
+  }
+
+  if (!isset($task->task_command)) {
+    $task->task_command = 'provision-' . $task->task_type;
+  }
+  // Run the actual command. Adding alias here to work around Drush API.
+  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
+  // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
+  // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
+  drush_set_context('HOSTING_DRUSH_OUTPUT', $output);
+
+  // On succesful delete, remove the named context.
+  if ($task->task_type === 'delete' && !drush_get_error()) {
+    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
+  }
+
+  // New revision is created at the beginning of function.
+  $task->revision = FALSE;
+  $task->delta = microtime(TRUE) - $task->executed;
+  node_save($task);
+  // @TODO: END OF PROVISION 3 CODE
+
+  /** @TODO: BEGINNING OF MODERNIZATION HACKS:
   $task = &drush_get_context('HOSTING_TASK');
   $output = array();
   $mode = drush_get_option('debug', FALSE) ? 'GET' : 'POST';
@@ -323,7 +377,6 @@ function drush_hosting_task() {
         hosting_process($command, null, t('Assigning servers...'));
       }
     }
-   */
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
@@ -387,7 +440,6 @@ function drush_hosting_task() {
   // Append --strict option because... hosting tasks often pass arbitrary options.
   $command[] = '--strict=0';
   hosting_process($command, null, t('Running Task...'));
-  */
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
@@ -415,7 +467,6 @@ function drush_hosting_task() {
         "--delete"
       );
       hosting_process($command, null, t('Deleting metadata...'));
-      */
       drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
     }
     // If no context name was found, throw a warning.
@@ -431,6 +482,8 @@ function drush_hosting_task() {
   $task->revision = FALSE;
   $task->delta = microtime(TRUE) - $task->executed;
   node_save($task);
+  // @TODO: END OF MODERNIZATION HACKS
+   */
 }
 
 /**
