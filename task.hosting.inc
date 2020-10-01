@@ -239,8 +239,6 @@ function drush_hosting_task() {
       call_user_func_array($function, array(&$task));
     }
 
-    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
-
     // Launch a provision-save for the platform before running it for the site.
     if ($task->ref->type == 'site') {
 
@@ -265,9 +263,11 @@ function drush_hosting_task() {
       $platform_task->context_options['context_type'] = 'platform';
 
       // drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
+      // Save Platform Alias file.
       drush_invoke_process('@none', 'provision-save', array('@' . $platform_node->hosting_name), $platform_task->context_options, array('method' => $mode, 'integrate' => TRUE));
 
       // Run platform verify task if this is a site or platform verify.
+      // @TODO: Can we remove this? Platform verify is a part of site verify process now, right?
       if ($task->task_type == 'verify' || $task->task_type == 'install') {
         //        hosting_process(array(
         //          "drush",
@@ -278,6 +278,9 @@ function drush_hosting_task() {
       }
     }
   }
+
+  // Save Current Context Alias file.
+  drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
     || ($task->ref->type == 'platform' && $task->ref->platform_status == HOSTING_PLATFORM_DELETED)) {
