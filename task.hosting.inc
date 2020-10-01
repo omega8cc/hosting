@@ -240,6 +240,43 @@ function drush_hosting_task() {
     }
 
     drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
+
+    // Launch a provision-save for the platform before running it for the site.
+    if ($task->ref->type == 'site') {
+
+      // Create a verify task
+      $platform_node = node_load($task->ref->platform);
+
+      $platform_task = clone($task);
+      $platform_task->nid = null;
+      $platform_task->vid = null;
+      $platform_task->title = "Verify: " . $platform_node->hosting_name;
+      $platform_task->task_type = 'verify';
+      $platform_task->ref = $platform_node;
+      $platform_task->rid = $platform_node->nid;
+      $platform_task->context_options = array();
+
+      // Save platform
+      $hook = 'hosting_platform_context_options';
+      foreach (module_implements($hook) as $module) {
+        $function = $module . '_' . $hook;
+        call_user_func_array($function, array(&$platform_task));
+      }
+      $platform_task->context_options['context_type'] = 'platform';
+
+      // drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
+      drush_invoke_process('@none', 'provision-save', array('@' . $platform_node->hosting_name), $platform_task->context_options, array('method' => $mode, 'integrate' => TRUE));
+
+      // Run platform verify task if this is a site or platform verify.
+      if ($task->task_type == 'verify' || $task->task_type == 'install') {
+        //        hosting_process(array(
+        //          "drush",
+        //          "@{$platform_task->ref->hosting_name}",
+        //          "provision-verify",
+        //        ), null, t('Preparing codebase...'));
+        $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify", $mode);
+      }
+    }
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
