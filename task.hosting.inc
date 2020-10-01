@@ -274,7 +274,7 @@ function drush_hosting_task() {
         //          "@{$platform_task->ref->hosting_name}",
         //          "provision-verify",
         //        ), null, t('Preparing codebase...'));
-        $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify", $mode);
+        $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify");
       }
     }
   }
