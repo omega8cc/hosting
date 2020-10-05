@@ -25,6 +25,7 @@ function hosting_hosting_platform_context_options(&$task) {
   $task->context_options['git_root'] = $task->ref->git_root;
   $task->context_options['git_remote'] = $task->ref->git_remote;
   $task->context_options['git_reference'] = $task->ref->git_reference;
+  $task->context_options['git_docroot'] = $task->ref->git_docroot;
 
 }
 
@@ -47,6 +48,7 @@ function hosting_platform_drush_context_import($context, &$node) {
     $node->git_root = $context->git_root;
     $node->git_remote = $context->git_remote;
     $node->git_reference = $context->git_reference;
+    $node->git_docroot = $context->git_docroot;
   }
 }
 
@@ -90,6 +92,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     $node->git_root = d($task->ref->hosting_name)->git_root;;
     $node->git_remote = d($task->ref->hosting_name)->git_remote;
     $node->git_reference = d($task->ref->hosting_name)->git_reference;
+    $node->git_docroot = d($task->ref->hosting_name)->git_docroot;
 
     // Save the platform being verified.
     node_save($node);
