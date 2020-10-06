@@ -59,15 +59,19 @@ function hosting_platform_drush_context_import($context, &$node) {
  * Imports all the profiles and modules into package and package release nodes.
  */
 function hosting_platform_post_hosting_verify_task($task, $data) {
-
   $node = $task->ref;
   if ($node->type == 'platform') {
-
-    // Reload DATA from the provision context: or you will get hostmaster packages!
-    // @TODO: provision_process backend invoke?
-    // $data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
+    // START: 3.x released code
     $context = $data['context'];
-    $packages = $data['context']['packages'];
+    $packages = $context['packages'];
+    // END: 3.x released code
+
+    // START: 4.x dev code
+    // Reload DATA from the provision context: or you will get hostmaster packages!
+    // @TODO: re-implement provision-packages command in next round of modernization.
+    /////$data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
+    // $packages = $data['context']['packages'];
+    // END: 4.x dev code
 
     // Lock platforms by default.
     if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
