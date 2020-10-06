@@ -277,10 +277,10 @@ function drush_hosting_task() {
         $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify");
       }
     }
-  }
 
-  // Save Current Context Alias file.
-  drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
+    // Save Current Context Alias file.
+    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
+  }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
     || ($task->ref->type == 'platform' && $task->ref->platform_status == HOSTING_PLATFORM_DELETED)) {
