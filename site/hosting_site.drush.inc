@@ -283,6 +283,12 @@ function hosting_site_post_hosting_import_task($task, $data) {
  */
 function hosting_site_post_hosting_verify_task($task, $data) {
   if ($task->ref->type == 'site') {
+
+    // Run hook_post_hosting_verify_task() on the platform for this site.
+    $platform_task = _drush_hosting_task_create_platform_task($task);
+    $platform_data = $data;
+    hosting_platform_post_hosting_verify_task($platform_task, $platform_data);
+
     $task->ref->verified = REQUEST_TIME;
     $task->ref->no_verify = TRUE;
     $task->ref->db_name = $data['self']['db_name'];

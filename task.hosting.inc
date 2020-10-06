@@ -242,25 +242,9 @@ function drush_hosting_task() {
     // Launch a provision-save for the platform before running it for the site.
     if ($task->ref->type == 'site') {
 
-      // Create a verify task
-      $platform_node = node_load($task->ref->platform);
-
-      $platform_task = clone($task);
-      $platform_task->nid = null;
-      $platform_task->vid = null;
-      $platform_task->title = "Verify: " . $platform_node->hosting_name;
-      $platform_task->task_type = 'verify';
-      $platform_task->ref = $platform_node;
-      $platform_task->rid = $platform_node->nid;
-      $platform_task->context_options = array();
-
-      // Save platform
-      $hook = 'hosting_platform_context_options';
-      foreach (module_implements($hook) as $module) {
-        $function = $module . '_' . $hook;
-        call_user_func_array($function, array(&$platform_task));
-      }
-      $platform_task->context_options['context_type'] = 'platform';
+      // Create a verify task to use as a mock so we can load provision-save options and trigger post_hosting_verify hooks.
+      $platform_task = _drush_hosting_task_create_platform_task($task);
+      $platform_node = $platform_task->ref;
 
       // drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
       // Save Platform Alias file.
@@ -550,6 +534,31 @@ function drush_hosting_task_provision_save($hosting_name, $context_options, $mes
   drush_invoke_process('@none', 'provision-save', array('@' . $hosting_name), $context_options, array('method' => $mode, 'integrate' => TRUE));
   // hosting_process($command, null, t($message));
 }
+
+/**
+ * @param $site_task'
+ */
+function _drush_hosting_task_create_platform_task($site_task) {
+  $platform_node = node_load($site_task->ref->platform);
+  $platform_task = clone($site_task);
+  $platform_task->nid = null;
+  $platform_task->vid = null;
+  $platform_task->title = "Verify: " . $platform_node->hosting_name;
+  $platform_task->task_type = 'verify';
+  $platform_task->ref = $platform_node;
+  $platform_task->rid = $platform_node->nid;
+  $platform_task->context_options = array();
+
+  // Save platform
+  $hook = 'hosting_platform_context_options';
+  foreach (module_implements($hook) as $module) {
+    $function = $module . '_' . $hook;
+    call_user_func_array($function, array(&$platform_task));
+  }
+  $platform_task->context_options['context_type'] = 'platform';
+  return $platform_task;
+}
+
 
 /**
  * Rollback hook for the hosting-task Drush command.
