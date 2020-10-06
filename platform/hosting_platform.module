@@ -432,16 +432,6 @@ function hosting_platform_form(&$node) {
     '#default_value' => $node->git_docroot,
   );
 
-  // @TODO: Refactor to "Docroots".
-  $form['publish_path'] = array(
-    '#type' => 'value',
-    '#value' => $node->publish_path,
-    '#default_value' => $node->publish_path,
-    '#element_validate' => array(
-      'hosting_platform_form_publish_path_validate',
-    ),
-  );
-
   // @TODO: Decide to remove makefile support?
 //  $form['frommakefile'] = array(
 //    '#type' => 'fieldset',
@@ -540,6 +530,22 @@ function hosting_platform_form_alter(&$form, &$form_state, $form_id) {
 }
 
 /**
+ * Implements hook_node_presave()
+ */
+function hosting_platform_node_presave($node) {
+  // Generate publish path from git_root and git_docroot if it is not already set.
+  if ($node->type == 'platform' && !empty($node->git_root)) {
+    // If no git_docroot, just set git_root.
+    if (empty($node->git_docroot)) {
+      $node->publish_path = $node->git_root;
+    }
+    else {
+      $node->publish_path = $node->git_root . DIRECTORY_SEPARATOR . $node->git_docroot;
+    }
+  }
+}
+
+/**
  * Implements hook_insert().
  */
 function hosting_platform_insert($node) {
@@ -628,24 +634,6 @@ function hosting_platform_delete($node) {
   $result = db_query("SELECT distinct nid FROM {hosting_site} WHERE platform = :platform", array(':platform' => $node->nid));
   while ($nid = $result->fetch()) {
     node_delete($nid->nid);
-  }
-}
-
-/**
- * Element validator for publish_path. Only run when field is editable.
- * (New node or failed validation and no makefile.)
- */
-function hosting_platform_form_publish_path_validate($element, &$form_state, &$form) {
-
-  // Set platform_path to git_root + git_docroot.
-  if (!empty($form_state['values']['git_root'])) {
-    $path_string = $form_state['values']['git_root'] . DIRECTORY_SEPARATOR . $form_state['values']['git_docroot'];
-    $full_path = hosting_path_normalize($path_string);
-    form_set_value($element, $full_path, $form_state);
-  }
-  else {
-    form_set_error('git_root', t('Exception: Git repository path must be set. The field should be required.'));
-    return false;
   }
 }
 
