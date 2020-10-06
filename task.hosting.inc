@@ -249,6 +249,13 @@ function drush_hosting_task() {
       // drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
       // Save Platform Alias file.
       drush_invoke_process('@none', 'provision-save', array('@' . $platform_node->hosting_name), $platform_task->context_options, array('method' => $mode, 'integrate' => TRUE));
+
+      // Run platform verify task if this is a site install. Provision MUST run platform verify before provision-install.
+      // @TODO: Modernize installation of sites.
+      if ($task->task_type == 'install' && empty($task->ref->platform_verified)) {
+        $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify");
+        hosting_platform_post_hosting_verify_task($platform_task, $output);
+      }
     }
 
     // Save Current Context Alias file.
