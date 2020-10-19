@@ -392,6 +392,11 @@ function hosting_server_form($node, &$form_state) {
   $ips = $node->ip_addresses;
   $ips_count = max(3, empty($ips) ? 3 : count($ips) + 1);
 
+  // Make sure there's at least 3 fields for IPs
+  if (count($ips) == 0) {
+    $ips = ['', '', ''];
+  }
+
   // Add alias textfields.
   foreach ($ips as $id => $ip) {
     $form['ips_wrapper']['ip_addresses'][$id] = array(
