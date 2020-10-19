@@ -22,7 +22,7 @@ function _hosting_ip_view(&$node) {
 /**
  * IP Utility function for hook_update/hook_insert.
  */
-function _hosting_ip_save($node, $update = FALSE) {
+function _hosting_ip_save($node) {
   $ips = isset($node->ip_addresses) ? (array) $node->ip_addresses : array();
 
   foreach ($ips as $id => $ip) {
@@ -44,6 +44,7 @@ function _hosting_ip_save($node, $update = FALSE) {
   }
 
   $ips = isset($node->new_ip_addresses) ? (array) $node->new_ip_addresses : array();
+  $ips = array_unique($ips);
   foreach ($ips as $id => $ip) {
     if (!empty($ip)) {
       // new entries are prefixed with the string 'new', insert those
