@@ -41,7 +41,7 @@ class hosting_server_handler_field_services extends views_handler_field {
     $all_services = hosting_server_services();
     $types = array();
     foreach ($all_services as $type => $service) {
-      $types[$type] = 'no';
+      $types[$type] = null;
     }
 
     $node = node_load($values->hosting_server_nid);

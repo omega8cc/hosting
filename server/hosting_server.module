@@ -908,7 +908,7 @@ function _hosting_server_preprocess_classes(&$classes, $rows) {
   foreach ($classes as $field_label => $field_row) {
     if (is_numeric($field_label)) {
       foreach ($field_row as $index => $field_classes) {
-        $classes[$field_label][$index] .= $rows[$index][$field_label] == 'no' ? ' hosting-service-unavailable' : ' hosting-service-available';
+        $classes[$field_label][$index] .= empty($rows[$index][$field_label]) ? ' hosting-service-none' : ' hosting-service-available';
       }
     }
   }
