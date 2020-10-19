@@ -45,7 +45,7 @@ function hosting_server_drush_context_import($context, &$node) {
     if (!isset($node->title)) {
       $node->title = strtolower($context->remote_host);
     }
-    $node->new_ip_addresses = implode("\n", $context->ip_addresses);
+    $node->ip_addresses = implode("\n", $context->ip_addresses);
     foreach (hosting_server_services() as $type => $info) {
       if (isset($context->{$type . '_service_type'})) {
         $service_type = $context->{$type . '_service_type'};

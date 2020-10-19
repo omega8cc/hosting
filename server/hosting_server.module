@@ -400,17 +400,6 @@ function hosting_server_form($node, &$form_state) {
     );
     $ips_count--;
   }
-  $form['ips_wrapper']['new_ip_addresses'] = array(
-    '#prefix' => '<div id="hosting-ip-addresses">',
-    '#suffix' => '</div>',
-    '#tree' => TRUE,
-    // '#theme' => 'hosting_alias_form',
-  );
-  for ($delta = 0; $delta < $ips_count; $delta++) {
-    $form['ips_wrapper']['new_ip_addresses'][$delta] = array(
-      '#type' => 'textfield',
-    );
-  }
 
   $form['services_tabs'] = array(
     '#type' => 'vertical_tabs',

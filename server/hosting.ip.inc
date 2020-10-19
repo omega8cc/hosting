@@ -23,27 +23,13 @@ function _hosting_ip_view(&$node) {
  * IP Utility function for hook_update/hook_insert.
  */
 function _hosting_ip_save($node) {
+
+  // Delete all IPs for this node.
+  db_delete('hosting_ip_addresses')
+    ->condition('nid', $node->nid)
+    ->execute();
+
   $ips = isset($node->ip_addresses) ? (array) $node->ip_addresses : array();
-
-  foreach ($ips as $id => $ip) {
-    $ip = trim($ip);
-    if (empty($ip)) {
-      // empty fields are considered removed
-      db_delete('hosting_ip_addresses')
-        ->condition('id', $id)
-        ->execute();
-    }
-    else {
-      $num_updated = db_update('hosting_ip_addresses')
-        ->fields(array(
-          'ip_address' => $ip,
-        ))
-        ->condition('id', $id)
-        ->execute();
-    }
-  }
-
-  $ips = isset($node->new_ip_addresses) ? (array) $node->new_ip_addresses : array();
   $ips = array_unique($ips);
   foreach ($ips as $id => $ip) {
     if (!empty($ip)) {
@@ -62,22 +48,7 @@ function _hosting_ip_save($node) {
  * Validate that IP list is valid. IP utility function for hook_validate.
  */
 function _hosting_ip_validate($node) {
-  $ips = isset($node->ip_addresses) ? $node->ip_addresses : array();
-  foreach ($ips as $id => $ip) {
-    $ip = trim($ip);
-    if (empty($ip)) {
-      // deletion, look if the IP is in use
-      $cid = db_query('SELECT ssl_key FROM {hosting_ssl_cert_ips} i INNER JOIN {hosting_ssl_cert} c ON c.cid = i.cid WHERE ip_address = :id', array(':id' => $id))->fetchField();
-      if ($cid) {
-        form_set_error("ip_addresses][$id", t('Cannot remove IP associated with certificate %cert.', array('%cert' => $cid)));
-      }
-    } elseif (!_hosting_valid_ip($ip)) {
-      form_set_error("ip_addresses][$id", t('Invalid IP address: %ip.', array(
-        '%ip' => $ip )));
-    }
-  }
-
-  $ips = isset($node->new_ip_addresses) ? (array) $node->new_ip_addresses : array();
+  $ips = isset($node->ip_addresses) ? (array) $node->ip_addresses : array();
   foreach ($ips as $id => $ip) {
     if (!empty($ip) && !_hosting_valid_ip($ip)) {
       form_set_error("ip_addresses][$id", t('Invalid IP address: %ip.', array(
