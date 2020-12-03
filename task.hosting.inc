@@ -276,6 +276,10 @@ function drush_hosting_task() {
   if (!isset($task->task_command)) {
     $task->task_command = 'provision-' . $task->task_type;
   }
+
+  // Tell provision this is being run by drush hosting-task
+  $task->options['runner'] = 'hosting_task';
+
   // Run the actual command. Adding alias here to work around Drush API.
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
