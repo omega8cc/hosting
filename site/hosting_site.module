@@ -896,6 +896,8 @@ function hosting_task_deploy_form($node) {
       ),
     );
 
+    /**
+     * @TODO:
     // Offer users ability to control commands that will run during this deployment.
     $form['hooks'] = array(
       '#type' => 'container',
@@ -953,6 +955,7 @@ function hosting_task_deploy_form($node) {
         'parameters', 'test',
       ),
     );
+    */
 
     // Check for working copy changes and offer to reset them for the user.
     $form['danger_zone'] = array(
@@ -983,6 +986,8 @@ function hosting_task_deploy_form($node) {
       ),
       '#access' => !empty($diff) || !empty($status),
     );
+    /**
+     * @TODO: This was built with assumption deploy stages was available.
     $form['danger_zone']['confirm_destroy'] = array(
       '#title' => t('I understand that all data in the site !link will be destroyed.', array(
         '!link' => l($node->title, $node->title),
@@ -999,6 +1004,7 @@ function hosting_task_deploy_form($node) {
         ),
       ),
     );
+    */
   }
 
   $form['git_info'] = array(
