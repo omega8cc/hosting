@@ -253,7 +253,7 @@ function drush_hosting_task() {
       // Run platform verify task if this is a site install. Provision MUST run platform verify before provision-install.
       // @TODO: Modernize installation of sites.
       if ($task->task_type == 'install' && empty($task->ref->platform_verified)) {
-        $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify");
+        $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify", $task->args, $task->options);
         hosting_platform_post_hosting_verify_task($platform_task, $output);
       }
     }
