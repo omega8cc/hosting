@@ -286,9 +286,17 @@ function drush_hosting_task() {
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
   drush_set_context('HOSTING_DRUSH_OUTPUT', $output);
 
-  // On succesful delete, remove the named context.
-  if ($task->task_type === 'delete' && !drush_get_error()) {
-    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
+  // On delete error, throw a warning.
+  if ($task->task_type === 'delete') {
+    if (drush_get_error()) {
+      drush_log(dt('Command "provision-delete" failed. Not running "@@alias provision-save --delete".', [
+        '@alias' => $task->ref->hosting_name,
+      ]), 'warning');
+      drush_clear_error();
+    } else {
+      // If no error, run 'provision-save --delete'
+      drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
+    }
   }
 
   // New revision is created at the beginning of function.
