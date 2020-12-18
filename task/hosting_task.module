@@ -291,7 +291,8 @@ function hosting_task_menu_access($node, $task) {
       if (($task == 'login-reset') && ($node->site_status != HOSTING_SITE_ENABLED)) {
         return FALSE;
       }
-      $safe_tasks = array('backup', 'backup-delete', 'verify', 'enable');
+      // @TODO: Un-hardcode this?
+      $safe_tasks = array('backup', 'backup-delete', 'verify', 'enable', 'deploy');
       if (!in_array($task, $safe_tasks)) {
         // Don't show certain tasks if the site is the 'special' main aegir site.
         if ($node->nid == hosting_get_hostmaster_site_nid()) {
