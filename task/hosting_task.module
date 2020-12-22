@@ -1109,9 +1109,20 @@ function hosting_task_retry_form($form, $form_state, $nid) {
     '#type' => 'hidden',
     '#default_value' => $nid,
   );
+
+  // Decide on button label.
+  $task = node_load($nid);
+  $button = t('Retry');
+  if ($task->task_type == 'install' && $task->task_status != HOSTING_TASK_ERROR) {
+     $button = t('Reinstall');
+  }
+  elseif ($task->task_status == HOSTING_TASK_SUCCESS || $task->task_status == HOSTING_TASK_WARNING) {
+    $button = t('Run Again');
+  }
+
   $form['retry'] = array(
     '#type' => 'submit',
-    '#value' => t('Retry'),
+    '#value' => $button,
   );
   $form['#suffix'] = '</div>';
   return $form;
