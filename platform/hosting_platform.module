@@ -432,6 +432,14 @@ function hosting_platform_form(&$node) {
     '#default_value' => $node->git_docroot,
   );
 
+  $form['git']['git_reset'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Reset working copy changes.'),
+    '#description' => t('If checked, any changes to the cloned git code will be reset and lost.'),
+    '#default_value' => $node->git_reset,
+  );
+
+
   // @TODO: Decide to remove makefile support?
 //  $form['frommakefile'] = array(
 //    '#type' => 'fieldset',
@@ -558,6 +566,7 @@ function hosting_platform_insert($node) {
       'nid' => $node->nid,
       'git_remote' => $node->git_remote,
       'git_reference' => $node->git_reference,
+      'git_reset' => $node->git_reset,
       'git_root' => hosting_path_normalize($node->git_root),
       'git_docroot' => $node->git_docroot,
       'publish_path' => hosting_path_normalize($node->publish_path),
@@ -592,6 +601,7 @@ function hosting_platform_update($node) {
       ->fields(array(
         'git_remote' => $node->git_remote,
         'git_reference' => $node->git_reference,
+        'git_reset' => $node->git_reset,
         'git_root' => hosting_path_normalize($node->git_root),
         'git_docroot' => $node->git_docroot,
         'publish_path' => hosting_path_normalize($node->publish_path),
