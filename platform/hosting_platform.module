@@ -828,27 +828,25 @@ function hosting_platform_wildcard_load($arg) {
  */
 function hosting_platform_view($node, $view_mode, $langcode = NULL) {
   hosting_set_breadcrumb($node);
-
-  $node->content['properties'] = array(
+   $node->content['info'] = array(
     '#type' => 'fieldset',
   );
-
-  $node->content['properties']['git_remote'] = array(
+  $node->content['info']['git_remote'] = array(
     '#type' => 'item',
     '#title' => t('Git Remote'),
     '#markup' => $node->git_remote?: t('None'),
   );
-  $node->content['properties']['git_root'] = array(
+  $node->content['info']['git_root'] = array(
     '#type' => 'item',
     '#title' => t('Repository Path'),
     '#markup' => $node->git_root?: t('Unknown'),
   );
-  $node->content['properties']['git_reference'] = array(
+  $node->content['info']['git_reference'] = array(
     '#type' => 'item',
     '#title' => t('Git Reference'),
     '#markup' => $node->git_reference?: t('Unknown'),
   );
-  $node->content['properties']['git_docroot'] = array(
+  $node->content['info']['git_docroot'] = array(
     '#type' => 'item',
     '#title' => t('Relative Docroot'),
     '#markup' => $node->git_docroot?: '',
@@ -860,24 +858,6 @@ function hosting_platform_view($node, $view_mode, $langcode = NULL) {
   $platform_edit_url = "node/{$platform_nid}/edit";
   $page_is_platform_page = arg(1) == $platform_nid;
   $platform_edit_url_query = $page_is_platform_page ? array(): drupal_get_destination();
-
-  $node->content['properties']['edit'] = array(
-    '#type' => 'link',
-    '#title' => t('Edit Platform'),
-    '#href' => $platform_edit_url,
-    '#access' => drupal_valid_path($platform_edit_url),
-    '#options' => array(
-      'query' => $platform_edit_url_query,
-      'attributes' => array(
-        'class' => array('btn btn-default')
-      )
-    )
-  );
-
-
-  $node->content['info'] = array(
-    '#type' => 'fieldset',
-  );
 
   $node->content['info']['verified'] = array(
     '#type' => 'item',

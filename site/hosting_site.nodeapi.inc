@@ -30,7 +30,6 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
   hosting_set_breadcrumb($node);
   drupal_set_title(hosting_site_canonical_url($node));
   hosting_platform_view($node, 'full');
-  $node->content['info']['#prefix'] = '<div id="hosting-site-info" class="hosting-info-list">';
   if ($node->site_status == HOSTING_SITE_ENABLED) {
     $node->content['info']['link'] = array(
       '#markup' => _hosting_site_goto_link($node),
@@ -51,6 +50,7 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
     '#type' => 'item',
     '#title' => t('Verified'),
     '#markup' => hosting_format_interval($node->verified),
+    '#weight' => -9,
   );
 
   $node->content['info']['platform'] = array(
@@ -98,14 +98,13 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
     );
   }
 
-  $node->content['info']['#suffix'] = '</div>';
-
   if ($node->nid) {
     $node->content['tasks_view'] = array(
-      '#type' => 'item',
-      '#markup' => hosting_task_table($node),
-      '#prefix' => '<div id="hosting-task-list">',
-      '#suffix' => '</div>',
+      '#type' => 'container',
+      '#children' => hosting_task_table($node),
+      '#attributes' => array(
+        'id' => 'hosting-task-list',
+      ),
       '#weight' => 10,
     );
     $settings['hostingTaskRefresh'] = array(
@@ -124,6 +123,11 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
     '#markup' => check_plain($node->file_public_path),
   );
 
+  $node->content['info']['#attributes']['id'] = 'hosting-info-panel';
+  $node->content['info']['#attributes']['class'][] = 'hosting-panel';
+
+  $node->content['tasks_view']['#attributes']['id'] = 'hosting-tasks-panel';
+  $node->content['tasks_view']['#attributes']['class'][] = 'hosting-panel';
   return $node;
 }
 

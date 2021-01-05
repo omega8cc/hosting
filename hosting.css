@@ -45,6 +45,17 @@
   display:inline;
 }
 
+.hosting-panel {
+  float: left;
+  max-width: 45%;
+  margin-right: 5%;
+}
+
+.hosting-panel .form-item {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
 /**
  * Tables
  */
