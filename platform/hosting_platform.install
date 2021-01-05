@@ -38,7 +38,7 @@ function hosting_platform_schema() {
         'description' => 'Reset any changes to this platform when verifying.',
         'type' => 'int',
         'unsigned' => TRUE,
-        'not null' => TRUE,
+        'not null' => FALSE,
         'default' => 1,
       ),
       'git_root' => array(
