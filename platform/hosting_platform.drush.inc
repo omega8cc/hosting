@@ -49,6 +49,7 @@ function hosting_platform_drush_context_import($context, &$node) {
     $node->git_root = $context->git_root;
     $node->git_remote = $context->git_remote;
     $node->git_reference = $context->git_reference;
+    $node->git_reset = $context->git_reset;
     $node->git_docroot = $context->git_docroot;
   }
 }
@@ -98,6 +99,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     $node->git_remote = d($task->ref->hosting_name)->git_remote;
     $node->git_reference = d($task->ref->hosting_name)->git_reference;
     $node->git_docroot = d($task->ref->hosting_name)->git_docroot;
+    $node->git_reset = d($task->ref->hosting_name)->git_reset;
 
     // Save the platform being verified.
     node_save($node);
