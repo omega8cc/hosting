@@ -501,6 +501,10 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
     foreach (element_children($form) as $elementChildId) {
       if ($form[$elementChildId]['#type'] == 'fieldset') {
         $form[$elementChildId]['#group'] = 'site_settings';
+
+        // Un-break aegir contrib.
+        unset($form[$elementChildId]['#prefix']);
+        unset($form[$elementChildId]['#suffix']);
       }
     }
   }
