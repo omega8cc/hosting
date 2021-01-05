@@ -1403,7 +1403,7 @@ function hosting_settings($form, &$form_state) {
   $form['hosting_site_allow_custom_file_paths'] = array(
     '#type' => 'checkbox',
     '#title' => t('Allow sites to have custom file paths for public, private, and temporary files.'),
-    '#description' => t('When creating or editing a site, show a field for changing the default files paths.'),
+    '#description' => t('When creating or editing a site, show a field for changing the default files paths. <em>CAUTION:</em> The web server user will be granted write access permission to these folders so that the Drupal site can receive uploaded files. If this is checked, Aegir users can enter any path, and the <code>aegir</code> system user will attempt to make it writable for the web server user, typically <code>www-data</code>, <code>apache</code> or <code>nginx</code>. '),
     '#default_value' => variable_get('hosting_site_allow_custom_file_paths', FALSE),
   );
   if (hosting_feature('cron')) {

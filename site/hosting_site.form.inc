@@ -363,16 +363,14 @@ function hosting_site_form($node, &$form_state) {
   }
 
   // Files Paths
-  if (variable_get('hosting_site_allow_custom_file_paths', FALSE)) {
     $form['file_paths'] = array(
-      '#title' => t('Site Files Settings'),
-      '#description' => t('Paths may be relative to the Drupal index, or absolute on the server. Use caution when customizing the file paths. These paths will be created and will be made writable by the web server.'),
+      '#title' => t('Site Files'),
+      '#description' => t('The directory to use for Drupal site files. Paths may be relative to the Drupal index, or absolute on the server. <em>CAUTION:</em> The web server user will be granted write access permission to these folders so that the Drupal site can receive uploaded files. Do not change unless you are aware of the security implications.'),
       '#type' => 'fieldset',
       '#collapsed' => TRUE,
       '#collapsible' => TRUE,
       '#weight' => 10,
     );
-
     $form['file_paths']['file_public_path'] = array(
       '#title' => t('Public Files Path'),
       '#description' => t('Leave blank to use the default path: %path', array(
@@ -397,7 +395,24 @@ function hosting_site_form($node, &$form_state) {
       '#type' => 'textfield',
       '#default_value' => $node->file_temporary_path,
     );
-  }
+
+    // Hide files settings if not allowed.
+    if (!variable_get('hosting_site_allow_custom_file_paths', FALSE)) {
+      $form['file_paths']['#description'] = t('Drupal site file paths are not configurable. Check <em>Allow sites to have custom file paths</em> on the !settings page to allow customization.', array('!settings' => l(t('Hosting Settings'), 'admin/hosting/settings', array('query' => drupal_get_destination()))));
+
+      foreach (element_children($form['file_paths']) as $i) {
+
+        $form['file_paths']['display'][$i] = array(
+          '#type' => 'item',
+          '#title' => $form['file_paths'][$i]['#title'],
+          '#markup' => $form['file_paths'][$i]['#default_value'],
+        );
+        $form['file_paths'][$i] = array(
+          '#type' => 'value',
+          '#value' => $form['file_paths'][$i]['#default_value'],
+        );
+      }
+    }
 
   return $form;
 }
