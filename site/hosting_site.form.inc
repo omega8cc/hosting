@@ -491,6 +491,18 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
     if (isset($node->site_status) && $node->site_status !== HOSTING_SITE_DELETED) {
       $form['actions']['delete']['#type'] = 'hidden';
     }
+
+    $form['site_settings'] = array(
+      '#type' => 'vertical_tabs',
+      '#weight' => -11,
+    );
+
+    // Put all fieldgroups into vertical tabs.
+    foreach (element_children($form) as $elementChildId) {
+      if ($form[$elementChildId]['#type'] == 'fieldset') {
+        $form[$elementChildId]['#group'] = 'site_settings';
+      }
+    }
   }
   if (array_key_exists('views_bulk_operations', $form)) {
     // Add our callback, so we can operate on the fully built form.
