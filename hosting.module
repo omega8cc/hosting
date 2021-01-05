@@ -220,7 +220,43 @@ function hosting_menu_alter(&$items) {
   $items['node/add/task']['page callback'] = 'drupal_access_denied';
   $items['node/add/package']['type'] = MENU_CALLBACK;
   $items['node/add/task']['type'] = MENU_CALLBACK;
+
+  // Make drupal node pages more user-friendly.
+  $items['node/%node/view']['title callback'] = 'hosting_node_tab_title';
+  $items['node/%node/view']['title arguments'] = array('View', 1);
+  $items['node/%node/view']['weight'] = -100;
+
+  $items['node/%node/edit']['title callback'] = 'hosting_node_tab_title';
+  $items['node/%node/edit']['title arguments'] = array('Edit', 1);
+  $items['node/%node/edit']['weight'] = -99;
 }
+
+
+/**
+ * Replace the text used on node page "tabs".
+ */
+function hosting_node_tab_title($default, $node) {
+
+  // Use "X Dashboard" and "X Settings" for nodes that are hosting contexts.
+  $type_names = node_type_get_names();
+  if (!empty($node->hosting_name)) {
+    switch ($default) {
+      case "View":
+        return t('@type Dashboard', ['@type' => $type_names[$node->type]]);
+      case "Edit":
+        return t('@type Settings', ['@type' => $type_names[$node->type]]);
+    }
+  }
+
+  // Use "Task Log" for the "View" tab of task nodes.
+  if ($default == 'View' && $node->type == 'task') {
+    return t('Task Logs');
+  }
+
+  // Otherwise, just return the page text
+  return t($default);
+}
+
 
 /**
  * Menu access callback for creating a node provided by a Hosting feature.
