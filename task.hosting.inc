@@ -190,7 +190,6 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
     node_save($task);
     drush_set_context('HOSTING_TASK', $task);
     drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
-    drush_log(dt("Task starts processing") . ': ' . $task->title, 'queue');
 
     // Load Task Info.
     $tasks_info = hosting_available_tasks($task->ref->type);
@@ -281,6 +280,14 @@ function drush_hosting_task() {
   $task->options['runner'] = 'hosting_task';
 
   // Run the actual command. Adding alias here to work around Drush API.
+  foreach ($task->options as $name => $value) {
+    $options[] = "--{$name}=$value";
+  }
+  $args = implode(' ', $task->args);
+  $opts = implode(' ', $options);
+  $command = "drush @$alias $task->task_command $args $opts";
+
+  drush_log(dt("Running command: $command"), 'p_log');
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
