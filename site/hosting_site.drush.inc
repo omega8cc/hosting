@@ -130,12 +130,6 @@ function drush_hosting_site_pre_hosting_task($task) {
       $task->options[$arg] = $value;
     }
   }
-
-  // When verifying a site or platform, always pass set-remote to force hosting_platform as the canonical source.
-  if ($task->task_type == 'verify' && $task->ref->type == 'site' || $task->ref->type == 'platform') {
-    // Set remote by default whenever verify is run on site or platform.
-    $task->options['set-remote'] = 1;
-  }
 }
 
 /**
