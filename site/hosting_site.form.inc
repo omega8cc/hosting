@@ -414,9 +414,55 @@ function hosting_site_form($node, &$form_state) {
     }
   }
 
+  /** @TODO: Get platform settings into site node form.
+  // Platform Settings
+  $form['platform_node'] = array(
+    '#title' => t('Platform Settings'),
+    '#type' => 'fieldset',
+    '#collapsed' => TRUE,
+    '#collapsible' => TRUE,
+  );
+
+  // Load the form for this site's platform.
+  $platform_node = node_load($node->platform);
+  $platform_form = drupal_get_form('platform_node_form', $platform_node);
+
+  // Clean up some things
+  unset($platform_form['actions']);
+  $platform_form['title']['#title'] = t('Platform Name');
+  $platform_form['git']['#group'] = 'site_settings';
+
+  // Tell hosting_site_node_update to skip adding the verify task. The site will include platform verification.
+  $platform_form['no_verify'] = array(
+    '#value' => TRUE,
+  );
+  _hosting_site_form_reset_parents_recursive($platform_form, 'platform_node');
+
+  // Add all platform form elements on to site form.
+  foreach (element_children($platform_form) as $element) {
+    $form['platform_node'][$element] = $platform_form[$element];
+  }
+  */
+
   return $form;
 }
 
+/**
+ * Recursively reset form parents so embedded node forms work.
+ */
+function _hosting_site_form_reset_parents_recursive(&$element, $element_key, $parents = array()) {
+  drupal_process_form();
+  $parents[] = $element_key;
+  $element['#processed'] = FALSE;
+  $element['#id'] = FALSE;
+  $element['#name'] = FALSE;
+  $element['#parents'] = $parents;
+  $element['#array_parents'] = $parents;
+  $element['#parents_fixed'] = TRUE;
+  foreach (element_children($element) as $element_child) {
+    _hosting_site_form_reset_parents_recursive($element[$element_child], $element_child, $parents);
+  }
+}
 
 /**
  * Ajax callback for the site profile field.
