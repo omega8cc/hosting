@@ -153,7 +153,7 @@ function hosting_alias_form_data(&$form, &$form_state) {
   }
 
   // "Add Alias" button.
-  $form['aliases_wrapper']['aliases']['add_alias'] = array(
+  $form['aliases_wrapper']['add_alias'] = array(
     '#type' => 'submit',
     '#value' => t('Add another alias'),
     '#submit' => array('hosting_alias_add_alias_submit'),
