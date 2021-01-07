@@ -101,6 +101,22 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     $node->git_docroot = d($task->ref->hosting_name)->git_docroot;
     $node->git_reset = d($task->ref->hosting_name)->git_reset;
 
+    // Load raw git ls-remote from $data
+    $node->git_remote_references = $data['context']['git_remote_references']?: NULL;
+    $refs = Provision_Context_platform::parseRemoteReferences($node->git_remote_references);
+
+    $t['@tags_count'] = count($refs['tags']);
+    $t['@branches_count'] = count($refs['branches']);
+
+    drush_log(dt('Found !count branches: !list', array(
+      '!count' => count($refs['branches']),
+      '!list' => implode(', ', array_keys($refs['branches'])),
+    )), 'p_log');
+    drush_log(dt('Found !count tags: !list', array(
+      '!count' => count($refs['tags']),
+      '!list' => implode(', ', array_keys($refs['tags'])),
+    )), 'p_log');
+
     // Save the platform being verified.
     node_save($node);
 

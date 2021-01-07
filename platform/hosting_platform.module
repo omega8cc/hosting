@@ -561,22 +561,28 @@ function hosting_platform_insert($node) {
   if (empty($node->no_verify)) {
     hosting_add_task($node->nid, 'verify');
   }
+
+  $fields = [];
+  $fields['vid'] = $node->vid;
+  $fields['nid'] = $node->nid;
+  $fields['git_remote'] = $node->git_remote;
+  $fields['git_reference'] = $node->git_reference;
+  $fields['git_reset'] = $node->git_reset;
+  $fields['git_root'] = hosting_path_normalize($node->git_root);
+  $fields['git_docroot'] = $node->git_docroot;
+  $fields['publish_path'] = hosting_path_normalize($node->publish_path);
+  $fields['makefile'] = isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : '');
+  $fields['web_server'] = $node->web_server;
+  $fields['verified'] = $node->verified;
+  $fields['status'] = $node->platform_status;
+  $fields['make_working_copy'] = isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : $node->make_working_copy;
+
+  if (!empty($node->git_remote_references)) {
+    $fields['git_remote_references'] = $node->git_remote_references;
+  }
+
   $id = db_insert('hosting_platform')
-    ->fields(array(
-      'vid' => $node->vid,
-      'nid' => $node->nid,
-      'git_remote' => $node->git_remote,
-      'git_reference' => $node->git_reference,
-      'git_reset' => $node->git_reset,
-      'git_root' => hosting_path_normalize($node->git_root),
-      'git_docroot' => $node->git_docroot,
-      'publish_path' => hosting_path_normalize($node->publish_path),
-      'makefile' => isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : ''),
-      'verified' => isset($node->verified) ? $node->verified : 0,
-      'web_server' => $node->web_server,
-      'status' => isset($node->platform_status) ? $node->platform_status : 0,
-      'make_working_copy' => isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : 0,
-    ))
+    ->fields($fields)
     ->execute();
   if (!isset($node->old_vid)) {
     hosting_context_register($node->nid, 'platform_' . preg_replace("/[!\W]/", "", $node->title));
@@ -598,20 +604,26 @@ function hosting_platform_update($node) {
     if ($node->platform_status == HOSTING_PLATFORM_DELETED) {
       $node->no_verify = TRUE;
     }
+
+    $fields = [];
+    $fields['git_remote'] = $node->git_remote;
+    $fields['git_reference'] = $node->git_reference;
+    $fields['git_reset'] = $node->git_reset;
+    $fields['git_root'] = hosting_path_normalize($node->git_root);
+    $fields['git_docroot'] = $node->git_docroot;
+    $fields['publish_path'] = hosting_path_normalize($node->publish_path);
+    $fields['makefile'] = isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : '');
+    $fields['web_server'] = $node->web_server;
+    $fields['verified'] = $node->verified;
+    $fields['status'] = $node->platform_status;
+    $fields['make_working_copy'] = isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : $node->make_working_copy;
+
+    if (!empty($node->git_remote_references)) {
+      $fields['git_remote_references'] = $node->git_remote_references;
+    }
+
     db_update('hosting_platform')
-      ->fields(array(
-        'git_remote' => $node->git_remote,
-        'git_reference' => $node->git_reference,
-        'git_reset' => $node->git_reset,
-        'git_root' => hosting_path_normalize($node->git_root),
-        'git_docroot' => $node->git_docroot,
-        'publish_path' => hosting_path_normalize($node->publish_path),
-        'makefile' => isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : ''),
-        'web_server' => $node->web_server,
-        'verified' => $node->verified,
-        'status' => $node->platform_status,
-        'make_working_copy' => isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : $node->make_working_copy,
-      ))
+      ->fields($fields)
       ->condition('nid', $node->nid)
       ->execute();
   }
@@ -790,6 +802,13 @@ function hosting_platform_load($nodes) {
       'server' => $additions->web_server_name,
     );
 
+    // Parse remote git references.
+    $additions->git_references = $additions->git_remote_references? hosting_platform_parse_git_remote_references($additions->git_remote_references): [
+      'branches' => [],
+      'tags' => [],
+      'refs' => [],
+    ];
+
     foreach ($additions as $property => &$value) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
@@ -798,6 +817,63 @@ function hosting_platform_load($nodes) {
     $node->commands = hosting_find_deploy_commands($node);
 
   }
+}
+
+/**
+ * Parse the output from ls-remote into an array of data.
+ */
+function hosting_platform_parse_git_remote_references($git_remote_references_output)
+{
+  $lines = explode(PHP_EOL, $git_remote_references_output);
+
+  // Build tag and branch list
+  $branches = array();
+  $tags = array();
+  $refs = array();
+
+  foreach ($lines as $line_string) {
+
+    // "annotated" tags come with an extra row and these characters at the end.
+    // See http://stackoverflow.com/questions/15472107/when-listing-git-ls-remote-why-theres-after-the-tag-name
+    if (substr($line_string, -3, 3) == '^{}') {
+      continue;
+    }
+
+    // Example remote line:
+    // 9fc5727c0823d8d3300ba5aae3328d5998033e45 refs/heads/master
+    // 9fc5727c0823d8d3300ba5aae3328d5998033e45 refs/tags/1.0
+    $line_parts = preg_split('/\s+/', $line_string);
+    if (empty($line_parts) || $line_parts[0] == 'HEAD' || count($line_parts) < 2) {
+      continue;
+    }
+    [$ref_sha, $ref_full_name] = $line_parts;
+    $ref_parts = explode('/', $ref_full_name);
+
+    // Strip typical ref types to result in "guessed" reference name.
+    $ref_name = strtr($ref_full_name, [
+      // Standard git tag
+      'refs/tags/' => '',
+      // Standard git branch
+      'refs/heads/' => '',
+    ]);
+
+    // If a tag
+    if ($ref_parts[1] == 'tags') {
+      $tags[$ref_name] = $ref_sha;
+      $refs[$ref_name] = 'tag';
+    }
+    elseif ($ref_parts[1] == 'heads') {
+      $branches[$ref_name] = $ref_sha;
+      $refs[$ref_name] = 'branch';
+    }
+  }
+
+  $references = [
+    'refs' => $refs,
+    'branches' => $branches,
+    'tags' => $tags,
+  ];
+  return $references;
 }
 
 /**
