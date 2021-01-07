@@ -365,6 +365,7 @@ function hosting_site_hosting_tasks() {
     'description' => t('Deploy new code and run pre- and post- deployment scripts.'),
     'dialog' => TRUE,
     'icon' => 'truck',
+    'provision_save' => TRUE,
   );
 
   return $tasks;
