@@ -103,7 +103,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
     // Load raw git ls-remote from $data
     $node->git_remote_references = $data['context']['git_remote_references']?: NULL;
-    $refs = Provision_Context_platform::parseRemoteReferences($node->git_remote_references);
+    $refs = hosting_platform_parse_git_remote_references($node->git_remote_references);
 
     $t['@tags_count'] = count($refs['tags']);
     $t['@branches_count'] = count($refs['branches']);
