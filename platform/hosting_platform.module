@@ -573,8 +573,8 @@ function hosting_platform_insert($node) {
   $fields['publish_path'] = hosting_path_normalize($node->publish_path);
   $fields['makefile'] = isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : '');
   $fields['web_server'] = $node->web_server;
-  $fields['verified'] = $node->verified;
-  $fields['status'] = $node->platform_status;
+  $fields['verified'] = isset($node->verified) ? $node->verified : 0;
+  $fields['status'] = isset($node->platform_status) ? $node->platform_status : 0;
   $fields['make_working_copy'] = isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : $node->make_working_copy;
 
   if (!empty($node->git_remote_references)) {
@@ -614,8 +614,8 @@ function hosting_platform_update($node) {
     $fields['publish_path'] = hosting_path_normalize($node->publish_path);
     $fields['makefile'] = isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : '');
     $fields['web_server'] = $node->web_server;
-    $fields['verified'] = $node->verified;
-    $fields['status'] = $node->platform_status;
+    $fields['verified'] = isset($node->verified) ? $node->verified : 0;
+    $fields['status'] = isset($node->platform_status) ? $node->platform_status : 0;
     $fields['make_working_copy'] = isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : $node->make_working_copy;
 
     if (!empty($node->git_remote_references)) {
