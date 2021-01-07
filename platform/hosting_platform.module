@@ -575,7 +575,7 @@ function hosting_platform_insert($node) {
   $fields['web_server'] = $node->web_server;
   $fields['verified'] = isset($node->verified) ? $node->verified : 0;
   $fields['status'] = isset($node->platform_status) ? $node->platform_status : 0;
-  $fields['make_working_copy'] = isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : $node->make_working_copy;
+  $fields['make_working_copy'] =  isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : 0;
 
   if (!empty($node->git_remote_references)) {
     $fields['git_remote_references'] = $node->git_remote_references;
@@ -616,7 +616,7 @@ function hosting_platform_update($node) {
     $fields['web_server'] = $node->web_server;
     $fields['verified'] = isset($node->verified) ? $node->verified : 0;
     $fields['status'] = isset($node->platform_status) ? $node->platform_status : 0;
-    $fields['make_working_copy'] = isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : $node->make_working_copy;
+    $fields['make_working_copy'] =  isset($node->frommakefile['make_working_copy']) ? $node->frommakefile['make_working_copy'] : 0;
 
     if (!empty($node->git_remote_references)) {
       $fields['git_remote_references'] = $node->git_remote_references;
