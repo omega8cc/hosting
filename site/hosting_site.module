@@ -887,7 +887,7 @@ function hosting_task_deploy_form($node) {
       '#default_value' => $_GET['git_reference'] ? : $node->git_reference,
       '#description' => t('Enter the desired git branch, tag, or SHA. If a branch is entered, the git repository will pulled and reset to match the remote repository. If a tag or SHA is entered, it will be checked out, resulting in a "DETACHED HEAD" state.'),
       '#parents' => array(
-        'parmeters', 'target_git_reference',
+        'parameters', 'target_git_reference',
       ),
       '#attributes' => array(
         'class' => array(
