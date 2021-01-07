@@ -62,6 +62,16 @@ function hosting_platform_drush_context_import($context, &$node) {
  */
 function hosting_platform_post_hosting_verify_task($task, $data) {
   $node = $task->ref;
+
+  // When sites verify
+  if ($node->type == 'site') {
+
+    // When sites verify, save platform with data.
+    $platform_node = node_load($node->platform);
+    $platform_node = hosting_platform_save_git_references($platform_node, $data['context']['git_remote_references']);
+    node_save($platform_node);
+
+  }
   if ($node->type == 'platform') {
     // START: 3.x released code
     $context = $data['context'];
@@ -102,20 +112,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     $node->git_reset = d($task->ref->hosting_name)->git_reset;
 
     // Load raw git ls-remote from $data
-    $node->git_remote_references = $data['context']['git_remote_references']?: NULL;
-    $refs = hosting_platform_parse_git_remote_references($node->git_remote_references);
-
-    $t['@tags_count'] = count($refs['tags']);
-    $t['@branches_count'] = count($refs['branches']);
-
-    drush_log(dt('Found !count branches: !list', array(
-      '!count' => count($refs['branches']),
-      '!list' => implode(', ', array_keys($refs['branches'])),
-    )), 'p_log');
-    drush_log(dt('Found !count tags: !list', array(
-      '!count' => count($refs['tags']),
-      '!list' => implode(', ', array_keys($refs['tags'])),
-    )), 'p_log');
+    $node = hosting_platform_save_git_references($node, $data['context']['git_remote_references']);
 
     // Save the platform being verified.
     node_save($node);
@@ -209,4 +206,29 @@ function hosting_platform_post_hosting_unlock_task($task, $data) {
   $task->ref->platform_status = HOSTING_PLATFORM_ENABLED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
+}
+
+/**
+ *
+ */
+function hosting_platform_save_git_references($platform_node, $references) {
+
+  $platform_node->no_verify = TRUE;
+  $platform_node->git_remote_references = $references?: NULL;
+  $refs = hosting_platform_parse_git_remote_references($platform_node->git_remote_references);
+
+  $t['@tags_count'] = count($refs['tags']);
+  $t['@branches_count'] = count($refs['branches']);
+
+  drush_log(dt('Found !count branches: !list', array(
+    '!count' => count($refs['branches']),
+    '!list' => implode(', ', array_keys($refs['branches'])),
+  )), 'p_log');
+  drush_log(dt('Found !count tags: !list', array(
+    '!count' => count($refs['tags']),
+    '!list' => implode(', ', array_keys($refs['tags'])),
+  )), 'p_log');
+
+  // Save the platform being verified.
+  return $platform_node;
 }
