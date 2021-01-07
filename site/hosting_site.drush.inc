@@ -278,6 +278,19 @@ function hosting_site_post_hosting_import_task($task, $data) {
   hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
 }
 
+
+/**
+ * Implements hook_post_hosting_deploy_task().
+ *
+ * Ensure post-verify task hooks are run after a deploy.
+ */
+function hosting_site_post_hosting_deploy_task($task, $data)
+{
+  if ($task->ref->type == 'site') {
+    hosting_site_post_hosting_verify_task($task, $data);
+  }
+}
+
 /**
  * Implements hook_post_hosting_verify_task().
  */

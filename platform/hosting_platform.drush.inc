@@ -103,6 +103,13 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
     // Save the platform being verified.
     node_save($node);
+    drush_log(dt('Metadata saved for %type %title [%url]', [
+      '%type' => $node->type,
+      '%title' => $node->title,
+      '%url' => url("node/{$node->nid}", [
+        'absolute' => true,
+      ]),
+    ]), 'p_log');
 
     // @TODO: Legacy refactor needed.
     hosting_package_sync($packages['base']);
