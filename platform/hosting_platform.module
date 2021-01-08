@@ -567,7 +567,7 @@ function hosting_platform_insert($node) {
       'nid' => $node->nid,
       'git_remote' => $node->git_remote,
       'git_reference' => $node->git_reference,
-      'git_reset' => $node->git_reset,
+      'git_reset' => (int) $node->git_reset,
       'git_root' => hosting_path_normalize($node->git_root),
       'git_docroot' => $node->git_docroot,
       'publish_path' => hosting_path_normalize($node->publish_path),
@@ -602,7 +602,7 @@ function hosting_platform_update($node) {
       ->fields(array(
         'git_remote' => $node->git_remote,
         'git_reference' => $node->git_reference,
-        'git_reset' => $node->git_reset,
+        'git_reset' => (int) $node->git_reset,
         'git_root' => hosting_path_normalize($node->git_root),
         'git_docroot' => $node->git_docroot,
         'publish_path' => hosting_path_normalize($node->publish_path),
