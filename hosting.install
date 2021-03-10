@@ -621,3 +621,15 @@ function hosting_update_7303() {
   // node_access_rebuild from the the update hook fails without the following defintion.
   return array(); // never fail
 }
+
+/**
+ * Upgrade existing hosting_task_logs_types_display variable to an array.
+ */
+function hosting_update_7304() {
+  $display = variable_get('hosting_task_logs_types_display', 'error warning info message ok status success');
+  if (is_string($display)) {
+    $display = explode(' ', $display);
+    $display = array_combine($display, $display);
+    variable_set('hosting_task_logs_types_display', $display);
+  }
+}
