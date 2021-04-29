@@ -429,6 +429,7 @@ function hosting_platform_form(&$node) {
     '#type' => 'fieldset',
     '#tree' => TRUE,
     '#title' => t('Deploy from makefile'),
+    '#collapsed' => TRUE,
     '#collapsible' => TRUE,
     '#description' => t('You may deploy this platform from a makefile.'),
     '#weight' => -1,

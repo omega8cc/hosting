@@ -40,6 +40,8 @@ function hosting_ssl_site_form(&$form, &$form_state, $form_id) {
     _hosting_site_field($form, $node, 'hosting_ssl_wrapper', array(
       '#type' => 'fieldset',
       '#title' => t('SSL Settings'),
+      '#collapsed' => TRUE,
+      '#collapsible' => TRUE,
       '#default_value' => NULL,
     ), 'filter_xss', $ssl_available);
 
