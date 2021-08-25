@@ -292,3 +292,23 @@ function hosting_platform_update_7400() {
       db_add_field('hosting_platform', $field, $field_spec);
   }
 }
+
+/**
+ * Migrate data from hosting_git for each platform.
+ */
+function hosting_platform_update_7401() {
+  $platforms = db_query('SELECT * FROM {hosting_git} g INNER JOIN {hosting_platform} p ON p.nid = g.nid');
+
+  foreach ($platforms as $platform) {
+    db_merge('hosting_platform')
+      ->key(array('nid' => $platform->nid))
+      ->fields(array(
+          'git_remote' => $platform->repo_url,
+          'git_reference' => $platform->git_ref,
+          'git_root' => $platform->repo_path,
+          'git_docroot' => $platform->repo_docroot,
+        ))
+        ->execute();
+  }
+}
+
