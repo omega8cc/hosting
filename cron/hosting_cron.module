@@ -89,7 +89,10 @@ function hosting_cron_queue($count) {
       foreach ($result as $row) {
         $this_platform_root = $row->publish_path;
       }
-      if (is_readable($this_platform_root . '/core')) {
+      if (is_readable($this_platform_root . '/core') ||
+          is_readable($this_platform_root . '/docroot/core') ||
+          is_readable($this_platform_root . '/html/core') ||
+          is_readable($this_platform_root . '/web/core')) {
         $url = 'https://127.0.0.1/cron/';
         // Optionally add the cron_key query string key if the site has one.
         if (!empty($site->cron_key)) {
