@@ -3,6 +3,6 @@
     "type": "drupal-module",
     "require": {
         "laravel-validation-rules/ip": "^1.4",
-        "devshop/composer-common": "^1@dev"
+        "devshop/git-traits": "^1@dev"
     }
 }
