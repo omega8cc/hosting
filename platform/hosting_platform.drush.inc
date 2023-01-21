@@ -122,7 +122,9 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
         hosting_package_sync($packages['profiles'][$profile]);
         $instance = hosting_package_instance_load(
           array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
-        hosting_package_instance_sync($instance->iid, $node->type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
+        if (!empty($instance)) {
+          hosting_package_instance_sync($instance->iid, $node->type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
+        }
 
         // @todo : package instances of modules to profiles. <-- huh?
       }
