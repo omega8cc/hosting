@@ -47,6 +47,10 @@ class hostingService {
     return $this->has_port;
   }
 
+  public function has_restart_cmd() {
+    return $this->has_restart_cmd;
+  }
+
   public function load() {
     $this->mergeData("SELECT port, restart_cmd, available
                       FROM {hosting_service}

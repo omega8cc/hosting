@@ -429,16 +429,6 @@ function hosting_features_enable($features, $rebuild = TRUE, $enable = TRUE) {
       }
       $role_perms = isset($all_features[$feature]['role_permissions']) ? $all_features[$feature]['role_permissions'] : array();
 
-      // Make sure the permission exists before adding it.
-      $modules = user_permission_get_modules();
-      foreach ($role_perms as $role => $perms) {
-        foreach ($perms as $i => $permission) {
-          if (!isset($modules[$permission])) {
-            unset($role_perms[$role][$i]);
-          }
-        }
-      }
-
       hosting_add_permissions($module, $role_perms);
     }
 
@@ -552,37 +542,42 @@ function hosting_feature_rebuild_caches($features = array()) {
 }
 
 /**
- * Add a module's permissions to the appropriate roles.
+ * Add a Hosting Feature's permissions to the appropriate roles.
  *
  * @param string $module
- *   The name of the module whose permissions we're adding.
+ *   The name of the Hosting Feature module whose permissions we're adding.
  * @param array $role_perms
  *   An array of arrays keyed by the role name. The values are the permissions
  *   to enable.
  */
 function hosting_add_permissions($module, $role_perms) {
-  $perm_hook = $module . '_permission';
-  // @TODO: This doesn't make sense. Aegir's "hook_hosting_features" modules include permissions from other modules. It may not have it's own permission hook.
-  if (function_exists($perm_hook)) {
-    $roles = user_roles();
-    foreach ($roles as $rid => $name) {
-
-      // The Aegir admin role gets all hosting module permissions.
-      if ($name == 'aegir administrator') {
-        // @TODO: This doesn't make sense. Aegir's "hook_hosting_features" modules include permissions from other modules.
-        // This only grants full access to the "aegir administrator" role to the parent module's hook_permissions implementation,
-        // not the list of permissions included in the hook_hosting_feature implementations.
-        $perms = call_user_func($module . '_permission');
-        user_role_grant_permissions($rid, array_keys($perms));
+  // Make sure permissions exist before adding them, since we might want to add
+  // permissions from optional modules.
+  $permissions = user_permission_get_modules();
+  foreach ($role_perms as $role => $perms) {
+    foreach ($perms as $i => $permission) {
+      if (!isset($permissions[$permission])) {
+        unset($role_perms[$role][$i]);
       }
+    }
+  }
 
-      if (array_key_exists($name, $role_perms)) {
-        drupal_set_message(t("The '%role' role was assigned the following permission!plural: '%perms'.", array(
-          '%role' => $name,
-          '%perms' => implode('\', \'', $role_perms[$name]),
-          '!plural' => count($role_perms[$name]) > 1 ? 's' : '',
-        )));
-      }
+  // The Aegir admin role automatically gets all permissions from any hosting module.
+  if (function_exists($module . '_permission')) {
+    $perms = module_invoke($module, 'permission');
+    foreach (array_keys($perms) as $perm) {
+      $role_perms['aegir administrator'][] = $perm;
+    }
+  }
+
+  foreach (user_roles() as $rid => $name) {
+    if (array_key_exists($name, $role_perms)) {
+      user_role_grant_permissions($rid, $role_perms[$name]);
+      drupal_set_message(t("The '%role' role was assigned the following permission!plural: '%perms'.", array(
+        '%role' => $name,
+        '%perms' => implode('\', \'', $role_perms[$name]),
+        '!plural' => count($role_perms[$name]) > 1 ? 's' : '',
+      )));
     }
   }
 }
