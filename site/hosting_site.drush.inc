@@ -79,7 +79,9 @@ function hosting_site_drush_context_import($context, &$node) {
     if (!$profile) {
       drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Unable to save install profile metadata for this site.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
     }
-    $node->profile = $profile->package_id;
+    else {
+      $node->profile = $profile->package_id;
+    }
 
     $client = node_load(HOSTING_DEFAULT_CLIENT);
     if ($context->client_name) {
