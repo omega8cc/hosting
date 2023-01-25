@@ -1,5 +1,7 @@
 <?php
 
+use Symfony\Component\Process\Process;
+
 /**
  * @file
  * Drush include for the Hosting module's hosting task command.
@@ -462,9 +464,10 @@ function hosting_task_process($command, $cwd = null, $env = array(), $log_output
   // check exit code
   if ($exit_code !== 0) {
     drush_set_error('PROVISION_PROCESS_ERROR', dt($error_message));
+    drush_log("[Process Stop] $command", 'process_error');
   }
-
-  drush_log("[Process Stop] $command", 'process_stop');
-
+  else {
+    drush_log("[Process Stop] $command", 'process_stop');
+  }
   return $process->getOutput() . $process->getErrorOutput();
 }

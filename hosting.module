@@ -1335,6 +1335,7 @@ function hosting_log_types() {
     'status',
     'success',
     'warning',
+    'process',
   ];
   $types_from_logs = db_query('SELECT DISTINCT type FROM {hosting_task_log}')->fetchCol();
   $types = array_unique(array_merge($known_types, $types_from_logs));
