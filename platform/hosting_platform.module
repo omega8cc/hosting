@@ -368,23 +368,16 @@ function hosting_platform_form(&$node) {
     '#maxlength' => 255,
   );
 
-  // Allow editing the "publish path" so that users can change their platforms if they need to.
-//  $base_path = variable_get('hosting_platform_base_path', '/var/aegir/platforms/');
-//  $default_path = '';
-//  $field_prefix = $base_path;
-//  if (isset($node->publish_path)) {
-//    // Strip the $base_path, since we prepend it in a validation handler.
-//    // This enforces platform publishing under the defined base path, even if
-//    // an error allows the path to be edited again.
-//    if (strpos($node->publish_path, $base_path) === 0) {
-//      $default_path = substr($node->publish_path, strlen($base_path));
-//    }
-//    else {
-//      // If publish path is not inside /var/aegir/platforms, use that as the default path and remove the field prefix.
-//      $default_path = $node->publish_path;
-//      $field_prefix = '';
-//    }
-//  }
+  $form['publish_path_display'] = array(
+    '#type' => 'item',
+    '#title' => t('Publish path'),
+    '#markup' => $node->publish_path,
+  );
+
+  $form['publish_path'] = array(
+    '#type' => 'hidden',
+    '#value' => hosting_path_normalize($node->publish_path),
+  );
 
   $form['git'] = array(
     '#type' => 'fieldset',
