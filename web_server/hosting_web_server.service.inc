@@ -54,4 +54,11 @@ class hostingService_http_apache extends hostingService_http_public {
 
     return "sudo $command graceful";
   }
+
+  function provisionProperties() {
+    return array(
+      'http_port' => $this->default_port(),
+      'restart_command' => $this->default_restart_cmd(),
+    );
+  }
 }

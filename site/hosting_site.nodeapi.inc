@@ -28,7 +28,8 @@ function hosting_site_node_info() {
  */
 function hosting_site_view($node, $view_mode, $langcode = NULL) {
   hosting_set_breadcrumb($node);
-  $node->content['info']['#prefix'] = '<div id="hosting-site-info" class="hosting-info-list">';
+  drupal_set_title(hosting_site_canonical_url($node));
+  hosting_platform_view($node, 'full');
   if ($node->site_status == HOSTING_SITE_ENABLED) {
     $node->content['info']['link'] = array(
       '#markup' => _hosting_site_goto_link($node),
@@ -49,6 +50,7 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
     '#type' => 'item',
     '#title' => t('Verified'),
     '#markup' => hosting_format_interval($node->verified),
+    '#weight' => -9,
   );
 
   $node->content['info']['platform'] = array(
@@ -96,14 +98,13 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
     );
   }
 
-  $node->content['info']['#suffix'] = '</div>';
-
   if ($node->nid) {
     $node->content['tasks_view'] = array(
-      '#type' => 'item',
-      '#markup' => hosting_task_table($node),
-      '#prefix' => '<div id="hosting-task-list">',
-      '#suffix' => '</div>',
+      '#type' => 'container',
+      '#children' => hosting_task_table($node),
+      '#attributes' => array(
+        'id' => 'hosting-task-list',
+      ),
       '#weight' => 10,
     );
     $settings['hostingTaskRefresh'] = array(
@@ -114,6 +115,19 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
 
     drupal_add_js(drupal_get_path('module', 'hosting_task') . '/hosting_task.js');
   }
+
+  // Show files directory.
+  $node->content['info']['file_public_path'] = array(
+    '#type' => 'item',
+    '#title' => t('Public Files'),
+    '#markup' => check_plain($node->file_public_path),
+  );
+
+  $node->content['info']['#attributes']['id'] = 'hosting-info-panel';
+  $node->content['info']['#attributes']['class'][] = 'hosting-panel';
+
+  $node->content['tasks_view']['#attributes']['id'] = 'hosting-tasks-panel';
+  $node->content['tasks_view']['#attributes']['class'][] = 'hosting-panel';
   return $node;
 }
 
@@ -199,6 +213,21 @@ function hosting_site_entity_property_info() {
       'description' => t('The date of the time the site was verified.'),
       'type' => 'date',
     ),
+    'file_public_path' => array(
+      'label' => t('Site public files path'),
+      'description' => t('The path used for the file_public_path setting in the site.'),
+      'type' => 'text',
+    ),
+    'file_private_path' => array(
+      'label' => t('Site private files path'),
+      'description' => t('The path used for the file_private_path setting in the site.'),
+      'type' => 'text',
+    ),
+    'file_temporary_path' => array(
+      'label' => t('Site temporary files path'),
+      'description' => t('The path used for the file_temporary_path setting in the site.'),
+      'type' => 'text',
+    ),
   );
 
   return $info;
@@ -231,8 +260,7 @@ function hosting_site_delete($node) {
  * Implements hook_nodeapi().
  */
 function hosting_site_nodeapi_site_presave(&$node) {
-  // Domain names are case-insensitive.
-  $node->title = strtolower(trim($node->title));
+  $node->title = hosting_site_get_domain($node->title);
 }
 
 /**
@@ -297,6 +325,10 @@ function hosting_site_insert(&$node) {
       }
 
       $node->platform_node->type = 'platform';
+
+      // Don't queue a verify task on save. Site verify now runs platform verify first.
+      $node->platform_node->no_verify = TRUE;
+
       if ($node->platform_node = node_submit($node->platform_node)) {
         node_save($node->platform_node);
       }
@@ -329,6 +361,9 @@ function hosting_site_insert(&$node) {
       'cron_key' => $node->cron_key,
       'status' => isset($node->site_status) ? $node->site_status : HOSTING_SITE_QUEUED,
       'verified' => isset($node->verified) ? $node->verified : 0,
+      'file_public_path' => $node->file_public_path ?: '',
+      'file_private_path' => $node->file_private_path ?: '',
+      'file_temporary_path' => $node->file_temporary_path ?: '',
     ))
     ->execute();
 
@@ -375,13 +410,16 @@ function hosting_site_update(&$node) {
         'last_cron' => $node->last_cron,
         'cron_key' => $node->cron_key,
         'status' => $node->site_status,
-        'profile' => $node->profile,
+        'profile' => (int) $node->profile,
         'language' => $node->site_language,
         'verified' => $node->verified,
+        'file_public_path' => $node->file_public_path,
+        'file_private_path' => $node->file_private_path,
+        'file_temporary_path' => $node->file_temporary_path,
       ))
       ->condition('vid', $node->vid)
       ->execute();
-    
+
     // If platform_node is passed in the site node, save it.
     if (isset($node->platform_node->nid)) {
       node_save($node->platform_node);
@@ -394,7 +432,7 @@ function hosting_site_update(&$node) {
  */
 function hosting_site_node_update($node) {
   if ($node->type == "site") {
-    if ((isset($node->no_verify) && $node->no_verify) == FALSE) {
+    if (empty($node->no_verify)) {
       hosting_add_task($node->nid, 'verify');
     }
   }
@@ -405,10 +443,22 @@ function hosting_site_node_update($node) {
  */
 function hosting_site_load($nodes) {
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query(
-      'SELECT  client, db_server, db_name, platform, profile, web_server, publish_path,
-        language AS site_language, last_cron, cron_key, s.status AS site_status,
-        p.status AS platform_status, s.verified, p.verified as platform_verified
+    $additions = db_query('SELECT  client, db_server, db_name, platform, profile, web_server,
+        publish_path,
+        language AS site_language,
+        last_cron,
+        cron_key,
+        s.status AS site_status,
+        file_public_path,
+        file_private_path,
+        file_temporary_path,
+        p.status AS platform_status,
+        s.verified,
+        p.verified as platform_verified,
+        p.git_root,
+        p.git_remote,
+        p.git_reference,
+        p.git_docroot
       FROM {hosting_site} s
         LEFT JOIN {hosting_platform} p ON s.platform = p.nid
       WHERE s.vid = :vid',
@@ -420,6 +470,52 @@ function hosting_site_load($nodes) {
   }
 
   // Create a "servers" array based on our two base servers.
-  $node->servers['web'] = node_load($node->web_server);
+  $node->servers['http'] = node_load($node->web_server);
   $node->servers['db'] = node_load($node->db_server);
+
+  // Set default files paths if they are empty.
+  $node->file_public_path = $node->file_public_path ?: 'sites/' . $node->title . '/files';
+  $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
+  $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
+
+  // Load default install_command, deploy_command, and test_command properties
+  $node->commands = hosting_find_deploy_commands($node);
 }
+
+/**
+ * Load deploy command from site source code.
+ *
+ * Possible sources:
+ *   1. Platform defaults: hosting_platform_load() (To be migrated to the devshop/platform class)
+ *   2. Platform composer.json: extra.devshop.commands.$COMMAND_NAME
+ *   3. Platform X.yml (@TODO).
+ *   4. Site {hosting_site_commands}: SQL table in control site stores site-specific command overrides. (@TODO)
+ *
+ * Each source provides a command for each "phase". If subsequent sources provide
+ * a command for a phase, it will override the earlier one.
+ *
+ * Examples:
+ *
+ * Composer Platform: Development Site.
+ *
+ *   1. Platform composer.json defines default composer install command. in `extra.devshop.commands.build`: composer install --no-dev --no-suggest --no-progress
+ *   2. Site gets created with "install" option that overrides platform "install", which gets saved to {hosting_site_commands} entry: composer install --dev.
+ *
+ * @TODO: Move to drupal/provision once hosting requires drupal/provision.
+ */
+function hosting_find_deploy_commands($node) {
+  $composer_json_path = $node->git_root . DIRECTORY_SEPARATOR . 'composer.json';
+  if (file_exists($composer_json_path)) {
+    $composer_data = json_decode(file_get_contents($composer_json_path), TRUE);
+    $commands = isset($composer_data['extra']['devshop']['commands'])
+      ? $composer_data['extra']['devshop']['commands']
+      : array();
+  }
+  else {
+    $commands = array();
+  }
+  return $commands;
+
+  // @TODO: Look for site command overrides. Remember platform nodes run this too
+}
+

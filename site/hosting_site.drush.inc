@@ -12,12 +12,17 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['db_server'] = hosting_context_name($task->ref->db_server);
   $task->context_options['platform'] = hosting_context_name($task->ref->platform);
 
-  $task->context_options['uri'] = strtolower(trim($task->ref->title));
+  $task->context_options['uri'] = hosting_site_get_domain($task->ref->title);
   $task->context_options['language'] = $task->ref->site_language;
 
   $profile = node_load($task->ref->profile);
-  $task->context_options['profile'] = $profile->short_name;
-
+  if (!empty($profile->short_name)) {
+    $task->context_options['profile'] = $profile->short_name;
+  }
+  else {
+    $task->context_options['profile'] = '';
+  }
+  // @TODO: Legacy refactor needed. Move to Hosting Client module.
   $client = node_load($task->ref->client);
   $user = user_load($task->uid);
   if ($task->task_type != 'import' && $task->task_type != 'delete' && $task->task_type != 'verify') {
@@ -25,11 +30,17 @@ function hosting_hosting_site_context_options(&$task) {
   }
   $task->context_options['client_name'] = $client->uname;
 
+  // @TODO: Move to Hosting Drupal module... when it exists.
   // Set "install_method" property, only if there is one present on the site node.
   // "profile" is used by default, we don't have to set it here.
   if (isset($task->ref->install_method) && !empty($task->ref->install_method)) {
     $task->context_options['install_method'] = $task->ref->install_method;
   }
+
+  // Set File directories if they exist
+  $task->context_options['file_public_path'] = $task->ref->file_public_path;
+  $task->context_options['file_private_path'] = $task->ref->file_private_path;
+  $task->context_options['file_temporary_path'] = $task->ref->file_temporary_path;
 }
 
 /**
@@ -38,7 +49,7 @@ function hosting_hosting_site_context_options(&$task) {
 function hosting_site_drush_context_import($context, &$node) {
   if ($context->type == 'site') {
     if (!isset($node->title)) {
-      $node->title = strtolower(trim($context->uri)); // force lowercase for existing uri
+      $node->title = hosting_site_get_domain($context->uri); // force lowercase for existing uri
     }
     $node->site_language = $context->language;
     $node->cron_key = $context->cron_key;
@@ -59,16 +70,18 @@ function hosting_site_drush_context_import($context, &$node) {
           'p.short_name' => 'standard',
         ));
         if ($profile) {
-           drush_log(dt("Could not find the Profile !profile for Platfrom ID !platform, substituted standard", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
+          drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Using standard profile instead.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
         }
       }
     }
 
     // Log an error if there is still no profile.
     if (!$profile) {
-      drush_set_error("HOSTING_SITE_IMPORT_ERROR", dt("Could not find the Profile !profile for Platfrom ID !platform", array('!profile' => $context->profile, '!platform' => $node->platform)));
+      drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Unable to save install profile metadata for this site.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
     }
-    $node->profile = $profile->package_id;
+    else {
+      $node->profile = $profile->package_id;
+    }
 
     $client = node_load(HOSTING_DEFAULT_CLIENT);
     if ($context->client_name) {
@@ -80,6 +93,8 @@ function hosting_site_drush_context_import($context, &$node) {
 }
 
 /**
+ * Implements drush_HOOK_pre_COMMAND()
+ *
  * Map values of site node into command line arguments
  */
 function drush_hosting_site_pre_hosting_task($task) {
@@ -99,11 +114,28 @@ function drush_hosting_site_pre_hosting_task($task) {
     $task->args[1] = implode(',', $backups);
   }
 
+  if ($task->task_type == 'deploy') {
+
+    // Create an array so as to not disrupt task_args.
+    $task_arguments = $task->task_args;
+
+    // Drush command arguments.
+    $task->args[] = $task_arguments['target_git_reference'];
+    unset($task_arguments['target_git_reference']);
+
+    // Drush command options.
+    $task->options['reset'] = intval($task_arguments['git_reset']);
+    unset($task_arguments['git_reset']);
+
+    // Load the rest of the task args into drush options.
+    foreach ($task_arguments as $arg => $value) {
+      $task->options[$arg] = $value;
+    }
+  }
 }
 
-
 /**
- * implementation of the hosting_post_install hook
+ * Implements hook_post_hosting_TASK_TYPE_task()
  */
 function hosting_site_post_hosting_install_task($task, $data) {
   if ($task->ref->type == 'site') {
@@ -155,6 +187,9 @@ function hosting_site_hosting_install_task_rollback($task, $data) {
  * I am not very fond of the use of bitwise operators with negatives.
  */
 function hosting_site_post_hosting_disable_task($task, $data) {
+  if ($task->ref->type != 'site') {
+    return;
+  }
   if ($data['context']['backup_file'] && $data->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being disabled'), $data['context']['backup_file_size']);
@@ -183,19 +218,21 @@ function hosting_site_post_hosting_restore_task($task, $data) {
  * Implements hook_hosting_post_enable().
  */
 function hosting_site_post_hosting_enable_task($task, $data) {
+  if ($task->ref->type != 'site') {
+    return;
+  }
   $task->ref->site_status = HOSTING_SITE_ENABLED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
 }
 
 /**
- * Implements hook_hosting_post_DELETE().
+ * Implements hook_post_hosting_TASK_TYPE_task().
  */
 function hosting_site_post_hosting_delete_task($task, $data) {
   if ($task->ref->type == 'site') {
     $task->ref->site_status = HOSTING_SITE_DELETED;
     $task->ref->no_verify = TRUE;
-    hosting_context_delete($task->ref->nid);
     node_save($task->ref);
 
     // Record the backup created during delete.
@@ -228,6 +265,9 @@ function hosting_site_post_hosting_backup_task($task, $data) {
  * Implements hook_post_hosting_import_task().
  */
 function hosting_site_post_hosting_import_task($task, $data) {
+  if ($task->ref->type != 'site') {
+    return;
+  }
   $site_nid = hosting_drush_import($task->ref->hosting_name);
 
   // Update the site node with the database name.
@@ -240,11 +280,30 @@ function hosting_site_post_hosting_import_task($task, $data) {
   hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
 }
 
+
+/**
+ * Implements hook_post_hosting_deploy_task().
+ *
+ * Ensure post-verify task hooks are run after a deploy.
+ */
+function hosting_site_post_hosting_deploy_task($task, $data)
+{
+  if ($task->ref->type == 'site') {
+    hosting_site_post_hosting_verify_task($task, $data);
+  }
+}
+
 /**
  * Implements hook_post_hosting_verify_task().
  */
 function hosting_site_post_hosting_verify_task($task, $data) {
   if ($task->ref->type == 'site') {
+
+    // Run hook_post_hosting_verify_task() on the platform for this site.
+    $platform_task = _drush_hosting_task_create_platform_task($task);
+    $platform_data = $data;
+    hosting_platform_post_hosting_verify_task($platform_task, $platform_data);
+
     $task->ref->verified = REQUEST_TIME;
     $task->ref->no_verify = TRUE;
     $task->ref->db_name = $data['self']['db_name'];
@@ -253,10 +312,17 @@ function hosting_site_post_hosting_verify_task($task, $data) {
     }
     node_save($task->ref);
 
-    $context = $data['context'];
-    $packages = $context['packages'];
-    hosting_package_sync($packages);
-    hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
+    // @TODO: The $data from the function param seems to always be empty, if we figure out how to populate it from drush_hosting_task() remove this.
+    // @see hosting_platform_post_hosting_verify_task()
+//    $data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
+
+    // Populate site package data
+    $packages_drupal = drush_get_option('packages', array(), 'drupal');
+    hosting_package_sync($packages_drupal);
+
+    $packages_site = drush_get_option('packages', array(), 'site');
+    hosting_package_sync($packages_site);
+    hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages_drupal, $packages_site);
   }
 }
 

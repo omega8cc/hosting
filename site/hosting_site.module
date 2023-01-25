@@ -3,6 +3,11 @@
  * @file
  * Contains hook implementations for Hosting site module.
  */
+use TQ\Git\Repository\Repository;
+use GitWrapper\GitWrapper;
+use GitWrapper\GitWorkingCopy;
+use GitWrapper\GitException;
+use DevShop\Component\PowerProcess\PowerProcess;
 
 /**
  * This site is deleted from the backend.
@@ -183,10 +188,10 @@ function hosting_site_wildcard_load($arg) {
 function _hosting_site_goto_link($node) {
   $cache = cache_get("hosting:site:" . $node->nid . ":login_link");
   if (user_access('create login-reset task') && $cache && (REQUEST_TIME < $cache->data['expire'])) {
-    $title = t("Log in to !url", array('!url' => $node->title));
+    $title = t("Log in to !url", array('!url' => hosting_site_canonical_url($node)));
   }
   else {
-    $title = t("Go to !url", array('!url' => $node->title));
+    $title = t("Go to !url", array('!url' => hosting_site_canonical_url($node)));
   }
   $url = "node/" . $node->nid . "/goto_site";
   return theme('hosting_site_goto_link', array('title' => $title, 'url' => $url));
@@ -239,7 +244,7 @@ function _hosting_site_url($node) {
   $schema = 'http';
   $port = NULL;
 
-  $url = strtolower(trim($node->title));
+  $url = hosting_site_canonical_url($node);
 
   $platform = node_load($node->platform);
   $server = node_load($platform->web_server);
@@ -274,6 +279,17 @@ function _hosting_site_url($node) {
   }
 
   return "{$schema}://{$url}";
+}
+
+/**
+ * Get a site's canonical URL.
+ */
+function hosting_site_canonical_url($node) {
+  # Use the redirection target, if it's available.
+  # Default to the site title, otherwise.
+  $url = isset($node->redirection) && $node->redirection ? $node->redirection : $node->title;
+
+  return hosting_site_clean_domain($url);
 }
 
 /**
@@ -333,14 +349,23 @@ function hosting_site_hosting_tasks() {
   $tasks['site']['install'] = array(
     'title' => t('Install'),
     'description' => t('Install a site'),
-    'hidden' => TRUE,
     'provision_save' => TRUE,
+    'dialog' => TRUE,
+    // 'command' => 'install',
   );
 
   $tasks['site']['import'] = array(
     'title' => t('Import'),
     'description' => t('Import an existing site into Aegir'),
     'hidden' => TRUE,
+  );
+
+  $tasks['site']['deploy'] = array(
+    'title' => t('Deploy'),
+    'description' => t('Deploy new code and run pre- and post- deployment scripts.'),
+    'dialog' => TRUE,
+    'icon' => 'truck',
+    'provision_save' => TRUE,
   );
 
   return $tasks;
@@ -719,6 +744,15 @@ function theme_hosting_site_profile($variables) {
 }
 
 /**
+ * Theme function for site titles.
+ */
+function hosting_site_preprocess(&$variables) {
+  if (isset($variables['node'])) {
+    $variables['title'] = hosting_site_canonical_url($variables['node']);
+  }
+}
+
+/**
  * Control block visibility.
  */
 function hosting_site_client_list_block_visibility() {
@@ -791,4 +825,287 @@ function hosting_site_hosting_task_guarded_nodes() {
   return array(
     hosting_get_hostmaster_site_nid()
   );
+}
+
+/**
+ * Confirmation form for site deploy.
+ *
+ * @see hosting_task_confirm_form().
+ */
+function hosting_task_deploy_form($node) {
+  $form = array();
+  if ($node->type == 'site') {
+
+    try {
+      $wrapper = new GitWrapper();
+      $git = $wrapper->workingCopy($node->git_root);
+      $diff = $git->diff()->getOutput();
+      $status = $git->getStatus();
+
+    } catch (GitException $e) {
+      drupal_set_message($e->getMessage(), 'error');
+    }
+
+    $two_col_classes = array(
+      'col-sm-6',
+      'col-md-6',
+      'col-lg-6',
+    );
+
+    $form['info'] = array(
+      '#type' => 'container',
+      '#attributes' => array(
+        'class' => array('container')
+      ),
+      'current' => array(
+        '#type' => 'container',
+        '#attributes' => array(
+          'class' => $two_col_classes,
+        ),
+      ),
+      'target' => array(
+        '#type' => 'container',
+        '#attributes' => array(
+          'class' => $two_col_classes,
+        ),
+      ),
+    );
+    $form['info']['current']['current_git_reference'] = array(
+      '#title' => t('Current Git Reference'),
+      '#type' => 'item',
+      '#markup' => $node->git_reference,
+      '#description' => t('The current branch, tag, or SHA of the site code at &path.', array(
+        '&path' => $node->git_root,
+      )),
+      '#field_prefix' => '<div class="label label-default git-ref-label">',
+      '#field_suffix' => '</div>',
+    );
+
+    // Allow the user to change git_reference here.
+    $form['info']['target']['target_git_reference'] = array(
+      '#title' => t('Target Git Reference'),
+      '#type' => 'textfield',
+      '#default_value' => $_GET['git_reference'] ? : $node->git_reference,
+      '#description' => t('Enter the desired git branch, tag, or SHA. If a branch is entered, the git repository will pulled and reset to match the remote repository. If a tag or SHA is entered, it will be checked out, resulting in a "DETACHED HEAD" state.'),
+      '#parents' => array(
+        'parameters', 'target_git_reference',
+      ),
+      '#attributes' => array(
+        'class' => array(
+          'col-md-6'
+        ),
+      ),
+    );
+
+    /**
+     * @TODO:
+    // Offer users ability to control commands that will run during this deployment.
+    $form['hooks'] = array(
+      '#type' => 'container',
+      'title' => array(
+        '#prefix' => '<h4>',
+        '#markup' => t('Deployment Phases'),
+        '#suffix' => '</h4>',
+      ),
+      'description' => array(
+        '#markup' => t('Choose what commands will be run during this deploy.'),
+      ),
+      '#attributes' => array(
+        'class' => array(
+          'alert alert-info'
+        ),
+      ),
+    );
+    $form['hooks']['checkout'] = array(
+      '#title' => _hosting_task_deploy_command_form_title('git', $node->commands),
+      '#type' => 'checkbox',
+      '#default_value' => TRUE,
+      '#disabled' => TRUE,
+      '#parents' => array(
+        'parameters', 'build',
+      ),
+    );
+    $form['hooks']['build'] = array(
+      '#title' => _hosting_task_deploy_command_form_title('build', $node->commands),
+      '#type' => 'checkbox',
+      // @TODO: Use site default.
+      '#default_value' => TRUE,
+      '#parents' => array(
+        'parameters', 'build',
+      ),
+    );
+    $form['hooks']['install'] = array(
+      '#title' => _hosting_task_deploy_command_form_title('install', $node->commands),
+      '#type' => 'checkbox',
+      '#parents' => array(
+        'parameters', 'install',
+      ),
+    );
+    $form['hooks']['deploy'] = array(
+      '#title' => _hosting_task_deploy_command_form_title('deploy', $node->commands),
+      '#type' => 'checkbox',
+      '#default_value' => TRUE,
+      '#parents' => array(
+        'parameters', 'deploy',
+      ),
+    );
+    $form['hooks']['test'] = array(
+      '#title' => _hosting_task_deploy_command_form_title('test', $node->commands),
+      '#type' => 'checkbox',
+      '#parents' => array(
+        'parameters', 'test',
+      ),
+    );
+
+    // Check for working copy changes and offer to reset them for the user.
+    $form['danger_zone'] = array(
+      '#type' => 'container',
+      'title' => array(
+        '#prefix' => '<h4>',
+        '#markup' => t('DANGER ZONE'),
+        '#suffix' => '</h4>',
+      ),
+      '#attributes' => array(
+        'class' => array(
+          'alert alert-danger'
+        ),
+      ),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="parameters[install]"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+    $form['danger_zone']['git_reset'] = array(
+      '#title' => t('Discard working copy changes.'),
+      '#type' => 'checkbox',
+      '#default_value' => FALSE,
+      '#description' => t('Uncommitted changes were detected in the codebase. Check this box to discard changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
+      '#parents' => array(
+        'parameters', 'git_reset'
+      ),
+      '#access' => !empty($diff) || !empty($status),
+    );
+    /**
+     * @TODO: This was built with assumption deploy stages was available.
+    $form['danger_zone']['confirm_destroy'] = array(
+      '#title' => t('I understand that all data in the site !link will be destroyed.', array(
+        '!link' => l($node->title, $node->title),
+      )),
+      '#type' => 'checkbox',
+      '#default_value' => FALSE,
+      '#description' => t('The site will be destroyed before the <code>install</code> command is run.'),
+      '#parents' => array(
+        'confirm_destroy'
+      ),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="parameters[install]"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+    */
+  }
+
+  $form['git_info'] = array(
+    '#title' => t('View git status in &path', array(
+      '&path' => $node->git_root,
+    )),
+    '#type' => 'fieldset',
+    '#collapsed' => true,
+    '#collapsible' => true,
+    'status' => array(
+      '#prefix' => '<h4>' . t('Git Status') . '</h4><pre>',
+      '#markup' => $status,
+      '#suffix' => '</pre>',
+      '#access' => !empty($status),
+    ),
+    'diff' => array(
+      '#prefix' => '<h4>' . t('Git diff') . '</h4><pre>',
+      '#markup' => $diff,
+      '#suffix' => '</pre>',
+      '#access' => !empty($diff),
+    ),
+    'clean' => array(
+      '#prefix' => '<h4>',
+      '#markup' => t('Git working copy is clean. No changes.'),
+      '#suffix' => '</h4>',
+      '#access' => empty($diff) && empty($status),
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * Output friendly looking HTML after a deploy checkbox.
+ * @param $command_name
+ * @param $commands array The full array of commands.
+ */
+function _hosting_task_deploy_command_form_title($command_name, $commands) {
+    $command = isset($commands[$command_name])
+      ? $commands[$command_name]
+      : '';
+
+    $command_title_text = '<span class="command-label"><code>!command_name</code></span> !command';
+    $missing_prefix = '<span class="alert alert-warning alert-inline"><i class="fa fa-warning"></i> ';
+    $missing_text = 'MISSING. Add desired command to <code>composer.json:extra.devshop.commands.!name</code>';
+    $missing_suffix = '</span>';
+
+    return t($command_title_text, array(
+    '!command_name' => $command_name,
+    '!command' => $command
+      ? '<kbd>' . $command . '</kbd>'
+      : $missing_prefix . t($missing_text, array('!name' => $command_name)) . $missing_suffix,
+    ));
+
+}
+
+/**
+ * Confirmation form for site backups.
+ *
+ * @see hosting_task_confirm_form().
+ */
+function hosting_task_delete_form($node) {
+  $form = array();
+  if ($node->type == 'site') {
+    $form['confirm'] = array(
+      '#title' => t('Confirm: All data in this site will be destroyed. Check this box to confirm your intentions to do this.'),
+      '#type' => 'checkbox',
+      '#required' => TRUE,
+      '#description' => t('WARNING: Taking this action will destroy all data in the site !link.', array(
+        '!link' => l($node->title, $node->title, array(
+          'options' => array(
+            'attributes' => array(
+              'target' => '_blank',
+            ),
+          ),
+        )),
+      )),
+    );
+  }
+  return $form;
+}
+
+/**
+ * Allow other modules to alter the domain.
+ */
+function hosting_site_get_domain($domain) {
+  drupal_alter('hosting_site_domain', $domain);
+  return $domain;
+}
+
+/**
+ * Implements hook_hosting_site_domain_alter().
+ */
+function hosting_site_hosting_site_domain_alter(&$domain) {
+  $domain = hosting_site_clean_domain($domain);
+}
+
+/**
+ * Ensure domains are properly formatted.
+ */
+function hosting_site_clean_domain($domain) {
+  // Domain names are case-insensitive.
+  return strtolower(trim($domain));
 }

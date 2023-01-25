@@ -18,9 +18,16 @@ function hosting_hosting_platform_context_options(&$task) {
   if (isset($task->ref->make_working_copy) && !empty($task->ref->make_working_copy)) {
     $task->context_options['make_working_copy'] = $task->ref->make_working_copy;
   }
-  else {
-    $task->context_options['make_working_copy'] = 'null';
-  }
+
+
+
+  // Pass git options.
+  $task->context_options['git_root'] = $task->ref->git_root;
+  $task->context_options['git_remote'] = $task->ref->git_remote;
+  $task->context_options['git_reference'] = isset($task->task_args['target_git_reference'])? $task->task_args['target_git_reference']: $task->ref->git_reference;
+  $task->context_options['git_docroot'] = $task->ref->git_docroot;
+  $task->context_options['git_reset'] = $task->ref->git_reset;
+
 }
 
 /**
@@ -37,6 +44,13 @@ function hosting_platform_drush_context_import($context, &$node) {
     if (isset($context->make_working_copy) && !empty($context->make_working_copy)) {
       $node->make_working_copy = $context->make_working_copy;
     }
+
+    // Import git options from the context.
+    $node->git_root = $context->git_root;
+    $node->git_remote = $context->git_remote;
+    $node->git_reference = $context->git_reference;
+    $node->git_reset = $context->git_reset;
+    $node->git_docroot = $context->git_docroot;
   }
 }
 
@@ -49,8 +63,17 @@ function hosting_platform_drush_context_import($context, &$node) {
 function hosting_platform_post_hosting_verify_task($task, $data) {
   $node = $task->ref;
   if ($node->type == 'platform') {
+    // START: 3.x released code
     $context = $data['context'];
     $packages = $context['packages'];
+    // END: 3.x released code
+
+    // START: 4.x dev code
+    // Reload DATA from the provision context: or you will get hostmaster packages!
+    // @TODO: re-implement provision-packages command in next round of modernization.
+    /////$data = provision_backend_invoke($task->ref->hosting_name, "provision-packages");
+    // $packages = $data['context']['packages'];
+    // END: 4.x dev code
 
     // Lock platforms by default.
     if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
@@ -70,35 +93,60 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       $node->platform_status = HOSTING_PLATFORM_ENABLED;
     }
     $node->no_verify = TRUE;
+
+    // Load git information from context.
+    $node->git_root = d($task->ref->hosting_name)->git_root;;
+    $node->git_remote = d($task->ref->hosting_name)->git_remote;
+    $node->git_reference = d($task->ref->hosting_name)->git_reference;
+    $node->git_docroot = d($task->ref->hosting_name)->git_docroot;
+    $node->git_reset = d($task->ref->hosting_name)->git_reset;
+
     // Save the platform being verified.
     node_save($node);
+    drush_log(dt('Metadata saved for %type %title [%url]', [
+      '%type' => $node->type,
+      '%title' => $node->title,
+      '%url' => url("node/{$node->nid}", [
+        'absolute' => true,
+      ]),
+    ]), 'p_log');
 
+    // @TODO: Legacy refactor needed.
     hosting_package_sync($packages['base']);
     hosting_package_sync($packages['sites-all']);
     hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
-    foreach ($context['profiles'] as $profile) {
-      hosting_package_sync($packages['profiles'][$profile]);
-      $instance = hosting_package_instance_load(
-        array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
-      hosting_package_instance_sync($instance->iid, $instance->package_type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
 
-      // @todo : package instances of modules to profiles. <-- huh?
+    // If there were profiles found in context data, loop and sync.
+    if (isset($context['profiles']) && is_array($context['profiles'])) {
+      foreach ($context['profiles'] as $profile) {
+        hosting_package_sync($packages['profiles'][$profile]);
+        $instance = hosting_package_instance_load(
+          array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
+        if (!empty($instance)) {
+          hosting_package_instance_sync($instance->iid, $node->type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
+        }
+
+        // @todo : package instances of modules to profiles. <-- huh?
+      }
     }
 
-    foreach ($context['sites'] as $url) {
-      if (hosting_domain_allowed($url)) {
-        // Import any sites that have not been created yet.
-        $site = new stdClass();
-        $site->type = 'site';
-        $site->site_status = HOSTING_SITE_QUEUED;
-        $site->import = TRUE;
-        $site->title = $url;
-        $site->platform = $node->nid;
-        $site->client = HOSTING_DEFAULT_CLIENT;
-        $site->db_server = HOSTING_DEFAULT_DB_SERVER;
-        node_save($site);
-        drush_log(dt("Imported existing site !domain", array('!domain' => _hosting_node_link($site->nid))));
-        hosting_package_instance_sync($site->nid, $site->type, $packages['base']);
+    // If configured to do so, import all sites found on this platform.
+    if (variable_get('hosting_platform_automatic_site_import', TRUE)) {
+      foreach ($context['sites'] as $url) {
+        if (hosting_domain_allowed($url)) {
+          // Import any sites that have not been created yet.
+          $site = new stdClass();
+          $site->type = 'site';
+          $site->site_status = HOSTING_SITE_QUEUED;
+          $site->import = TRUE;
+          $site->title = $url;
+          $site->platform = $node->nid;
+          $site->client = HOSTING_DEFAULT_CLIENT;
+          $site->db_server = HOSTING_DEFAULT_DB_SERVER;
+          node_save($site);
+          drush_log(dt("Imported existing site !domain", array('!domain' => _hosting_node_link($site->nid))));
+          hosting_package_instance_sync($site->nid, $site->type, $packages['base']);
+        }
       }
     }
   }
@@ -113,9 +161,12 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 }
 
 /**
- * Implements hook_hosting_post_DELETE().
+ * Implements hook_post_hosting_TASK_TYPE_task().
  */
 function hosting_platform_post_hosting_delete_task($task, $data) {
+  if ($task->ref->type != 'platform') {
+    return;
+  }
   $task->ref->platform_status = HOSTING_PLATFORM_DELETED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
@@ -132,6 +183,9 @@ function hosting_platform_post_hosting_delete_task($task, $data) {
  * @see http://drupal.org/node/1354
  */
 function hosting_platform_post_hosting_lock_task($task, $data) {
+  if ($task->ref->type != 'platform') {
+    return;
+  }
   $task->ref->platform_status = HOSTING_PLATFORM_LOCKED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
@@ -142,6 +196,9 @@ function hosting_platform_post_hosting_lock_task($task, $data) {
  * @see http://drupal.org/node/1354
  */
 function hosting_platform_post_hosting_unlock_task($task, $data) {
+  if ($task->ref->type != 'platform') {
+    return;
+  }
   $task->ref->platform_status = HOSTING_PLATFORM_ENABLED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);

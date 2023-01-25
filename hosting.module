@@ -138,7 +138,31 @@ function hosting_menu() {
     'access arguments' => array('access task logs'),
   );
 
+  $items['hostmaster'] = array(
+    'title' => 'Hostmaster',
+    'description' => 'View and configure the Hostmaster site.',
+    'page callback' => 'hosting_menu_hostmaster_redirect',
+    'access callback' => 'hosting_menu_hostmaster_access',
+    'menu_name' =>'main-menu',
+    'type' => MENU_NORMAL_ITEM,
+    'weight' => 100,
+  );
   return $items;
+}
+
+/**
+ * Access hook for /hostmaster callback page. Checks the access for hostmaster node page.
+ * @return bool
+ */
+function hosting_menu_hostmaster_access() {
+  return drupal_valid_path('node/' . hosting_get_hostmaster_nid());
+}
+
+/**
+ * Send the user from /hostmaster to /hosting/c/hostmaster
+ */
+function hosting_menu_hostmaster_redirect() {
+  drupal_goto('hosting/c/hostmaster');
 }
 
 /**
@@ -196,7 +220,43 @@ function hosting_menu_alter(&$items) {
   $items['node/add/task']['page callback'] = 'drupal_access_denied';
   $items['node/add/package']['type'] = MENU_CALLBACK;
   $items['node/add/task']['type'] = MENU_CALLBACK;
+
+  // Make drupal node pages more user-friendly.
+  $items['node/%node/view']['title callback'] = 'hosting_node_tab_title';
+  $items['node/%node/view']['title arguments'] = array('View', 1);
+  $items['node/%node/view']['weight'] = -100;
+
+  $items['node/%node/edit']['title callback'] = 'hosting_node_tab_title';
+  $items['node/%node/edit']['title arguments'] = array('Edit', 1);
+  $items['node/%node/edit']['weight'] = -99;
 }
+
+
+/**
+ * Replace the text used on node page "tabs".
+ */
+function hosting_node_tab_title($default, $node) {
+
+  // Use "X Dashboard" and "X Settings" for nodes that are hosting contexts.
+  $type_names = node_type_get_names();
+  if (!empty($node->hosting_name)) {
+    switch ($default) {
+      case "View":
+        return t('@type Dashboard', ['@type' => $type_names[$node->type]]);
+      case "Edit":
+        return t('@type Settings', ['@type' => $type_names[$node->type]]);
+    }
+  }
+
+  // Use "Task Log" for the "View" tab of task nodes.
+  if ($default == 'View' && $node->type == 'task') {
+    return t('Task Logs');
+  }
+
+  // Otherwise, just return the page text
+  return t($default);
+}
+
 
 /**
  * Menu access callback for creating a node provided by a Hosting feature.
@@ -505,6 +565,8 @@ function _hosting_node_link($nid, $title = NULL) {
   $node = node_load($nid);
   if (!isset($title)) {
     $title = isset($node->title) ? $node->title : NULL;
+    // Override with the redirect target, when available.
+    $title = $node->type == 'site' ? hosting_site_canonical_url($node) : $title;
     // Override with the human-readable name, when available.
     $title = isset($node->human_name) && strlen($node->human_name) ? $node->human_name : $title;
   }
@@ -864,6 +926,7 @@ function hosting_set_breadcrumb($node) {
       $breadcrumbs[] = l(t('Servers'), 'hosting/servers');
       break;
   }
+  $breadcrumbs[] = _hosting_node_link($node->nid);
   drupal_set_breadcrumb($breadcrumbs);
 }
 
@@ -884,15 +947,11 @@ function hosting_queues_configure($form, &$form_state) {
   $form['#tree'] = TRUE;
 
   foreach ($queues as $queue => $info) {
-    $form[$queue]['description'] = array(
-      '#type' => 'item',
-      '#value' => $info['name'],
-      '#description' => $info['description'],
-    );
-
     $form[$queue]["enabled"] = array(
       '#type' => 'checkbox',
       '#default_value' => $info['enabled'],
+      '#title' => $info['name'],
+      '#description' => $info['description'],
     );
 
     $form[$queue]["last_run"] = array(
@@ -983,8 +1042,7 @@ function theme_hosting_queues_configure($variables) {
 
   $rows = array();
   $header = array(
-    '',
-    t('Description'),
+    t('Queue'),
     array(
       'data' => t('Frequency'),
       'class' => array('hosting-queue-frequency-head'),
@@ -994,7 +1052,6 @@ function theme_hosting_queues_configure($variables) {
   foreach ($queues as $key => $info) {
     $row = array();
     $row[] = drupal_render($form[$key]['enabled']);
-    $row[] = drupal_render($form[$key]['description']);
     $row[] = drupal_render($form[$key]['frequency']);
     $row[] = drupal_render($form[$key]['last_run']);
     $rows[] = $row;
@@ -1266,6 +1323,25 @@ function hosting_views_api() {
 }
 
 /**
+ * Return a list of log entry types.
+ */
+function hosting_log_types() {
+  $known_types = [
+    'error',
+    'info',
+    'message',
+    'notice',
+    'ok',
+    'status',
+    'success',
+    'warning',
+  ];
+  $types_from_logs = db_query('SELECT DISTINCT type FROM {hosting_task_log}')->fetchCol();
+  $types = array_unique(array_merge($known_types, $types_from_logs));
+  return array_combine($types, $types);
+}
+
+/**
  * General settings form.
  */
 function hosting_settings($form, &$form_state) {
@@ -1306,6 +1382,12 @@ function hosting_settings($form, &$form_state) {
     '#description' => t("When verifying a new platform, set its initial state to 'Locked'. This can avoid having sites created on a new platform before there has been a chance to test it. Those users with the 'create sites on locked platforms' permission (e.g., with the 'platform manager' role) will still be able to build sites."),
     '#default_value' => variable_get('hosting_lock_platforms_by_default', FALSE),
   );
+  $form['hosting_platform_automatic_site_import'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Automatically import sites when verifying platforms'),
+    '#description' => t("When verifying a platform, if sites are found that do not yet exist in the front-end, automatically import them."),
+    '#default_value' => variable_get('hosting_platform_automatic_site_import', TRUE),
+  );
   $form['hosting_require_disable_before_delete'] = array(
     '#type' => 'checkbox',
     '#title' => t('Require site to be disabled before deletion'),
@@ -1318,6 +1400,12 @@ function hosting_settings($form, &$form_state) {
     '#description' => t('If something goes wrong when deleting a site, platform, or server, the task will fail. Check this box to force contexts to be removed when Delete tasks are run.'),
     '#default_value' => variable_get('hosting_delete_force', FALSE),
   );
+  $form['hosting_site_allow_custom_file_paths'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow sites to have custom file paths for public, private, and temporary files.'),
+    '#description' => t('When creating or editing a site, show a field for changing the default files paths. <em>CAUTION:</em> The web server user will be granted write access permission to these folders so that the Drupal site can receive uploaded files. If this is checked, Aegir users can enter any path, and the <code>aegir</code> system user will attempt to make it writable for the web server user, typically <code>www-data</code>, <code>apache</code> or <code>nginx</code>. '),
+    '#default_value' => variable_get('hosting_site_allow_custom_file_paths', FALSE),
+  );
   if (hosting_feature('cron')) {
     $form['hosting_cron_use_backend'] = array(
       '#type' => 'radios',
@@ -1328,18 +1416,14 @@ function hosting_settings($form, &$form_state) {
     );
   }
 
-  $types = implode(' ', db_query('SELECT type FROM {hosting_task_log} GROUP BY type ORDER BY type')->fetchCol());
-  if (empty($types)) {
-    $types = 'error warning info message notice ok status success warning';
-  }
+  $types = hosting_log_types();
+
   $form['hosting_task_logs_types_display'] = array(
-    '#type' => 'textarea',
+    '#type' => 'checkboxes',
     '#title' => t('Task Logs to Display'),
-    '#description' => t('Enter the types of logs you wish to show to the user, separated by spaces. Use the special type "ALL" to get any type. Available log types are: %types', array(
-      '%types' => $types,
-    )),
-    '#rows' => 2,
-    '#default_value' => variable_get('hosting_task_logs_types_display', 'ALL'),
+    '#description' => t('Select the types of logs you wish to show to the user.'),
+    '#options' => $types,
+    '#default_value' => variable_get('hosting_task_logs_types_display', $types),
   );
   return system_settings_form($form);
 }

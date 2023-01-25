@@ -134,6 +134,8 @@ function hosting_server_hosting_tasks() {
     'description' => t('Verify that the server is correctly installed and working.'),
     'weight' => 10,
     'provision_save' => TRUE,
+    // @TODO: Uncomment when "provision verify" is ready.
+    // 'command' => 'verify',
   );
 
   $tasks['server']['delete'] = array(
@@ -149,8 +151,8 @@ function hosting_server_hosting_tasks() {
  */
 function hosting_server_permission() {
   return array(
-    'administer server' => array(
-      'title' => t('administer server'),
+    'administer servers' => array(
+      'title' => t('administer servers'),
     ),
     'create server' => array(
       'title' => t('create server'),
@@ -171,7 +173,7 @@ function hosting_server_permission() {
  * Implements hook_node_access().
  */
 function hosting_server_node_access($node, $op, $account) {
-  if (hosting_feature('client') && $op != 'create') {
+  if (variable_get('hosting_server_use_hosting_client_access', TRUE) && hosting_feature('client') && $op != 'create') {
     // We rely on hosting_client_node_grants() instead of global configuration.
     return NODE_ACCESS_IGNORE;
   }
@@ -181,18 +183,23 @@ function hosting_server_node_access($node, $op, $account) {
     return NODE_ACCESS_IGNORE;
   }
 
+  // Permission "administer servers" allows all ops.
+  if (user_access('administer servers', $account)) {
+    return 'allow';
+  }
+
   switch ($op) {
     case 'create':
-      return user_access('create server', $account);
+      return user_access('create server', $account)? NODE_ACCESS_ALLOW: NODE_ACCESS_DENY;
 
     case 'update':
-      return user_access('edit server', $account);
+      return user_access('edit server', $account)? NODE_ACCESS_ALLOW: NODE_ACCESS_DENY;
 
     case 'delete':
-      return user_access('delete server', $account);
+      return user_access('delete server', $account)? NODE_ACCESS_ALLOW: NODE_ACCESS_DENY;
 
     case 'view':
-      return user_access('view server', $account);
+      return user_access('view server', $account)? NODE_ACCESS_ALLOW: NODE_ACCESS_DENY;
 
   }
 }
@@ -385,6 +392,11 @@ function hosting_server_form($node, &$form_state) {
   $ips = $node->ip_addresses;
   $ips_count = max(3, empty($ips) ? 3 : count($ips) + 1);
 
+  // Make sure there's at least 3 fields for IPs
+  if (count($ips) == 0) {
+    $ips = ['', '', ''];
+  }
+
   // Add alias textfields.
   foreach ($ips as $id => $ip) {
     $form['ips_wrapper']['ip_addresses'][$id] = array(
@@ -392,17 +404,6 @@ function hosting_server_form($node, &$form_state) {
       '#default_value' => $ip,
     );
     $ips_count--;
-  }
-  $form['ips_wrapper']['new_ip_addresses'] = array(
-    '#prefix' => '<div id="hosting-ip-addresses">',
-    '#suffix' => '</div>',
-    '#tree' => TRUE,
-    // '#theme' => 'hosting_alias_form',
-  );
-  for ($delta = 0; $delta < $ips_count; $delta++) {
-    $form['ips_wrapper']['new_ip_addresses'][$delta] = array(
-      '#type' => 'textfield',
-    );
   }
 
   $form['services_tabs'] = array(
@@ -557,9 +558,9 @@ function hosting_server_update($node) {
     ->condition('nid', $node->nid)
     ->execute();
 
-  _hosting_ip_save($node, TRUE);
+  _hosting_ip_save($node);
 
-  if (!isset($node->no_verify) || !$node->no_verify) {
+  if (empty($node->no_verify)) {
     hosting_add_task($node->nid, 'verify');
   }
 }
@@ -582,12 +583,12 @@ function hosting_server_insert($node) {
     ))
     ->execute();
 
-  _hosting_ip_save($node, FALSE);
+  _hosting_ip_save($node);
 
   hosting_server_invoke_services($node, 'save', $node);
   hosting_server_invoke_services($node, 'insert', $node);
 
-  if (!isset($node->no_verify) || !$node->no_verify) {
+  if (empty($node->no_verify)) {
     hosting_add_task($node->nid, 'verify');
   }
 }
@@ -907,7 +908,7 @@ function _hosting_server_preprocess_classes(&$classes, $rows) {
   foreach ($classes as $field_label => $field_row) {
     if (is_numeric($field_label)) {
       foreach ($field_row as $index => $field_classes) {
-        $classes[$field_label][$index] .= $rows[$index][$field_label] == 'no' ? ' hosting-service-unavailable' : ' hosting-service-available';
+        $classes[$field_label][$index] .= empty($rows[$index][$field_label]) ? ' hosting-service-none' : ' hosting-service-available';
       }
     }
   }

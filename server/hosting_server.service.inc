@@ -8,6 +8,9 @@ class hostingService {
 
   public $server;
 
+  // The full server node attached to this service.
+  public $server_node;
+
   // The service this class represents. ie 'http', 'db'
   public $service = '';
 
@@ -44,6 +47,10 @@ class hostingService {
     return $this->has_port;
   }
 
+  public function has_restart_cmd() {
+    return $this->has_restart_cmd;
+  }
+
   public function load() {
     $this->mergeData("SELECT port, restart_cmd, available
                       FROM {hosting_service}
@@ -71,6 +78,7 @@ class hostingService {
 
   public function save($node) {
     if (isset($node->nid)) {
+      $this->server_node = $node;
       $this->server = new stdClass();
       $this->server->nid = $node->nid;
       $this->server->vid = $node->vid;
@@ -214,5 +222,12 @@ class hostingService {
     }
   }
 
+  /**
+   * Return service properties to Provision CLI.
+   * @return array
+   */
+  function provisionProperties() {
+    return array();
+  }
 }
 

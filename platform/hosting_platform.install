@@ -22,15 +22,44 @@ function hosting_platform_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'git_remote' => array(
+        'description' => 'The URL or path of the git repository to use when creating this platform.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => NULL,
+      ),
+      'git_reference' => array(
+        'description' => 'The desired git reference. Can be a branch, tag or SHA. Defaults to the git repository default branch.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => NULL,
+      ),
+      'git_reset' => array(
+        'description' => 'Reset any changes to this platform when verifying.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => 1,
+      ),
+      'git_root' => array(
+        'description' => 'The full path on the server to clone the git repository to.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => NULL,
+      ),
+      'git_docroot' => array(
+         'description' => 'The relative path within the git repository to publish to the web.',
+         'type' => 'varchar',
+         'length' => 255,
+         'default' => NULL,
+       ),
       'publish_path' => array(
         'type' => 'text',
         'size' => 'big',
-        'not null' => FALSE,
       ),
       'makefile' => array(
         'type' => 'text',
         'size' => 'big',
-        'not null' => FALSE,
       ),
       'web_server' => array(
         'type' => 'int',
@@ -220,3 +249,66 @@ function hosting_platform_update_6208() {
   }
   return $ret;
 }
+
+/**
+ * Create new columns for git properties.
+ */
+function hosting_platform_update_7400() {
+  $spec = array( 
+      'git_remote' => array(
+        'description' => 'The URL or path of the git repository to use when creating this platform.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => NULL,
+      ),
+      'git_reference' => array(
+        'description' => 'The desired git reference. Can be a branch, tag or SHA. Defaults to the git repository default branch.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => NULL,
+      ),
+      'git_reset' => array(
+        'description' => 'Reset any changes to this platform when verifying.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => 1,
+      ),
+      'git_root' => array(
+        'description' => 'The full path on the server to clone the git repository to.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => NULL,
+      ),
+      'git_docroot' => array(
+         'description' => 'The relative path within the git repository to publish to the web.',
+         'type' => 'varchar',
+         'length' => 255,
+         'default' => NULL,
+       ),
+  );
+
+  foreach ($spec as $field => $field_spec) {
+      db_add_field('hosting_platform', $field, $field_spec);
+  }
+}
+
+/**
+ * Migrate data from hosting_git for each platform.
+ */
+function hosting_platform_update_7401() {
+  $platforms = db_query('SELECT * FROM {hosting_git} g INNER JOIN {hosting_platform} p ON p.nid = g.nid');
+
+  foreach ($platforms as $platform) {
+    db_merge('hosting_platform')
+      ->key(array('nid' => $platform->nid))
+      ->fields(array(
+          'git_remote' => $platform->repo_url,
+          'git_reference' => $platform->git_ref,
+          'git_root' => $platform->repo_path,
+          'git_docroot' => $platform->repo_docroot,
+        ))
+        ->execute();
+  }
+}
+

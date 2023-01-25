@@ -1,4 +1,4 @@
-<?php
+ <?php
 /**
  * @file
  * Site node form.
@@ -96,6 +96,10 @@ function hosting_site_available_options($node, $platform = NULL) {
   $user = user_load($GLOBALS['user']->uid);
 
   // Install profiles.
+  if (!module_exists('hosting_package')) {
+    return $return;
+  }
+
   $profiles = hosting_get_profiles();
   $platform_profiles = array();
   foreach ($profiles as $id => $name) {
@@ -211,7 +215,7 @@ function hosting_site_form($node, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Domain name'),
     '#required' => TRUE,
-    '#default_value' => isset($node->title) ? strtolower(trim($node->title)) : '',
+    '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '',
     '#weight' => -10,
   ));
 
@@ -229,66 +233,91 @@ function hosting_site_form($node, &$form_state) {
     '#autocomplete_path' => 'hosting_client/autocomplete/client',
   ), 'filter_xss', $editable);
 
-  // Install profiles.
-  $profiles = hosting_get_profiles();
-  foreach ($profiles as $id => $name) {
-    $profile = hosting_package_instance_load(array('p.nid' => $id));
-    $profiles[$id] = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
-  }
-  natcasesort($profiles);
-  reset($profiles);
-
-  _hosting_site_field($form, $node, 'profile', array(
-    '#type' => 'radios',
-    '#title' => t('Install profile'),
-    '#description' => t('The type of site to install.<br />
-                           The profile selected here determines the list of supported platforms below.'),
-    '#options' => $profiles,
-    '#default_value' => isset($node->profile) ? $node->profile : hosting_get_default_profile(key($profiles)),
-    '#required' => TRUE,
-    '#attributes' => array('class' => array("hosting-site-form-profile-options")),
-    '#ajax' => array(
-      'callback' => 'hosting_site_platform_callback',
-      'wrapper' => 'hosting-site-field-platform' ,
-      'effect' => 'fade',
-      'event' => 'change',
-      'method' => 'replace',
-    ),
-  ), '_hosting_node_link');
-
   // Override the defaults if the profile has been changed.
-  if (isset($form_state['values']['profile'])) {
-    $selected_profile = $form_state['values']['profile'];
+  if (isset($form_state['values']['platform'])) {
+    $selected_platform = $form_state['values']['platform'];
   }
   else {
-    $selected_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->nid;
+    $selected_platform = NULL;
   }
 
-  // Load platforms for the selected profile.
-  $platforms = hosting_get_profile_platforms($selected_profile);
+  // Install profiles.
+  // @TODO: Legacy refactor needed. This stuff should be moved to a "Hosting Drupal" module. The "if" here is just the first step.
+  if (module_exists('hosting_package')) {
 
-  $q = drupal_get_query_parameters();
-  if (isset($q['platform']) && is_numeric($q['platform'])) {
-    $default_platform = $q['platform'];
+    $profiles = hosting_get_profiles();
+    foreach ($profiles as $id => $name) {
+      $profile = hosting_package_instance_load(array('p.nid' => $id));
+      $profiles[$id] = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
+    }
+    natcasesort($profiles);
+    reset($profiles);
 
-    // Since platform is predetermined, limit the options based on the selected platform.
-    $selected_profile = hosting_package_instance_load(array('platform' => $default_platform, 'package_type' => 'profile'))->nid;
+    _hosting_site_field($form, $node, 'profile', array(
+      '#type' => 'radios',
+      '#title' => t('Install profile'),
+      '#description' => t('The type of site to install.<br />
+                             The profile selected here determines the list of supported platforms below.'),
+      '#options' => $profiles,
+      '#default_value' => isset($node->profile) ? $node->profile : hosting_get_default_profile(key($profiles)),
+      '#required' => TRUE,
+      '#attributes' => array('class' => array("hosting-site-form-profile-options")),
+      '#ajax' => array(
+        'callback' => 'hosting_site_platform_callback',
+        'wrapper' => 'hosting-site-field-platform',
+        'effect' => 'fade',
+        'event' => 'change',
+        'method' => 'replace',
+      ),
+    ), '_hosting_node_link');
+
+    // Override the defaults if the profile has been changed.
+    if (isset($form_state['values']['profile'])) {
+      $selected_profile = $form_state['values']['profile'];
+    } else {
+      $selected_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->nid;
+    }
+
+    // Load platforms for the selected profile.
     $platforms = hosting_get_profile_platforms($selected_profile);
 
-    $form['profile']['#default_value'] = $selected_profile;
-    $form['profile']['#options'] = hosting_get_profiles($default_platform);
-    foreach ($form['profile']['#options'] as $id => &$name) {
-      $profile = hosting_package_instance_load(array('p.nid' => $id));
-      $name = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
-    }
-    natcasesort($form['profile']['#options']);
-    reset($form['profile']['#options']);
+    $q = drupal_get_query_parameters();
+    if (isset($q['platform']) && is_numeric($q['platform'])) {
+      $default_platform = $q['platform'];
 
-    // Set page title.
-    drupal_set_title(t('Create site on platform @name', array('@name' => $platforms[$default_platform])));
+      // Since platform is predetermined, limit the options based on the selected platform.
+      $selected_profile = hosting_package_instance_load(array('platform' => $default_platform, 'package_type' => 'profile'))->nid;
+      $platforms = hosting_get_profile_platforms($selected_profile);
+
+      $form['profile']['#default_value'] = $selected_profile;
+      $form['profile']['#options'] = hosting_get_profiles($default_platform);
+      foreach ($form['profile']['#options'] as $id => &$name) {
+        $profile = hosting_package_instance_load(array('p.nid' => $id));
+        $name = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
+      }
+      natcasesort($form['profile']['#options']);
+      reset($form['profile']['#options']);
+
+      // Set page title.
+      drupal_set_title(t('Create site on platform @name', array('@name' => $platforms[$default_platform])));
+    } else {
+      $default_platform = NULL;
+    }
+
+    $languages = hosting_get_profile_languages($selected_profile, $selected_platform);
+    _hosting_site_field($form, $node, 'site_language', array(
+      '#type' => ((count($languages) > 10) ? 'select' : 'radios'),
+      '#title' => t('Language'),
+      '#description' => t('The language of site being installed.'),
+      '#options' => $languages,
+      '#required' => TRUE,
+      '#default_value' => isset($node->site_language) ? $node->site_language : 'en',
+      '#attributes' => array('class' => array("hosting-site-form-site-language-options")),
+    ), '_hosting_language_name');
   }
   else {
     $default_platform = NULL;
+    $platforms = _hosting_get_platforms(0, TRUE);
   }
 
   if (!array_key_exists($default_platform, $platforms)) {
@@ -304,32 +333,18 @@ function hosting_site_form($node, &$form_state) {
                           If a different profile is selected, this list may change automatically.'),
     '#options' => $platforms,
     '#default_value' => isset($node->platform) ? $node->platform : $default_platform,
-    '#ajax' => array(
+  ), '_hosting_node_link');
+
+  if (module_exists('hosting_package')) {
+    $form['platform']['#ajax'] =  array(
       'callback' => 'hosting_site_language_callback',
       'wrapper' => 'hosting-site-field-site-language' ,
       'effect' => 'fade',
       'event' => 'change',
       'method' => 'replace',
-    ),
-  ), '_hosting_node_link');
+    );
+  }
 
-  // Override the defaults if the profile has been changed.
-  if (isset($form_state['values']['platform'])) {
-    $selected_platform = $form_state['values']['platform'];
-  }
-  else {
-    $selected_platform = NULL;
-  }
-  $languages = hosting_get_profile_languages($selected_profile, $selected_platform);
-  _hosting_site_field($form, $node, 'site_language', array(
-    '#type' => ((count($languages) > 10) ? 'select' : 'radios'),
-    '#title' => t('Language'),
-    '#description' => t('The language of site being installed.'),
-    '#options' => $languages,
-    '#required' => TRUE,
-    '#default_value' => isset($node->site_language) ? $node->site_language : 'en',
-    '#attributes' => array('class' => array("hosting-site-form-site-language-options")),
-  ), '_hosting_language_name');
 
   _hosting_site_field($form, $node, 'db_server', array(
     '#type' => 'radios',
@@ -347,9 +362,107 @@ function hosting_site_form($node, &$form_state) {
     );
   }
 
+  // Files Paths
+  $form['file_paths'] = array(
+    '#title' => t('Site Files'),
+    '#description' => t('The directory to use for Drupal site files. Paths may be relative to the Drupal index, or absolute on the server. <em>CAUTION:</em> The web server user will be granted write access permission to these folders so that the Drupal site can receive uploaded files. Do not change unless you are aware of the security implications.'),
+    '#type' => 'fieldset',
+    '#collapsed' => TRUE,
+    '#collapsible' => TRUE,
+    '#weight' => 10,
+  );
+  $form['file_paths']['file_public_path'] = array(
+    '#title' => t('Public Files Path'),
+    '#description' => t('Leave blank to use the default path: %path', array(
+      "%path" => $node->title? "sites/{$node->title}/files": "sites/DOMAIN/files",
+    )),
+    '#type' => 'textfield',
+    '#default_value' => $node->file_public_path,
+  );
+  $form['file_paths']['file_private_path'] = array(
+    '#title' => t('Private Files Path'),
+    '#description' => t('Leave blank to use the default path: %path', array(
+      "%path" => $node->title? "sites/{$node->title}/files/private": "sites/DOMAIN/files/private",
+    )),
+    '#type' => 'textfield',
+    '#default_value' => $node->file_private_path,
+  );
+  $form['file_paths']['file_temporary_path'] = array(
+    '#title' => t('Temporary Files Path'),
+    '#description' => t('Leave blank to use the default path: %path', array(
+      "%path" => $node->title? "sites/{$node->title}/files/private/temp": "sites/DOMAIN/files/temp",
+    )),
+    '#type' => 'textfield',
+    '#default_value' => $node->file_temporary_path,
+  );
+
+  // Hide files settings if not allowed.
+  if (!variable_get('hosting_site_allow_custom_file_paths', FALSE)) {
+    $form['file_paths']['#description'] = t('Drupal site file paths are not configurable. Check <em>Allow sites to have custom file paths</em> on the !settings page to allow customization.', array('!settings' => l(t('Hosting Settings'), 'admin/hosting/settings', array('query' => drupal_get_destination()))));
+
+    foreach (element_children($form['file_paths']) as $i) {
+
+      $form['file_paths']['display'][$i] = array(
+        '#type' => 'item',
+        '#title' => $form['file_paths'][$i]['#title'],
+        '#markup' => $form['file_paths'][$i]['#default_value'],
+      );
+      $form['file_paths'][$i] = array(
+        '#type' => 'value',
+        '#value' => $form['file_paths'][$i]['#default_value'],
+      );
+    }
+  }
+
+  /** @TODO: Get platform settings into site node form.
+  // Platform Settings
+  $form['platform_node'] = array(
+    '#title' => t('Platform Settings'),
+    '#type' => 'fieldset',
+    '#collapsed' => TRUE,
+    '#collapsible' => TRUE,
+  );
+
+  // Load the form for this site's platform.
+  $platform_node = node_load($node->platform);
+  $platform_form = drupal_get_form('platform_node_form', $platform_node);
+
+  // Clean up some things
+  unset($platform_form['actions']);
+  $platform_form['title']['#title'] = t('Platform Name');
+  $platform_form['git']['#group'] = 'site_settings';
+
+  // Tell hosting_site_node_update to skip adding the verify task. The site will include platform verification.
+  $platform_form['no_verify'] = array(
+    '#value' => TRUE,
+  );
+  _hosting_site_form_reset_parents_recursive($platform_form, 'platform_node');
+
+  // Add all platform form elements on to site form.
+  foreach (element_children($platform_form) as $element) {
+    $form['platform_node'][$element] = $platform_form[$element];
+  }
+  */
+
   return $form;
 }
 
+/**
+ * Recursively reset form parents so embedded node forms work.
+ */
+function _hosting_site_form_reset_parents_recursive(&$element, $element_key, $parents = array()) {
+  drupal_process_form();
+  $parents[] = $element_key;
+  $element['#processed'] = FALSE;
+  $element['#id'] = FALSE;
+  $element['#name'] = FALSE;
+  $element['#parents'] = $parents;
+  $element['#array_parents'] = $parents;
+  $element['#parents_fixed'] = TRUE;
+  foreach (element_children($element) as $element_child) {
+    _hosting_site_form_reset_parents_recursive($element[$element_child], $element_child, $parents);
+  }
+}
 
 /**
  * Ajax callback for the site profile field.
@@ -373,7 +486,7 @@ function hosting_site_validate($node, &$form) {
   $valid_options = hosting_site_available_options($node);
 
   // Domain names are case-insensitive, set to lower case.
-  $url = strtolower(trim($node->title));
+  $url = hosting_site_get_domain($node->title);
 
   if (!_hosting_valid_fqdn($url)) {
     form_set_error('title', t("You have not specified a valid url for this site."));
@@ -410,17 +523,17 @@ function hosting_site_validate($node, &$form) {
     }
   }
 
-  if (!in_array($node->profile, $valid_options['profile']) && !isset($node->nid)) {
+  if (module_exists('hosting_package') && !in_array($node->profile, $valid_options['profile']) && !isset($node->nid)) {
     form_set_error('profile', t('Please choose a valid profile'));
   }
 
-  if (!in_array($node->platform, $valid_options['platform']) && !isset($node->nid)) {
+  if (module_exists('hosting_package') && !in_array($node->platform, $valid_options['platform']) && !isset($node->nid)) {
     form_set_error('platform', t('Please choose a valid platform'));
   }
 
   // Check that we are selecting a valid language for this profile,
   // but only when a new site is created.
-  if (!in_array($node->site_language, $valid_options['site_language']) && empty($node->nid)) {
+  if (module_exists('hosting_package') && !in_array($node->site_language, $valid_options['site_language']) && empty($node->nid)) {
     form_set_error('site_language', t('Please fill in a valid language'));
   }
 
@@ -438,6 +551,22 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
     $node = $form['#node'];
     if (isset($node->site_status) && $node->site_status !== HOSTING_SITE_DELETED) {
       $form['actions']['delete']['#type'] = 'hidden';
+    }
+
+    $form['site_settings'] = array(
+      '#type' => 'vertical_tabs',
+      '#weight' => -11,
+    );
+
+    // Put all fieldgroups into vertical tabs.
+    foreach (element_children($form) as $elementChildId) {
+      if ($form[$elementChildId]['#type'] == 'fieldset') {
+        $form[$elementChildId]['#group'] = 'site_settings';
+
+        // Un-break aegir contrib.
+        unset($form[$elementChildId]['#prefix']);
+        unset($form[$elementChildId]['#suffix']);
+      }
     }
   }
   if (array_key_exists('views_bulk_operations', $form)) {

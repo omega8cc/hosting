@@ -124,6 +124,10 @@ function hosting_get_queues($refresh = FALSE) {
       }
 
       $queue['last'] = variable_get('hosting_queue_' . $key . '_last_run', 0);
+
+      // Set running_items = 0 if not previously set.
+      $queue['running_items'] = isset($queue['running_items'])? $queue['running_items']: 0;
+
       $queues[$key] = $queue;
     }
     // Allow altering the processed queue data.

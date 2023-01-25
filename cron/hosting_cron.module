@@ -48,7 +48,7 @@ function hosting_cron_queue($count) {
           $major_version = array_shift($version);
         }
       }
-      if (!empty($major_version) && $major_version == 8) {
+      if (!empty($major_version) && $major_version >= 8) {
         $url = _hosting_site_url($site) . '/cron';
         if (!empty($site->cron_key)) {
           $url .= '/' . rawurlencode($site->cron_key);

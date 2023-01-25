@@ -25,7 +25,28 @@ function hosting_queued_drush_command() {
     ),
   );
 
+  $items['hosting-release-lock'] = array(
+    'description' => 'Releases any stale locks on the tasks queue',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+    'drupal dependencies' => array(
+      'hosting_queued',
+    ),
+  );
+
   return $items;
+}
+
+/**
+ * Drush command to release the lock on the task queue.
+ */
+function drush_hosting_queued_hosting_release_lock() {
+  drush_log('Clearing any stale locks on task queue.');
+  $name = 'hosting_queue_tasks_running';
+  global $locks;
+  unset($locks[$name]);
+  db_delete('semaphore')
+    ->condition('name', $name)
+    ->execute();
 }
 
 /**
@@ -92,15 +113,14 @@ function drush_hosting_queued() {
 
       continue;
     }
-    else {
-      // If was paused on last cycle, announce that it has been unpaused.
-      if ($is_paused) {
-        drush_log('Hosting Queued has been unpaused.', 'ok');
-      }
 
-      // Save current state for next cycle.
-      $is_paused = variable_get('hosting_queued_paused', 0);
+    // If was paused on last cycle, announce that it has been unpaused.
+    if ($is_paused) {
+      drush_log('Hosting Queued has been unpaused.', 'ok');
     }
+
+    // Save current state for next cycle.
+    $is_paused = variable_get('hosting_queued_paused', 0);
 
     try {
       // Should we terminate.
