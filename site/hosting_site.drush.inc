@@ -139,29 +139,29 @@ function drush_hosting_site_pre_hosting_task($task) {
  */
 function hosting_site_post_hosting_install_task($task, $data) {
   if ($task->ref->type == 'site') {
-    $context = $data['context'];
-    $packages = $context['packages'];
-    hosting_package_sync($packages);
-    hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
+//    $context = $data['context'];
+//    $packages = $context['packages'];
+//    hosting_package_sync($packages);
+//    hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
     $task->ref->site_status = HOSTING_SITE_ENABLED;
     $task->ref->no_verify = TRUE;
     $task->ref->verified = REQUEST_TIME;
-    $task->ref->db_name = $data['self']['db_name'];
-    if ($context['cron_key']) {
-      $task->ref->cron_key = $context['cron_key'];
-    }
+//    $task->ref->db_name = $data['self']['db_name'];
+//    if ($context['cron_key']) {
+//      $task->ref->cron_key = $context['cron_key'];
+//    }
     node_save($task->ref);
 
-    if ($context['login_link']) {
-      drush_log($context['login_link']);
-      // we need to store the timestamp too because expire only means it can be deleted
-      // after an amount of time, not will be deleted.
-      $cache = array(
-        'expire' => strtotime("+24 hours"),
-        'link' => $context['login_link'],
-      );
-      cache_set('hosting:site:' . $task->ref->nid . ':login_link', $cache, 'cache', $cache['expire'] );
-    }
+//    if ($context['login_link']) {
+//      drush_log($context['login_link']);
+//      // we need to store the timestamp too because expire only means it can be deleted
+//      // after an amount of time, not will be deleted.
+//      $cache = array(
+//        'expire' => strtotime("+24 hours"),
+//        'link' => $context['login_link'],
+//      );
+//      cache_set('hosting:site:' . $task->ref->nid . ':login_link', $cache, 'cache', $cache['expire'] );
+//    }
   }
 }
 
