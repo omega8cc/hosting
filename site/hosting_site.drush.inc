@@ -70,14 +70,14 @@ function hosting_site_drush_context_import($context, &$node) {
           'p.short_name' => 'standard',
         ));
         if ($profile) {
-          drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Using standard profile instead.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
+          // drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Using standard profile instead.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
         }
       }
     }
 
     // Log an error if there is still no profile.
     if (!$profile) {
-      drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Unable to save install profile metadata for this site.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
+      // drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Unable to save install profile metadata for this site.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
     }
     else {
       $node->profile = $profile->package_id;
@@ -271,13 +271,14 @@ function hosting_site_post_hosting_import_task($task, $data) {
   $site_nid = hosting_drush_import($task->ref->hosting_name);
 
   // Update the site node with the database name.
-  $node = node_load($site_nid);
-  $node->db_name = $data['self']['db_name'];
-  node_save($node);
+  // @TODO: get $data back.
+//  $node = node_load($site_nid);
+//  $node->db_name = $data['self']['db_name'];
+//  node_save($node);
 
-  $packages = $data['context']['packages'];
-  hosting_package_sync($packages);
-  hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
+//  $packages = $data['context']['packages'];
+//  hosting_package_sync($packages);
+//  hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
 }
 
 
@@ -311,9 +312,10 @@ function hosting_site_post_hosting_verify_task($task, $data) {
     // $task->ref->db_name = $data['self']['db_name'];
     $task->ref->db_name = "";
 
-    if ($data['context']['cron_key']) {
-      $task->ref->cron_key = $data['context']['cron_key'];
-    }
+//    if ($data['context']['cron_key']) {
+//      $task->ref->cron_key = $data['context']['cron_key'];
+//    }
+      $task->ref->cron_key = '';
     node_save($task->ref);
 
     // @TODO: The $data from the function param seems to always be empty, if we figure out how to populate it from drush_hosting_task() remove this.
