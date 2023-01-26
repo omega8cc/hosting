@@ -306,7 +306,11 @@ function hosting_site_post_hosting_verify_task($task, $data) {
 
     $task->ref->verified = REQUEST_TIME;
     $task->ref->no_verify = TRUE;
-    $task->ref->db_name = $data['self']['db_name'];
+
+    // @TODO: New provision thing has data as a string.
+    // $task->ref->db_name = $data['self']['db_name'];
+    $task->ref->db_name = "";
+
     if ($data['context']['cron_key']) {
       $task->ref->cron_key = $data['context']['cron_key'];
     }
