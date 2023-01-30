@@ -45,9 +45,10 @@ function hosting_site_schema() {
         'default' => 0,
       ),
       'profile' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
+        'type' => 'varchar',
+        'not null' => FALSE,
+        'default' => '',
+        'length' => 32,
       ),
       'language' => array(
         'type' => 'varchar',
@@ -558,4 +559,18 @@ function hosting_site_update_7302() {
     'default' => '',
   ));
   return $ret;
+}
+
+/**
+ * Change "profile" to a textfield and update existing IDs to strings.
+ */
+function hosting_site_update_7400() {
+  db_change_field('hosting_site', 'profile', 'profile', array(
+    'type' => 'varchar',
+    'not null' => FALSE,
+    'default' => '',
+    'length' => 32,
+  ));
+
+  $sql = "UPDATE {hosting_site} JOIN {hosting_package} SET profile = hp.name ";
 }
