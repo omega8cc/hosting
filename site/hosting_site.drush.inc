@@ -279,15 +279,10 @@ function hosting_site_post_hosting_verify_task($task, $data) {
 
     $task->ref->verified = REQUEST_TIME;
     $task->ref->no_verify = TRUE;
-
-    // @TODO: New provision thing has data as a string.
-    // $task->ref->db_name = $data['self']['db_name'];
-    $task->ref->db_name = "";
-
-//    if ($data['context']['cron_key']) {
-//      $task->ref->cron_key = $data['context']['cron_key'];
-//    }
-      $task->ref->cron_key = '';
+    $task->ref->db_name = $data['self']['db_name'];
+    if ($data['context']['cron_key']) {
+      $task->ref->cron_key = $data['context']['cron_key'];
+    }
     node_save($task->ref);
 
     // @TODO: The $data from the function param seems to always be empty, if we figure out how to populate it from drush_hosting_task() remove this.
