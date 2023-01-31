@@ -161,7 +161,7 @@ function hosting_site_form($node, &$form_state) {
     $selected_platform = NULL;
   }
   _hosting_site_field($form, $node, 'profile', array(
-    '#type' => 'textarea',
+    '#type' => 'textfield',
     '#title' => t('Install profile'),
     '#description' => t('The Drupal install profile to install.'),
   ), '_hosting_node_link');
