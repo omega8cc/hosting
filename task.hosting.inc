@@ -281,20 +281,7 @@ function drush_hosting_task()
   // Tell provision this is being run by drush hosting-task
   $task->options['runner'] = 'hosting_task';
 
-  // Filter out arguments that are actually options.
-  $arguments = array_diff_key($task->task_args, $task->options);
-  drush_log("Arguments: " . print_r($arguments, 1), 'ok');
-
-  $cmd = _drush_backend_generate_command($site_record, "drush @$alias provision-{$task->task_type}", $arguments, $task->options);
-
-  $output = hosting_task_process($cmd);
-
-// @TODO: Remove this.
-//  if (!isset($task->task_command)) {
-//    $task->task_command = 'provision-' . $task->task_type;
-//  }
-//  // Run the actual command. Adding alias here to work around Drush API.
-//  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
+  $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
