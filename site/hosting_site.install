@@ -572,5 +572,6 @@ function hosting_site_update_7400() {
     'length' => 32,
   ));
 
-  $sql = "UPDATE {hosting_site} JOIN {hosting_package} SET profile = hp.name ";
+  db_query("UPDATE {hosting_site} s LEFT JOIN {hosting_package} p ON s.profile = p.nid SET s.profile = p.short_name");
+
 }
