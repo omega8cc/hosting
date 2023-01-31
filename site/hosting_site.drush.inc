@@ -53,33 +53,7 @@ function hosting_site_drush_context_import($context, &$node) {
     $node->cron_key = $context->cron_key;
     $node->db_server = hosting_context_nid($context->db_server->name);
     $node->platform = hosting_context_nid($context->platform->name);
-
-    // TODO: abstract this to remove duplication with import post hooks.
-    $profile = hosting_package_instance_load(array(
-      'i.rid' => $node->platform,
-      'p.short_name' => $context->profile,
-    ));
-
-    if (!$profile) {
-      // For D6 to D7 upgrades, try changing default to standard.
-      if (!empty($context->profile) && $context->profile == 'default') {
-        $profile = hosting_package_instance_load(array(
-          'i.rid' => $node->platform,
-          'p.short_name' => 'standard',
-        ));
-        if ($profile) {
-          // drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Using standard profile instead.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
-        }
-      }
-    }
-
-    // Log an error if there is still no profile.
-    if (!$profile) {
-      // drush_log(dt("Exception: No record found in hosting_package_instance table for install profile '!profile' and platform with NID !platform. Unable to save install profile metadata for this site.", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
-    }
-    else {
-      $node->profile = $profile->package_id;
-    }
+    $node->profile = $context->profile;
 
     $client = node_load(HOSTING_DEFAULT_CLIENT);
     if ($context->client_name) {
