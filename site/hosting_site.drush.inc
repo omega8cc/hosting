@@ -162,10 +162,11 @@ function hosting_site_post_hosting_disable_task($task, $data) {
   if ($task->ref->type != 'site') {
     return;
   }
-  if ($data['context']['backup_file'] && $data->ref->type == 'site') {
+  // @TODO: re-enable when $data becomes an array again or the whole thing is refactored.
+//  if ($data['context']['backup_file'] && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being disabled'), $data['context']['backup_file_size']);
-  }
+//  }
   $task->ref->site_status = HOSTING_SITE_DISABLED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
@@ -180,7 +181,8 @@ function hosting_site_post_hosting_disable_task($task, $data) {
  * I am not very fond of the use of bitwise operators with negatives.
  */
 function hosting_site_post_hosting_restore_task($task, $data) {
-  if ($data['context']['backup_file'] && $task->ref->type == 'site') {
+//  if ($data['context']['backup_file'] && $task->ref->type == 'site') {
+  if ($task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being restored to a previous version'), $data['context']['backup_file_size']);
   }
