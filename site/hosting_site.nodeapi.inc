@@ -63,7 +63,7 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
     $node->content['info']['profile'] = array(
       '#type' => 'item',
       '#title' => t('Install profile'),
-      '#markup' => _hosting_node_link($node->profile),
+      '#markup' => $node->profile,
     );
   }
   if ($node->site_language) {
@@ -275,7 +275,7 @@ function hosting_site_insert(&$node) {
   // Ensure that the last_cron value is set.
   $node->last_cron = isset($node->last_cron) ? $node->last_cron : 0;
   // Provide a dummy profile, e.g. for hosting-import.
-  $node->profile = isset($node->profile) ? $node->profile : 0;
+  $node->profile = isset($node->profile) ? $node->profile : '';
 
   // If platform NID is not defined, but platform data is available,
   // create the platform.
@@ -410,7 +410,7 @@ function hosting_site_update(&$node) {
         'last_cron' => $node->last_cron,
         'cron_key' => $node->cron_key,
         'status' => $node->site_status,
-        'profile' => (int) $node->profile,
+        'profile' => $node->profile,
         'language' => $node->site_language,
         'verified' => $node->verified,
         'file_public_path' => $node->file_public_path,

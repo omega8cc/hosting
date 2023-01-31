@@ -81,7 +81,6 @@ function hosting_site_available_options($node, $platform = NULL) {
 
   $return = array();
 
-  $return['profile'] = array();
   $return['platform'] = array();
   $return['site_language'] = array();
 
@@ -100,96 +99,17 @@ function hosting_site_available_options($node, $platform = NULL) {
     return $return;
   }
 
-  $profiles = hosting_get_profiles();
-  $platform_profiles = array();
-  foreach ($profiles as $id => $name) {
-
-    // Trim down the list of profiles to those that are available and the user has access to
-    // XXX This hack (next 22 lines) hides profiles that can't be accessed
-    // Eventually we should lighten up the content of this callback.
-    $result = db_query("SELECT l.nid
-                        FROM {hosting_package_instance} i
-                        JOIN {hosting_package} p
-                        ON p.nid = i.package_id
-                        JOIN {hosting_platform} l
-                        ON l.nid = i.rid
-                        WHERE i.package_id = :package_id
-                        AND p.package_type = :package_type
-                        AND l.status = :status;",
-                        array(
-                          ':package_id' => $id,
-                          ':package_type' => 'profile',
-                          ':status' => HOSTING_PLATFORM_ENABLED,
-                        )
-                      );
-    if (is_null($platform)) {
-      $allowed_plats = _hosting_get_allowed_platforms($user->uid);
-    }
-    else {
-      $allowed_plats = array($platform => $platform);
-    }
-    $access_check = FALSE;
-
-    foreach ($result as $row) {
-      if (!is_null($platform) && array_key_exists($row->nid, $allowed_plats)) {
-        $platform_profiles[$id] = $name;
-      }
-      elseif (array_key_exists($row->nid, $allowed_plats)) {
-        $access_check = TRUE;
-      }
-      // Open access if no platform access has been set.
-      // @todo move this into _hosting_get_allowed_platforms
-      // @todo confirm this logic.
-      elseif (!$unrestricted = db_query("SELECT cid
-                                         FROM {hosting_platform_client_access}
-                                         WHERE pid = :pid LIMIT 1",
-                                         array(':pid' => $row->nid)
-                                       )->fetchField()) {
-        $access_check = TRUE;
-      }
-    }
-    if (!$access_check) {
-      unset($profiles[$id]);
-    }
-  }
-  if (!is_null($platform)) {
-    $profiles = $platform_profiles;
-  }
-  reset($profiles);
-  $return['profile'] = array_keys($profiles);
-
-  if (!isset($node->profile)) {
-    $node->profile = hosting_get_default_profile($return['profile'][0]);
-  }
-
   // Filter the available platforms based on which clients the user has access to.
   if (!is_null($platform)) {
-    $node->profile = $return['profile'][0];
     $return['platform'] = array($platform);
-  }
-  else {
-    $options = array();
-    $platforms = hosting_get_profile_platforms($node->profile, isset($node->check_profile_migrations) ? $node->check_profile_migrations : FALSE);
-    if (count($platforms)) {
-      foreach ($platforms as $nid => $title) {
-        $platform = node_load($nid);
-
-        if ($platform->platform_status != HOSTING_PLATFORM_LOCKED || user_access('create sites on locked platforms')) {
-          if (!isset($platform->clients) || count(array_intersect(array_keys($user->client_id), $platform->clients)) || $user->uid == 1) {
-            $options[] = $nid;
-          }
-        }
-      }
-
-      $return['platform'] = $options;
-    }
   }
 
   if (!isset($node->platform) || !in_array($node->platform, $return['platform'])) {
     $node->platform = $return['platform'][0];
   }
 
-  $return['site_language'] = array_keys((array) hosting_get_profile_languages($node->profile, $node->platform));
+  // @TODO: Replace with something else.
+  // $return['site_language'] = array_keys((array) hosting_get_profile_languages($node->profile, $node->platform));
 
   drupal_alter('hosting_site_options', $return, $node);
 
