@@ -8,93 +8,6 @@ use Symfony\Component\Process\Process;
  */
 
 /**
- * Run a command, sending output to drush logs in real time.
- *
- * The Symfony\Component\Process\Process Object is used to run this command.
- * After implementing provision_process(), you can get the Process result object
- * via drush context:
- *
- *   $process = drush_get_context('provision_process_result');
- *   print $process->getExitCode();
- *
- * @param string|array $command_input
- *   The command to run
- * @param null $cwd
- *   The directory to run the command in.
- * @param string $label
- *   A string to display above the command block in the front-end.
- * @param array $env
- *   A list of environment variables to set for the process.
- * @param bool $log_output
- *   Whether or not to send output to drush_log in real time.
- * @param null $error_message
- *   The error message to show after a failure. Defaults to NULL because the UI turning red and the error output is usually enough.
- * @param bool $throw_drush_error
- *   Whether or not to throw a drush error if the process fails. Defaults to TRUE.
- *
- * @return string|void
- *   The output or error output of the command.
- */
-function hosting_process($command, $cwd = null, $label = 'Process', $env = array(), $log_output = TRUE, $error_message = NULL, $throw_drush_error = TRUE, $log_type = 'p_info') {
-  if (empty($command)) {
-    return;
-  }
-
-  // @TODO: new Process() below isn't accepting an array.
-  if (is_array($command)) {
-    $command = implode(' ', $command);
-  }
-
-  // Merge in env vars, inheriting the CLI's
-  if (is_array($env)) {
-    $env = array_merge($_SERVER, $env);
-  }
-  else {
-    $env = $_SERVER;
-  }
-
-  // Make sure colors always come through
-  $env['TERM'] = 'xterm';
-
-  $process = new \Symfony\Component\Process\Process(escapeshellcmd($command), $cwd, $env);
-  $process->setTimeout(NULL);
-  if ($log_output) {
-    drush_log("[$label] $command", 'p_command');
-
-    $exit_code = $process->run(function ($type, $buffer) use ($log_type) {
-      drush_log($buffer, $log_type);
-    });
-  }
-  else {
-    $exit_code = $process->run();
-  }
-
-  // Save the Provision Process object to Drush Context so that implementors can access the full object.
-  drush_set_context('provision_process_result', $process);
-  drush_log("Provision process command exited with $exit_code", 'debug');
-
-  // check exit code
-  if ($exit_code === 0) {
-
-    if ($log_output) {
-      drush_log('', 'p_ok');
-    }
-    return $process->getOutput();
-  }
-  else {
-
-    if ($log_output) {
-      drush_log('', 'p_error');
-    }
-
-    if ($throw_drush_error) {
-      drush_set_error('PROVISION_PROCESS_ERROR', !empty($error_message)? $error_message: $process->getErrorOutput());
-    }
-    return $process->getErrorOutput();
-  }
-}
-
-/**
  * Log a message to the current task's node if possible, the screen otherwise.
  */
 function _hosting_task_log($entry) {
@@ -305,33 +218,6 @@ function drush_hosting_task()
       drush_log(dt("Deleting back-end context file for !context.", array(
         '!context' => $context_to_delete,
       )), 'notice');
-
-      /* Reverting modernization for now
-      // Build command as an array for compatibility.
-      $command = array(
-        "drush",
-        "provision-save",
-        "@{$task->ref->hosting_name}",
-        "--delete"
-      );
-      hosting_process($command, null, t('Deleting metadata...'));
-      drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
-    }
-    // If no context name was found, throw a warning.
-    else {
-      drush_log(dt('No "hosting_name" property was found on the !type node (!url). Unable to delete back-end context file.', array(
-        '!type' => $task->ref->type,
-        '!url' => url("node/$task->rid", array('absolute' => TRUE)),
-      )), 'warning');
-    }
-  }
-
-  // New revision is created at the beginning of function.
-  $task->revision = FALSE;
-  $task->delta = microtime(TRUE) - $task->executed;
-  node_save($task);
-  // @TODO: END OF MODERNIZATION HACKS
-   */
     }
   }
 }
@@ -340,36 +226,8 @@ function drush_hosting_task()
  * Helper to just run provision-save
  */
 function drush_hosting_task_provision_save($hosting_name, $context_options, $message = NULL) {
-
-  /*
-  // Build command as an array for compatibility.
-  $command = array(
-    "drush",
-    "provision-save",
-    "@{$hosting_name}",
-  );
-
-  // Prepare "context_options" by converting them to command line options.
-  foreach ($context_options as $name => $value) {
-    if (!is_string($value)) {
-      continue;
-    }
-
-    // Keep empty values here because it's being saved to context.
-    // If values don't exist here, the existing drush context properties will remain unchanged.
-    $value = escapeshellarg($value);
-    $command[] = "--{$name}={$value}";
-  }
-
-  // Run the process using "drush_log" to present output.
-  // "drush_log then saves each line to the front-end database.
-  // @TODO: Leaving legacy provision in place for this PR.
-  $message = $message?: t('Saving metadata...');
-  hosting_process($command, null, t($message));
-  */
   $mode = drush_get_option('debug', FALSE) ? 'GET' : 'POST';
   drush_invoke_process('@none', 'provision-save', array('@' . $hosting_name), $context_options, array('method' => $mode, 'integrate' => TRUE));
-  // hosting_process($command, null, t($message));
 }
 
 /**
@@ -425,42 +283,3 @@ function drush_hosting_post_hosting_task($task) {
   module_invoke_all($hook, $task, drush_get_context('HOSTING_DRUSH_OUTPUT'));
 }
 
-/**
- * Run a Symfony Process saving to drush logs.
- */
-function hosting_task_process($command, $cwd = null, $env = array(), $log_output = TRUE, $error_message = 'Process Failed') {
-
-  drush_log("[Process Start] $command", 'process_start');
-
-  // Merge in env vars, inheriting the CLI's
-  if (is_array($env)) {
-    $env = array_merge($_SERVER, $env);
-  }
-  else {
-    $env = $_SERVER;
-  }
-
-  // Make sure colors always come through
-  $env['TERM'] = 'xterm';
-
-  $process = new Process(escapeshellcmd($command), $cwd, $env);
-  $process->setTimeout(NULL);
-  if ($log_output) {
-    $exit_code = $process->run(function ($type, $buffer) {
-        drush_log($buffer, 'process');
-    });
-  }
-  else {
-    $exit_code = $process->run();
-  }
-
-  // check exit code
-  if ($exit_code !== 0) {
-    drush_set_error('PROVISION_PROCESS_ERROR', dt($error_message));
-    drush_log("[Process Stop] $command", 'process_error');
-  }
-  else {
-    drush_log("[Process Stop] $command", 'process_stop');
-  }
-  return $process->getOutput() . $process->getErrorOutput();
-}
