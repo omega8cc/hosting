@@ -2,9 +2,7 @@
     "name": "drupal/hosting",
     "type": "drupal-module",
     "require": {
-        "symfony/process": "^3.3",
         "sensiolabs/ansi-to-html": "^1.1",
-        "laravel-validation-rules/ip": "^1.4",
-        "devshop/git-traits": "@dev"
+        "laravel-validation-rules/ip": "^1.4"
     }
 }
