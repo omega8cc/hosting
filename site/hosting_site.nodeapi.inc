@@ -455,6 +455,7 @@ function hosting_site_load($nodes) {
         p.status AS platform_status,
         s.verified,
         p.verified as platform_verified,
+        p.publish_path,
         p.git_root,
         p.git_remote,
         p.git_reference,
