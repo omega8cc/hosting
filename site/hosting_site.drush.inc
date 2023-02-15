@@ -162,7 +162,7 @@ function hosting_site_post_hosting_disable_task($task, $data) {
   if ($task->ref->type != 'site') {
     return;
   }
-  if ($data['context']['backup_file'] && $data->ref->type == 'site') {
+  if (isset($data['context']['backup_file']) && $data['context']['backup_file'] && $data->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being disabled'), $data['context']['backup_file_size']);
   }
@@ -223,7 +223,7 @@ function hosting_site_post_hosting_delete_task($task, $data) {
  * This is needed to be able to restore.
  */
 function hosting_site_post_hosting_backup_task($task, $data) {
-  if ($data['context']['backup_file'] && $task->ref->type == 'site') {
+  if (isset($data['context']['backup_file']) && $data['context']['backup_file'] && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
 
     $desc = $task->task_args['description'];
