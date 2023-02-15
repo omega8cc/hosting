@@ -361,9 +361,9 @@ function hosting_site_insert(&$node) {
       'cron_key' => $node->cron_key,
       'status' => isset($node->site_status) ? $node->site_status : HOSTING_SITE_QUEUED,
       'verified' => isset($node->verified) ? $node->verified : 0,
-      'file_public_path' => $node->file_public_path ?: '',
-      'file_private_path' => $node->file_private_path ?: '',
-      'file_temporary_path' => $node->file_temporary_path ?: '',
+      'file_public_path' => isset($node->file_public_path)? $node->file_public_path: '',
+      'file_private_path' => isset($node->file_private_path)? $node->file_private_path: '',
+      'file_temporary_path' => isset($node->file_temporary_path)? $node->file_temporary_path: '',
     ))
     ->execute();
 

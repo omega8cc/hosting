@@ -1354,7 +1354,7 @@ function _hosting_task_log_table($node, $last_position = 0) {
 
       $row_count++;
       $last_timestamp = $entry->timestamp;
-      
+
       if ($entry->type == 'process') {
         $message = hosting_task_ascii($message);
       }
@@ -2119,16 +2119,16 @@ function hosting_task_ascii($string) {
   if (empty($string)) {
     return $string;
   }
-  
+
   // Prepare ASCII Converter
   $theme = new SolarizedXTermTheme();
   $styles = $theme->asCss();
   $styles .= ".ansi_box { overflow: auto; padding: 10px 15px; font-family: monospace; }";
-  
+
   drupal_add_html_head("<style>$styles</style>");
   $converter = new AnsiToHtmlConverter($theme);
   $output = $converter->convert($string);
-  
+
   // Make URLs clickable:
   $filter = new stdClass();
   $filter->settings = [
@@ -2140,7 +2140,7 @@ function hosting_task_ascii($string) {
   $output = strtr($output, array(
     '\n' => '<br />',
   ));
-  
+
   return <<<HTML
   <pre class="hosting-task-ascii">$output</pre>
 HTML;
