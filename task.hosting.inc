@@ -140,6 +140,8 @@ function drush_hosting_task()
   $output = array();
   $mode = drush_get_option('debug', FALSE) ? 'GET' : 'POST';
 
+  chdir(d('@hostmaster')->root);
+
   // Make sure argument order is correct.
   ksort($task->args);
 
