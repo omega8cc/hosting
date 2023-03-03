@@ -837,10 +837,9 @@ function hosting_task_deploy_form($node) {
   if ($node->type == 'site') {
 
     try {
-      $wrapper = new GitWrapper();
-      $git = $wrapper->workingCopy($node->git_root);
-      $diff = $git->diff()->getOutput();
-      $status = $git->getStatus();
+      $repo = new \Gitonomy\Git\Repository($node->git_root);
+      $git = $repo->getWorkingCopy();
+      $diff = $git->getDiffPending();
 
     } catch (GitException $e) {
       drupal_set_message($e->getMessage(), 'error');
