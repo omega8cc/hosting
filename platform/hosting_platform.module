@@ -660,14 +660,10 @@ function hosting_platform_update($node) {
 
   // Trigger verify tasks for each enabled site.
   if (empty($node->no_verify)) {
+    hosting_add_task($node->nid, 'verify');
     $sites = hosting_get_sites_by_status($node->nid, HOSTING_SITE_ENABLED);
     foreach ($sites as $site_nid => $site) {
       hosting_add_task($site->nid, 'verify');
-    }
-
-    // If no sites, just verify the platform.
-    if (empty($sites)) {
-      hosting_add_task($node->nid, 'verify');
     }
   }
 }
