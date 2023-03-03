@@ -125,7 +125,7 @@ function hosting_site_post_hosting_install_task($task, $data) {
     }
     node_save($task->ref);
 
-    if ($context['login_link']) {
+    if (isset($context['login_link'])) {
       drush_log($context['login_link']);
       // we need to store the timestamp too because expire only means it can be deleted
       // after an amount of time, not will be deleted.
