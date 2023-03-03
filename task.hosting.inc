@@ -201,6 +201,11 @@ function drush_hosting_task()
     $task->task_command = 'provision-' . $task->task_type;
   }
 
+  // If delete task, change root to hostmaster
+  if ($task->task_type == 'delete') {
+    $task->options['root'] = d('@hostmaster')->root;
+  }
+
   // Call the drush command.
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
 
@@ -212,8 +217,7 @@ function drush_hosting_task()
   if ($task->task_type == 'delete' && !drush_get_error()) {
 
     // Use the task_arg if there is one, hosting_name as a backup. $node->ref->hosting_name may be missing.
-    $context_to_delete = isset($task->task_args['hosting_context'])? $task->task_args['hosting_context'] :
-      ($task->ref->hosting_name ?: FALSE);
+    $context_to_delete = $task->task_args['hosting_context'];
 
     // Run the "provision-save --delete" command on $context_to_delete.
     if ($context_to_delete) {
