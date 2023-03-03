@@ -201,11 +201,6 @@ function drush_hosting_task()
     $task->task_command = 'provision-' . $task->task_type;
   }
 
-  // If delete task, change root to hostmaster
-  if ($task->task_type == 'delete') {
-    $task->options['root'] = d('@hostmaster')->root;
-  }
-
   // Call the drush command.
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
 
