@@ -375,7 +375,7 @@ function hosting_site_insert(&$node) {
 function hosting_site_node_insert($node) {
   if ($node->type == "site") {
     if ((empty($node->old_vid))) {
-      hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : $node->title);
+      hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : str_replace('.', '', $node->title));
       if (isset($node->import)) {
         hosting_add_task($node->nid, 'import');
       }
