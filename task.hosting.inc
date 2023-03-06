@@ -82,7 +82,9 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
 
   if ($task->type == 'task') {
     $task->ref = node_load($task->rid);
-    $task->options = array();
+    $task->options = array(
+      'runner' => 'hosting_task',
+    );
     $task->context_options = array(
       'context_type' => $task->ref->type,
       'root' => NULL,
@@ -192,9 +194,6 @@ function drush_hosting_task()
   // Run the actual command.
   $site_record = drush_sitealias_get_record('@' . $alias);
   $task->options['strict'] = 0;
-
-  // Tell provision this is being run by drush hosting-task
-  $task->options['runner'] = 'hosting_task';
 
   // Set the drush command to use based on the task_type.
   if (!isset($task->task_command)) {
