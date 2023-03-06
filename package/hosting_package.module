@@ -167,20 +167,11 @@ function hosting_get_profile_platforms($profile, $check_old_short_name = FALSE) 
 /**
  * @todo document this function
  */
-function hosting_get_profile_languages($profile = NULL, $platform = NULL) {
+function hosting_get_profile_languages() {
   $languages['en'] = _hosting_language_name('en');
-  if ($profile && $platform) {
-    $instance = hosting_package_instance_load(array(
-      'i.rid' => $platform,
-      'i.package_id' => $profile,
-    ));
-    $languages = array_merge($languages, $instance->languages);
-  }
-  else {
-    $result = db_query("SELECT DISTINCT language FROM {hosting_package_languages}");
-    while ($lang = $result->fetch()) {
-      $languages[$lang->language] = _hosting_language_name($lang->language);
-    }
+  $result = db_query("SELECT DISTINCT language FROM {hosting_package_languages}");
+  while ($lang = $result->fetch()) {
+    $languages[$lang->language] = _hosting_language_name($lang->language);
   }
   return $languages;
 }

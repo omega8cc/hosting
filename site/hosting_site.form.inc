@@ -109,8 +109,7 @@ function hosting_site_available_options($node, $platform = NULL) {
   }
 
   // @TODO: Replace with something else.
-  // $return['site_language'] = array_keys((array) hosting_get_profile_languages($node->profile, $node->platform));
-
+  $return['site_language'] = array_keys((array) hosting_get_profile_languages());
   drupal_alter('hosting_site_options', $return, $node);
 
   return $return;
@@ -171,6 +170,7 @@ function hosting_site_form($node, &$form_state) {
     '#title' => t('Language'),
     '#description' => t("The language code to install on the site by default. You can change this later when configuring the site."),
     '#attributes' => array('class' => array("hosting-site-form-site-language-options")),
+    '#default_value' => isset($node->site_language) ? $node->site_language : 'en',
   ), '_hosting_language_name');
 
   $platforms = _hosting_get_platforms(0, TRUE);
