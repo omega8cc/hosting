@@ -61,6 +61,12 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
   }
   elseif (is_string($id) && isset($type)) {
     $ref = hosting_context_load($id);
+
+    if (empty($ref)) {
+      return drush_set_error(DRUSH_APPLICATION_ERROR, dt('No context found with name: %name', [
+        '%name' => $id,
+      ]));
+    }
     if ($ref->nid) {
 
       // Get additional arguments to the drush command and convert them to "task_args" as expected by the task node.
