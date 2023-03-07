@@ -32,6 +32,7 @@ define('HOSTING_SITE_ENABLED', 1);
 include_once 'hosting_site.nodeapi.inc';
 include_once 'hosting_site.form.inc';
 include_once 'hosting_site.backups.inc';
+include_once 'hosting_site.queues.inc';
 
 //Conditonally include site quotas
 if (module_exists('hosting_quota')) {
