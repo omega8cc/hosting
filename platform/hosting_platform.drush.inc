@@ -59,6 +59,7 @@ function hosting_platform_drush_context_import($context, &$node) {
  *
  * Sets the platform verified timestamp, to discren when it was verified.
  * Imports all the profiles and modules into package and package release nodes.
+ * Loads git information.
  */
 function hosting_platform_post_hosting_verify_task($task, $data) {
 
@@ -87,20 +88,24 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     $node->no_verify = TRUE;
 
     // Load git information from context.
-    $node->git_root = d($task->ref->hosting_name)->git_root;;
-    $node->git_remote = d($task->ref->hosting_name)->git_remote;
-    $node->git_reference = d($task->ref->hosting_name)->git_reference;
-    $node->git_docroot = d($task->ref->hosting_name)->git_docroot;
-    $node->git_reset = d($task->ref->hosting_name)->git_reset;
+    $options = $data['context'];
+    $node->git_refs = $options['git_refs'];
+    $node->git_reference = $options['git_reference'];
+    $node->git_remote = $options['git_remote'];
+    $node->git_root = $options['git_root'];
+    $node->git_docroot = $options['git_docroot'];
+    $node->git_reset = $options['git_reset'];
 
     // Save the platform being verified.
     node_save($node);
-    drush_log(dt('Metadata saved for %type %title [%url]', [
+    drush_log(dt('Metadata saved for %type %title [%url] [%publish_path] [%git_reference]', [
       '%type' => $node->type,
       '%title' => $node->title,
       '%url' => url("node/{$node->nid}", [
         'absolute' => true,
       ]),
+      '%publish_path' => $node->publish_path,
+      '%git_reference' => $node->git_reference,
     ]), 'p_log');
 
     hosting_package_sync($packages['base']);
