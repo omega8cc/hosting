@@ -479,6 +479,9 @@ function hosting_site_load($nodes) {
   $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
   $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
 
+  // Set URI property from title.
+  $node->uri = $node->title;
+  
   // Load default install_command, deploy_command, and test_command properties
   $node->commands = hosting_find_deploy_commands($node);
 }
