@@ -885,7 +885,7 @@ function hosting_task_deploy_form($node) {
     $form['info']['target']['target_git_reference'] = array(
       '#title' => t('Target Git Reference'),
       '#type' => 'textfield',
-      '#default_value' => $_GET['git_reference'] ? : $node->git_reference,
+      '#default_value' => isset($_GET['git_reference']) ? $_GET['git_reference'] : $node->git_reference,
       '#description' => t('Enter the desired git branch, tag, or SHA. If a branch is entered, the git repository will pulled and reset to match the remote repository. If a tag or SHA is entered, it will be checked out, resulting in a "DETACHED HEAD" state.'),
       '#parents' => array(
         'parameters', 'target_git_reference',
@@ -1007,6 +1007,8 @@ function hosting_task_deploy_form($node) {
     */
   }
 
+  /**
+   * Replace once we are storing up to date git status. 
   $form['git_info'] = array(
     '#title' => t('View git status in &path', array(
       '&path' => $node->git_root,
@@ -1033,6 +1035,7 @@ function hosting_task_deploy_form($node) {
       '#access' => empty($diff) && empty($status),
     ),
   );
+   */
 
   return $form;
 }
