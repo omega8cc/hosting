@@ -836,65 +836,29 @@ function hosting_site_hosting_task_guarded_nodes() {
 function hosting_task_deploy_form($node) {
   $form = array();
   if ($node->type == 'site') {
-
-    try {
-      $repo = new \Gitonomy\Git\Repository($node->git_root);
-      $git = $repo->getWorkingCopy();
-      $diff = $git->getDiffPending();
-
-    } catch (GitException $e) {
-      drupal_set_message($e->getMessage(), 'error');
-    }
-
-    $two_col_classes = array(
-      'col-sm-6',
-      'col-md-6',
-      'col-lg-6',
+    $form['current']['site'] = array(
+      '#type' => 'item',
+      '#weight' => -1,
+      '#title' => t('Site'),
+      '#markup' => l($node->uri, 'http://' . $node->uri, array('attributes' => array('target' => '_blank'))),
+      '#description' => t('The site being deployed.'),
     );
 
-    $form['info'] = array(
-      '#type' => 'container',
-      '#attributes' => array(
-        'class' => array('container')
-      ),
-      'current' => array(
-        '#type' => 'container',
-        '#attributes' => array(
-          'class' => $two_col_classes,
-        ),
-      ),
-      'target' => array(
-        '#type' => 'container',
-        '#attributes' => array(
-          'class' => $two_col_classes,
-        ),
-      ),
-    );
-    $form['info']['current']['current_git_reference'] = array(
+    $form['current']['current_git_reference'] = array(
       '#title' => t('Current Git Reference'),
       '#type' => 'item',
-      '#markup' => $node->git_reference,
+      '#markup' => "<span class='badge badge-info'>" . $node->git_reference . "</span>",
       '#description' => t('The current branch, tag, or SHA of the site code at &path.', array(
         '&path' => $node->git_root,
       )),
-      '#field_prefix' => '<div class="label label-default git-ref-label">',
-      '#field_suffix' => '</div>',
     );
 
     // Allow the user to change git_reference here.
-    $form['info']['target']['target_git_reference'] = array(
+    $form['target_git_reference'] = array(
       '#title' => t('Target Git Reference'),
       '#type' => 'textfield',
       '#default_value' => isset($_GET['git_reference']) ? $_GET['git_reference'] : $node->git_reference,
-      '#description' => t('Enter the desired git branch, tag, or SHA. If a branch is entered, the git repository will pulled and reset to match the remote repository. If a tag or SHA is entered, it will be checked out, resulting in a "DETACHED HEAD" state.'),
-      '#parents' => array(
-        'parameters', 'target_git_reference',
-      ),
-      '#attributes' => array(
-        'class' => array(
-          'col-md-6'
-        ),
-      ),
+      '#description' => t('Select the git branch or tag to deploy to this site.'),
     );
 
     /**
