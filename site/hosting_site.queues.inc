@@ -42,8 +42,9 @@ function hosting_git_queue() {
   $bin_path = realpath(dirname($hostmaster_path) . '/bin');
   watchdog('hosting', 'Running drush hosting-git....');
   foreach ($result as $name => $path) {
-    $command = "cd $path && TIMEOUT=55 $bin_path/wait-for $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
+    $command = "cd $path && SLEEP=5 TIMEOUT=55 $bin_path/wait-for $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
     drush_log("Launching git monitor process in $path: $command", "ok");
     $result_code = drush_shell_proc_open($command);
+    sleep(1);
   }
 }
