@@ -42,7 +42,7 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
   else {
     $type = 'display';
 
-    if ($show_desc && isset($element['#default_value'])) {
+    if ($show_desc) {
       // Display it.
       $form['info'][$item] = array(
         '#type' => 'item',
@@ -55,14 +55,11 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
         $form['info'][$item]['#weight'] = $element['#weight'];
       }
     }
-    elseif (isset($element['#default_value'])) {
-      $form[$item] = array(
-        '#type' => 'hidden',
-        '#value' => $element['#default_value'],
-      );
-    }
+    $form[$item] = array(
+      '#type' => 'value',
+      '#value' => isset($element['#default_value'])? $element['#default_value']: '',
+    );
   }
-
   $form[$item]['#hosting_site_field'] = $item;
   $form[$item]['#hosting_site_field_value'] = $element['#default_value'];
   $form[$item]['#prefix'] = "<div class='hosting-site-field hosting-site-field-{$type}' id='hosting-site-field-{$css_id}'>";
