@@ -212,7 +212,7 @@ function _hosting_queues_clean_output($return) {
 
 
 function _hosting_dispatch_cmd() {
-  $cmd = sprintf("/usr/bin/env php %s %s hosting-dispatch ", DRUSH_COMMAND, escapeshellarg(d()->name));
+  $cmd = sprintf("/usr/bin/env php %s %s hosting-dispatch >> %s 2>&1", DRUSH_COMMAND, escapeshellarg(d()->name), drush_get_option('hosting_dispatch_logfile', '$HOME/logs/hosting-dispatch.log'));
   return $cmd;
 }
 
