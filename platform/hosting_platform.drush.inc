@@ -51,6 +51,10 @@ function hosting_platform_drush_context_import($context, &$node) {
     $node->git_reference = $context->git_reference;
     $node->git_reset = $context->git_reset;
     $node->git_docroot = $context->git_docroot;
+    $node->git_sha = $context->git_sha;
+    $node->git_refs = $context->git_refs;
+    $node->git_last = $context->git_last;
+    $node->git_status = $context->git_status;
   }
 }
 
@@ -89,6 +93,9 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
     // Load git information from context.
     $options = $data['context'];
+    $node->git_sha = $options['git_sha'];
+    $node->git_last = $options['git_last'];
+    $node->git_status = $options['git_status'];
     $node->git_refs = $options['git_refs'];
     $node->git_reference = $options['git_reference'];
     $node->git_remote = $options['git_remote'];

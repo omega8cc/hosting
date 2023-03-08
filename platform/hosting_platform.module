@@ -482,6 +482,22 @@ function hosting_platform_form(&$node) {
     '#default_value' => $node->git_reset,
   );
 
+  $form['git']['git_sha'] = array(
+    '#type' => 'value',
+    '#value' => $node->git_sha,
+  );
+  $form['git']['git_refs'] = array(
+    '#type' => 'value',
+    '#value' => $node->git_refs,
+  );
+  $form['git']['git_last'] = array(
+    '#type' => 'value',
+    '#value' => $node->git_last,
+  );
+  $form['git']['git_status'] = array(
+    '#type' => 'value',
+    '#value' => $node->git_last,
+  );
 
   // @TODO: Decide to remove makefile support?
 //  $form['frommakefile'] = array(
@@ -612,6 +628,10 @@ function hosting_platform_insert($node) {
       'git_reset' => (int) $node->git_reset,
       'git_root' => hosting_path_normalize($node->git_root),
       'git_docroot' => $node->git_docroot,
+      'git_sha' => $node->git_sha ?? '',
+      'git_refs' => $node->git_refs ?? '',
+      'git_last' => $node->git_last ?? 0,
+      'git_status' => $node->git_status ?? 0,
       'publish_path' => hosting_path_normalize($node->publish_path),
       'makefile' => isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : ''),
       'verified' => isset($node->verified) ? $node->verified : 0,
@@ -647,6 +667,10 @@ function hosting_platform_update($node) {
         'git_reset' => (int) $node->git_reset,
         'git_root' => hosting_path_normalize($node->git_root),
         'git_docroot' => $node->git_docroot,
+        'git_sha' => $node->git_sha ?? '',
+        'git_refs' => $node->git_refs ?? '',
+        'git_last' => $node->git_last ?? 0,
+        'git_status' => $node->git_status ?? 0,
         'publish_path' => hosting_path_normalize($node->publish_path),
         'makefile' => isset($node->makefile) ? $node->makefile : (isset($node->frommakefile['makefile']) ? $node->frommakefile['makefile'] : ''),
         'web_server' => $node->web_server,

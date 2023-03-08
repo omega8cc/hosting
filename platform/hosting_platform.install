@@ -28,6 +28,12 @@ function hosting_platform_schema() {
         'length' => 255,
         'default' => NULL,
       ),
+      'git_sha' => array(
+        'description' => 'The current git SHA, as read from the platform codebase.',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => NULL,
+      ),
       'git_reference' => array(
         'description' => 'The desired git reference. Can be a branch, tag or SHA. Defaults to the git repository default branch.',
         'type' => 'varchar',
@@ -53,6 +59,25 @@ function hosting_platform_schema() {
          'length' => 255,
          'default' => NULL,
        ),
+      'git_refs' => array(
+         'description' => 'The list of all references, as output by git ls-remote.',
+         'type' => 'text',
+         'size' => 'normal',
+         'default' => NULL,
+       ),
+      'git_status' => array(
+        'description' => 'The output of git status',
+        'type' => 'text',
+        'size' => 'normal',
+        'default' => NULL,
+      ),
+      'git_last' => array(
+        'description' => 'The timestamp of the last commit.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
       'publish_path' => array(
         'type' => 'text',
         'size' => 'big',
@@ -312,3 +337,39 @@ function hosting_platform_update_7401() {
   }
 }
 
+
+/**
+ * Create new columns for git properties.
+ */
+function hosting_platform_update_7402() {
+  $spec = array(
+    'git_sha' => array(
+      'description' => 'The current git SHA, as read from the platform codebase.',
+      'type' => 'varchar',
+      'length' => 255,
+      'default' => NULL,
+    ),
+    'git_refs' => array(
+      'description' => 'The list of all references, as output by git ls-remote.',
+      'type' => 'text',
+      'size' => 'normal',
+      'default' => NULL,
+    ),
+    'git_status' => array(
+      'description' => 'The output of git status',
+      'type' => 'text',
+      'size' => 'normal',
+      'default' => NULL,
+    ),
+    'git_last' => array(
+      'description' => 'The timestamp of the last commit.',
+      'type' => 'int',
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+      'default' => 0,
+    ),
+  );
+  foreach ($spec as $field => $field_spec) {
+    db_add_field('hosting_platform', $field, $field_spec);
+  }
+}

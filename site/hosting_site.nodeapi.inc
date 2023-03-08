@@ -459,7 +459,11 @@ function hosting_site_load($nodes) {
         p.git_root,
         p.git_remote,
         p.git_reference,
-        p.git_docroot
+        p.git_docroot,
+        p.git_sha,
+        p.git_last,
+        p.git_refs,
+        p.git_status
       FROM {hosting_site} s
         LEFT JOIN {hosting_platform} p ON s.platform = p.nid
       WHERE s.vid = :vid',
