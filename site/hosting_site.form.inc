@@ -42,12 +42,12 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
   else {
     $type = 'display';
 
-    if ($show_desc) {
+    if ($show_desc && isset($element['#default_value'])) {
       // Display it.
       $form['info'][$item] = array(
         '#type' => 'item',
         '#title' => $element['#title'],
-        '#markup' => $filter_display($element['#default_value']),
+        '#markup' => !empty($element['#default_value'])? $filter_display($element['#default_value']): t('None'),
         '#required' => FALSE,
       );
 
@@ -55,11 +55,12 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
         $form['info'][$item]['#weight'] = $element['#weight'];
       }
     }
-
-    $form[$item] = array(
-      '#type' => 'hidden',
-      '#value' => $element['#default_value'],
-    );
+    elseif (isset($element['#default_value'])) {
+      $form[$item] = array(
+        '#type' => 'hidden',
+        '#value' => $element['#default_value'],
+      );
+    }
   }
 
   $form[$item]['#hosting_site_field'] = $item;
@@ -163,6 +164,7 @@ function hosting_site_form($node, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Install profile'),
     '#description' => t('The Drupal install profile to install.'),
+    '#default_value' => isset($node->profile) ? $node->profile : '',
   ), '_hosting_node_link');
 
   _hosting_site_field($form, $node, 'site_language', array(
