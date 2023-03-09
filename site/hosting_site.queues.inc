@@ -35,6 +35,7 @@ function hosting_git_queue() {
     ->condition('n.status', NODE_PUBLISHED)
     ->condition('s.status', HOSTING_SITE_ENABLED)
     ->isNotNull('git_root')
+    ->condition('git_root', '', '!=')
     ->execute()
     ->fetchAllKeyed();
 
@@ -42,8 +43,10 @@ function hosting_git_queue() {
   $bin_path = realpath(dirname($hostmaster_path) . '/bin');
   drush_log(format_plural(count($result), dt('Checking git remotes on 1 site...'), dt('Checking git remotes on @count sites...')), 'notice');
   foreach ($result as $name => $path) {
-    $command = "cd $path && $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy";
-    drush_shell_proc_open($command);
+    if ($path && file_exists($path)) {
+      $command = "cd $path && $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
+      drush_shell_proc_open($command);  
+    }
   }
 }
 
