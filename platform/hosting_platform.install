@@ -68,7 +68,7 @@ function hosting_platform_schema() {
       'git_status' => array(
         'description' => 'The output of git status',
         'type' => 'text',
-        'size' => 'normal',
+        'size' => 'medium',
         'default' => NULL,
       ),
       'git_last' => array(
@@ -370,6 +370,24 @@ function hosting_platform_update_7402() {
     ),
   );
   foreach ($spec as $field => $field_spec) {
+    db_add_field('hosting_platform', $field, $field_spec);
+  }
+}
+
+/**
+ * Create new columns for git properties.
+ */
+function hosting_platform_update_7403() {
+  $spec = array(
+    'git_status' => array(
+      'description' => 'The output of git status',
+      'type' => 'text',
+      'size' => 'normal',
+      'default' => NULL,
+    ),
+  );
+  foreach ($spec as $field => $field_spec) {
+    db_drop_field('hosting_platform', $field);
     db_add_field('hosting_platform', $field, $field_spec);
   }
 }
