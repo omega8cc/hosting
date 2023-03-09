@@ -19,10 +19,18 @@ Returns true if local working copy is behind the git remote.
 "
 }
 
+echo "Checking git status in $PWD..."
+GITDIR="$PWD/.git"
+
+if [ ! -d $GITDIR ]; then
+  echo "Not a git repository. No folder: $GITDIR"
+  exit 1
+fi
+
 git fetch
 BEHIND=$(git rev-list HEAD..FETCH_HEAD --count)
 
-if  [ "$BEHIND" -gt "0" ]; then
+if  [ -n "$BEHIND" ] && [ "$BEHIND" -gt "0" ]; then
   exit 0
 else
   exit 1
