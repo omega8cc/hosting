@@ -9,14 +9,14 @@
  *
  * Return a list of queues that this module needs to manage.
  */
-function hosting_site_hosting_queues() {
-  $queue['git'] = array(
-    'name' => t('Git deploy queue'),
-    'description' => t('Watch repositories for changes and trigger deployments when new remote commits are available.'),
-    'frequency' => strtotime("1 minute", 0), # run queue every minute.
-  );
-  return $queue;
-}
+//function hosting_site_hosting_queues() {
+//  $queue['git'] = array(
+//    'name' => t('Git deploy queue'),
+//    'description' => t('Watch repositories for changes and trigger deployments when new remote commits are available.'),
+//    'frequency' => strtotime("1 minute", 0), # run queue every minute.
+//  );
+//  return $queue;
+//}
 
 /**
  * Implements the git queue.
@@ -37,7 +37,7 @@ function hosting_git_queue() {
     ->isNotNull('git_root')
     ->execute()
     ->fetchAllKeyed();
-  
+
   $hostmaster_path = d('@hostmaster')->root;
   $bin_path = realpath(dirname($hostmaster_path) . '/bin');
   watchdog('hosting', 'Running drush hosting-git....');
