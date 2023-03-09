@@ -19,7 +19,6 @@ Returns true if local working copy is behind the git remote.
 "
 }
 
-# echo "Checking git status in $PWD..."
 GITDIR="$PWD/.git"
 
 if [ ! -d $GITDIR ]; then
@@ -28,7 +27,10 @@ if [ ! -d $GITDIR ]; then
 fi
 
 git fetch
-git status -sb | grep behind
-BEHIND="$?"
+BEHIND=$(git rev-list HEAD..FETCH_HEAD --count)
 
-exit $BEHIND
+if [ $BEHIND = "0" ]; then
+  exit 1
+else 
+  exit 0  
+fi
