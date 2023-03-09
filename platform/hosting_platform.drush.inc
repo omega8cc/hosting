@@ -93,15 +93,18 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
     // Load git information from context.
     $options = $data['context'];
-    $node->git_sha = $options['git_sha'];
-    $node->git_last = $options['git_last'];
-    $node->git_status = $options['git_status'];
-    $node->git_refs = $options['git_refs'];
-    $node->git_reference = $options['git_reference'];
-    $node->git_remote = $options['git_remote'];
-    $node->git_root = $options['git_root'];
-    $node->git_docroot = $options['git_docroot'];
-    $node->git_reset = $options['git_reset'];
+     
+    if (isset($options['git_sha'])) {
+      $node->git_sha = $options['git_sha'];
+      $node->git_last = $options['git_last'];
+      $node->git_status = $options['git_status'];
+      $node->git_refs = $options['git_refs'];
+      $node->git_reference = $options['git_reference'];
+      $node->git_remote = $options['git_remote'];
+      $node->git_root = $options['git_root'];
+      $node->git_docroot = $options['git_docroot'];
+      $node->git_reset = $options['git_reset'];
+    }
 
     // Save the platform being verified.
     node_save($node);
@@ -114,7 +117,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       '%publish_path' => $node->publish_path,
     ]), 'p_log');
 
-    drush_log($node->git_status, 'p_info');
+    
     
     hosting_package_sync($packages['base']);
     hosting_package_sync($packages['sites-all']);
