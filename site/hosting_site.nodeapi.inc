@@ -485,7 +485,7 @@ function hosting_site_load($nodes) {
 
   // Set URI property from title.
   $node->uri = $node->title;
-  
+
   // Load default install_command, deploy_command, and test_command properties
   $node->commands = hosting_find_deploy_commands($node);
 }
