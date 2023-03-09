@@ -187,7 +187,7 @@ function drush_hosting_task()
     drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
     drush_log(dt('Saved alias: @name | @data', [
       '@name' => $task->ref->hosting_name,
-      '@data' => print_r($task->ref->context_options, 1),
+      '@data' => print_r($task->context_options, 1),
     ]), 'ok');
     
   }
