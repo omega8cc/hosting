@@ -97,6 +97,8 @@ function drush_hosting_queued() {
 
   while (TRUE) {
 
+    module_invoke_all('hosting_queued_execute');
+
     // Detect if the hosting queue is paused or not.
     // Reload variables. Since this is still a single request, any variable changes are not available.
     $conf = variable_initialize();
@@ -128,7 +130,6 @@ function drush_hosting_queued() {
         // Restart the daemon to recycle leaked memory.
         hosting_queued_restart();
       }
-
 
     // Get some tasks to run.
     if ($tasks = @hosting_get_new_tasks()) {

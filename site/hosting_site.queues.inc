@@ -9,14 +9,14 @@
  *
  * Return a list of queues that this module needs to manage.
  */
-//function hosting_site_hosting_queues() {
-//  $queue['git'] = array(
-//    'name' => t('Git deploy queue'),
-//    'description' => t('Watch repositories for changes and trigger deployments when new remote commits are available.'),
-//    'frequency' => strtotime("1 minute", 0), # run queue every minute.
-//  );
-//  return $queue;
-//}
+function hosting_site_hosting_queues() {
+  $queue['git'] = array(
+    'name' => t('Git deploy queue'),
+    'description' => t('Watch repositories for changes and trigger deployments when new remote commits are available.'),
+    'frequency' => strtotime("1 minute", 0), # run queue every minute.
+  );
+  return $queue;
+}
 
 /**
  * Implements the git queue.
@@ -40,11 +40,18 @@ function hosting_git_queue() {
 
   $hostmaster_path = d('@hostmaster')->root;
   $bin_path = realpath(dirname($hostmaster_path) . '/bin');
-  watchdog('hosting', 'Running drush hosting-git....');
+  drush_log(format_plural(count($result), dt('Checking git remotes on 1 site...'), dt('Checking git remotes on @count sites...')), 'notice');
   foreach ($result as $name => $path) {
-    $command = "cd $path && SLEEP=5 TIMEOUT=55 $bin_path/wait-for $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
-    drush_log("Launching git monitor process in $path: $command", "ok");
-    $result_code = drush_shell_proc_open($command);
-    sleep(1);
+    $command = "cd $path && $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy";
+    drush_shell_proc_open($command);
   }
+}
+
+/**
+ * Implements hook_hosting_queued_execute()
+ *
+ * Runs in the hosting-queue-runner loop.
+ */
+function hosting_site_hosting_queued_execute() {
+  hosting_git_queue();
 }
