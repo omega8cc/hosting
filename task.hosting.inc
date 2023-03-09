@@ -185,6 +185,11 @@ function drush_hosting_task()
 
     // Save Current Context Alias file.
     drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
+    drush_log(dt('Saved alias: @name | @data', [
+      '@name' => $task->ref->hosting_name,
+      '@data' => print_r($task->ref->context_options, 1),
+    ]), 'ok');
+    
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
