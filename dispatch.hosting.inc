@@ -29,7 +29,7 @@ function drush_hosting_dispatch() {
       $lock_wait = drush_get_option('lock-wait', HOSTING_QUEUE_DEFAULT_LOCK_WAIT);
       if (!lock_wait($semaphore, $lock_wait) || drush_get_option('force', FALSE)) {
         if (lock_acquire($semaphore, HOSTING_QUEUE_LOCK_TIMEOUT)) {
-          drush_log(dt('Acquired lock on @queue queue.', array('@queue' => $queue)), 'ok');
+          drush_log(dt('Acquired lock on @queue queue.', array('@queue' => $queue)), 'notice');
         }
         elseif (drush_get_option('force', FALSE)) {
           drush_log(dt('Bypassing lock on @queue queue.', array('@queue' => $queue)), 'warning');
@@ -47,7 +47,7 @@ function drush_hosting_dispatch() {
           $count = $info['calc_items'] - $info['running_items'];
           if ($count <= 0) {
             $results[$queue] = 'full';
-            drush_log(dt("Maximum number of tasks (@count) already running.", array('@count' => $info['running_items'])), 'ok');
+            drush_log(dt("Maximum number of tasks (@count) already running.", array('@count' => $info['running_items'])), 'notice');
           }
           else {
             $results[$queue] = 'run';
@@ -64,18 +64,18 @@ function drush_hosting_dispatch() {
         }
         else {
           $results[$queue] = 'early';
-          drush_log(dt("Too early for queue @queue.", array('@queue' => $queue)), 'ok');
+          drush_log(dt("Too early for queue @queue.", array('@queue' => $queue)), 'notice');
         }
       }
       else {
         $results[$queue] = 'disabled';
-        drush_log(dt("Queue @queue disabled.", array('@queue' => $queue)), 'ok');
+        drush_log(dt("Queue @queue disabled.", array('@queue' => $queue)), 'notice');
       }
 
-      drush_log(dt('Releasing @queue lock.', array('@queue' => $queue)), 'ok');
+      drush_log(dt('Releasing @queue lock.', array('@queue' => $queue)), 'notice');
       lock_release($semaphore);
     }
-    
+
     watchdog('hosting', 'Hosting dispatch complete. Queues: %results', [
       '%results' => print_r($results, 1)
     ]);
