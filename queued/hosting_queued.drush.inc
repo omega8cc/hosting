@@ -152,10 +152,9 @@ function drush_hosting_queued() {
           // If task is already running for this RID, and --force option was not set, bail out.
           $running_tasks = hosting_task_processing($task->rid);
           if (count($running_tasks) && !drush_get_option('force', FALSE)) {
-            drush_log(dt('Skipping Task !nid: Other tasks for !type !title are currently processing. Use --force option ignore this check.', array(
+            drush_log(dt('Task blocked. Other tasks currently processing on !url. Use --force option ignore this check.', array(
               '!nid' => $task->nid,
-              '!type' => $task->ref->type,
-              '!title' => $task->ref->title,
+              '!url' => url("node/$task->rid"),
             )), 'warning');
             continue;
           }
