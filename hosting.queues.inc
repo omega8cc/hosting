@@ -139,6 +139,20 @@ function hosting_get_queues($refresh = FALSE) {
 }
 
 /**
+ * Load queues that are enabled.
+ * @return array
+ */
+function hosting_get_enabled_queues() {
+  $queues = hosting_get_queues();
+  foreach ($queues as $i => $queue) {
+    if ($queue['enabled']){
+      $return[$i] = $queue;
+    }
+  }
+  return $return;
+}
+
+/**
  * Run a queue specified by hook_hosting_queues()
  *
  * Run an instance of a queue processor. This function contains all the book keeping
