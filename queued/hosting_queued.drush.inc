@@ -97,6 +97,8 @@ function drush_hosting_queued() {
 
   while (TRUE) {
 
+    module_invoke_all('hosting_queued_execute');
+
     // Detect if the hosting queue is paused or not.
     // Reload variables. Since this is still a single request, any variable changes are not available.
     $conf = variable_initialize();
@@ -129,7 +131,6 @@ function drush_hosting_queued() {
         hosting_queued_restart();
       }
 
-
     // Get some tasks to run.
     if ($tasks = @hosting_get_new_tasks()) {
 
@@ -148,8 +149,21 @@ function drush_hosting_queued() {
           drush_log(dt('Found task to execute. Pausing before execution.'));
           sleep(1);
 
+          // If task is already running for this RID, and --force option was not set, bail out.
+          $running_tasks = hosting_task_processing($task->rid);
+          if (count($running_tasks) && !drush_get_option('force', FALSE)) {
+            drush_log(dt('Task blocked. Other tasks currently processing on !url. Use --force option ignore this check.', array(
+              '!nid' => $task->nid,
+              '!url' => url("node/$task->rid"),
+            )), 'warning');
+            continue;
+          }
+
           // Execute the task.
-          hosting_task_execute($task, array('interactive' => TRUE));
+          $backend_options = array();
+          $backend_options['interactive'] = TRUE;
+          $backend_options['fork'] = drush_get_option('hosting_queued_fork_tasks', TRUE);
+          hosting_task_execute($task, $backend_options);
 
           // Delay for a configurable amount of time.
           $delay = variable_get('hosting_queued_post_task_delay', 0);

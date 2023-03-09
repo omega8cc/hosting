@@ -37,14 +37,21 @@ function hosting_git_queue() {
     ->isNotNull('git_root')
     ->execute()
     ->fetchAllKeyed();
-  
+
   $hostmaster_path = d('@hostmaster')->root;
   $bin_path = realpath(dirname($hostmaster_path) . '/bin');
-  watchdog('hosting', 'Running drush hosting-git....');
+  drush_log(format_plural(count($result), dt('Checking git remotes on 1 site...'), dt('Checking git remotes on @count sites...')), 'notice');
   foreach ($result as $name => $path) {
-    $command = "cd $path && SLEEP=5 TIMEOUT=55 $bin_path/wait-for $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
-    drush_log("Launching git monitor process in $path: $command", "ok");
-    $result_code = drush_shell_proc_open($command);
-    sleep(1);
+    $command = "cd $path && $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy";
+    drush_shell_proc_open($command);
   }
+}
+
+/**
+ * Implements hook_hosting_queued_execute()
+ *
+ * Runs in the hosting-queue-runner loop.
+ */
+function hosting_site_hosting_queued_execute() {
+  hosting_git_queue();
 }

@@ -139,6 +139,20 @@ function hosting_get_queues($refresh = FALSE) {
 }
 
 /**
+ * Load queues that are enabled.
+ * @return array
+ */
+function hosting_get_enabled_queues() {
+  $queues = hosting_get_queues();
+  foreach ($queues as $i => $queue) {
+    if ($queue['enabled']){
+      $return[$i] = $queue;
+    }
+  }
+  return $return;
+}
+
+/**
  * Run a queue specified by hook_hosting_queues()
  *
  * Run an instance of a queue processor. This function contains all the book keeping
@@ -212,7 +226,7 @@ function _hosting_queues_clean_output($return) {
 
 
 function _hosting_dispatch_cmd() {
-  $cmd = sprintf("/usr/bin/env php %s %s hosting-dispatch >> %s 2>&1", DRUSH_COMMAND, escapeshellarg(d()->name), drush_get_option('hosting_dispatch_logfile', '$HOME/logs/hosting-dispatch.log'));
+  $cmd = sprintf("/usr/bin/env php %s %s hosting-dispatch ", DRUSH_COMMAND, escapeshellarg(d()->name));
   return $cmd;
 }
 

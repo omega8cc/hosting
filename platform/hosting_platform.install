@@ -62,7 +62,7 @@ function hosting_platform_schema() {
       'git_refs' => array(
          'description' => 'The list of all references, as output by git ls-remote.',
          'type' => 'text',
-         'size' => 'normal',
+         'size' => 'medium',
          'default' => NULL,
        ),
       'git_status' => array(
@@ -279,7 +279,7 @@ function hosting_platform_update_6208() {
  * Create new columns for git properties.
  */
 function hosting_platform_update_7400() {
-  $spec = array( 
+  $spec = array(
       'git_remote' => array(
         'description' => 'The URL or path of the git repository to use when creating this platform.',
         'type' => 'varchar',
@@ -352,7 +352,7 @@ function hosting_platform_update_7402() {
     'git_refs' => array(
       'description' => 'The list of all references, as output by git ls-remote.',
       'type' => 'text',
-      'size' => 'normal',
+      'size' => 'medium',
       'default' => NULL,
     ),
     'git_status' => array(
