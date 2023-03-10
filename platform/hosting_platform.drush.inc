@@ -97,7 +97,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     if (isset($options['git_sha'])) {
       $node->git_sha = $options['git_sha'];
       $node->git_last = $options['git_last'];
-      $node->git_status = $options['git_status'];
+      $node->git_status = substr($options['git_status'], 0,2000);
       $node->git_refs = $options['git_refs'];
       $node->git_reference = $options['git_reference'];
       $node->git_remote = $options['git_remote'];
