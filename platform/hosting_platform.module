@@ -942,7 +942,7 @@ function hosting_platform_view($node, $view_mode, $langcode = NULL) {
     '#markup' => _hosting_platform_status($node->platform_status),
   );
 
-  if ($node->makefile) {
+  if (!empty($node->makefile)) {
     $node->content['info']['makefile'] = array(
       '#type' => 'item',
       '#title' => t('Drush makefile'),
@@ -950,7 +950,7 @@ function hosting_platform_view($node, $view_mode, $langcode = NULL) {
     );
   }
 
-  if ($node->release) {
+  if (!empty($node->release)) {
     $release = sprintf("%s %s", $node->release->title, $node->release->version);
     $node->content['info']['release'] = array(
       '#type' => 'item',
