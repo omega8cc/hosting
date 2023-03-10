@@ -54,9 +54,11 @@ function hosting_git_queue() {
  * Implements hook_hosting_queued_execute()
  *
  * Runs in the hosting-queue-runner loop.
- * 
+ *
+ *
+ * Runs way too fast. needs work. 
  * @see drush_hosting_queued()
  */
-function hosting_site_hosting_queued_execute() {
-  hosting_git_queue();
-}
+//function hosting_site_hosting_queued_execute() {
+//  hosting_git_queue();
+//}
