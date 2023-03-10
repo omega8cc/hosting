@@ -108,9 +108,8 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
     drush_log(dt('Dropping tables for destination database (@destination)', array('@destination' => $destination)), 'ok');
 
     $destination = '@' . d()->group . '.' . d()->environment;
-    $extra_dump = escapeshellarg('--extra-dump="--single-transaction=false"');
     $options = "--structure-tables-key=common";
-    $command = "drush sql-sync $extra_dump $options $source $destination";
+    $command = "drush sql-sync $options $source $destination";
 
     $environment = [];
     provision_process($command, d()->root, dt('Syncing database...'), $environment, TRUE);
