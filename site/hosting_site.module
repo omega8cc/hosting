@@ -861,65 +861,39 @@ function hosting_task_deploy_form($node) {
       '#description' => t('Select the git branch or tag to deploy to this site.'),
     );
 
-    /**
-     * @TODO:
-    // Offer users ability to control commands that will run during this deployment.
-    $form['hooks'] = array(
+    $form['stages'] = array(
       '#type' => 'container',
       'title' => array(
         '#prefix' => '<h4>',
-        '#markup' => t('Deployment Phases'),
+        '#markup' => t('Deployment Stages'),
         '#suffix' => '</h4>',
       ),
       'description' => array(
-        '#markup' => t('Choose what commands will be run during this deploy.'),
+        '#markup' => t('After code is deployed, run the following commands:'),
       ),
-      '#attributes' => array(
-        'class' => array(
-          'alert alert-info'
+    );
+    $form['stages']['reset'] = [
+      '#title' => t('Discard uncommitted code changes.') . '<pre> git reset --hard</pre>',
+      '#type' => 'checkbox',
+      '#default_value' => $node->git_reset,
+      '#parents' => array(
+        'parameters', 'reset',
+      ),
+    ];
+
+    foreach ($node->stages as $stage => $info) {
+      $form['stages'][$stage] = [
+        '#title' => t('@title: @description', [
+          '@title' => $info['title'],
+          '@description' => $info['description'],
+        ]) . '<pre>' . $info['command'] . '</pre>',
+        '#type' => 'checkbox',
+        '#default_value' => in_array($stage, $node->deploy_stages),
+        '#parents' => array(
+          'parameters', $stage,
         ),
-      ),
-    );
-    $form['hooks']['checkout'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('git', $node->commands),
-      '#type' => 'checkbox',
-      '#default_value' => TRUE,
-      '#disabled' => TRUE,
-      '#parents' => array(
-        'parameters', 'build',
-      ),
-    );
-    $form['hooks']['build'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('build', $node->commands),
-      '#type' => 'checkbox',
-      // @TODO: Use site default.
-      '#default_value' => TRUE,
-      '#parents' => array(
-        'parameters', 'build',
-      ),
-    );
-    $form['hooks']['install'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('install', $node->commands),
-      '#type' => 'checkbox',
-      '#parents' => array(
-        'parameters', 'install',
-      ),
-    );
-    $form['hooks']['deploy'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('deploy', $node->commands),
-      '#type' => 'checkbox',
-      '#default_value' => TRUE,
-      '#parents' => array(
-        'parameters', 'deploy',
-      ),
-    );
-    $form['hooks']['test'] = array(
-      '#title' => _hosting_task_deploy_command_form_title('test', $node->commands),
-      '#type' => 'checkbox',
-      '#parents' => array(
-        'parameters', 'test',
-      ),
-    );
+      ];  
+    }
 
     // Check for working copy changes and offer to reset them for the user.
     $form['danger_zone'] = array(
@@ -934,24 +908,25 @@ function hosting_task_deploy_form($node) {
           'alert alert-danger'
         ),
       ),
-      '#states' => array(
-        'visible' => array(
-          ':input[name="parameters[install]"]' => array('checked' => TRUE),
-        ),
-      ),
     );
-    $form['danger_zone']['git_reset'] = array(
-      '#title' => t('Discard working copy changes.'),
+
+    if ($node->install_method == 'profile') {
+      $reinstall_title = t('Reinstall %profile', ['%profile' => $node->profile]);
+    }
+    elseif ($node->install_method == 'clone') {
+      $reinstall_title = t('Sync database');
+    }
+    elseif ($node->install_method == 'empty') {
+      $reinstall_title = t('Empty database');
+    }
+    
+    $form['danger_zone']['install'] = array(
+      '#title' => $reinstall_title,
       '#type' => 'checkbox',
-      '#default_value' => FALSE,
-      '#description' => t('Uncommitted changes were detected in the codebase. Check this box to discard changes to the code before attempting to deploy. If you do not, a "git checkout" command will still be attempted, and any errors will be logged.'),
       '#parents' => array(
-        'parameters', 'git_reset'
+        'parameters', 'install',
       ),
-      '#access' => !empty($diff) || !empty($status),
     );
-    /**
-     * @TODO: This was built with assumption deploy stages was available.
     $form['danger_zone']['confirm_destroy'] = array(
       '#title' => t('I understand that all data in the site !link will be destroyed.', array(
         '!link' => l($node->title, $node->title),
@@ -968,7 +943,6 @@ function hosting_task_deploy_form($node) {
         ),
       ),
     );
-    */
   }
 
   /**
@@ -1002,30 +976,6 @@ function hosting_task_deploy_form($node) {
    */
 
   return $form;
-}
-
-/**
- * Output friendly looking HTML after a deploy checkbox.
- * @param $command_name
- * @param $commands array The full array of commands.
- */
-function _hosting_task_deploy_command_form_title($command_name, $commands) {
-    $command = isset($commands[$command_name])
-      ? $commands[$command_name]
-      : '';
-
-    $command_title_text = '<span class="command-label"><code>!command_name</code></span> !command';
-    $missing_prefix = '<span class="alert alert-warning alert-inline"><i class="fa fa-warning"></i> ';
-    $missing_text = 'MISSING. Add desired command to <code>composer.json:extra.devshop.commands.!name</code>';
-    $missing_suffix = '</span>';
-
-    return t($command_title_text, array(
-    '!command_name' => $command_name,
-    '!command' => $command
-      ? '<kbd>' . $command . '</kbd>'
-      : $missing_prefix . t($missing_text, array('!name' => $command_name)) . $missing_suffix,
-    ));
-
 }
 
 /**

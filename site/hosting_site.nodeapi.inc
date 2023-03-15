@@ -458,6 +458,7 @@ function hosting_site_load($nodes) {
         p.publish_path,
         p.git_root,
         p.git_remote,
+        p.git_reset,
         p.git_reference,
         p.git_docroot,
         p.git_sha,
@@ -487,7 +488,14 @@ function hosting_site_load($nodes) {
   $node->uri = $node->title;
 
   // Load default install_command, deploy_command, and test_command properties
-  $node->commands = hosting_find_deploy_commands($node);
+  $node->stages = module_invoke_all('hosting_deploy_stages');
+  drupal_alter('hosting_deploy_stages', $node->stages);
+
+  // The default stages when deploying this site.
+  $node->deploy_stages = [
+    'build', 'update',
+  ];
+  
 }
 
 /**
@@ -511,12 +519,13 @@ function hosting_site_load($nodes) {
  *
  * @TODO: Move to drupal/provision once hosting requires drupal/provision.
  */
-function hosting_find_deploy_commands($node) {
+function hosting_get_stage_commands($node) {
+  
   $composer_json_path = $node->git_root . DIRECTORY_SEPARATOR . 'composer.json';
   if (file_exists($composer_json_path)) {
     $composer_data = json_decode(file_get_contents($composer_json_path), TRUE);
-    $commands = isset($composer_data['extra']['devshop']['commands'])
-      ? $composer_data['extra']['devshop']['commands']
+    $commands = isset($composer_data['scripts'])
+      ? $composer_data['scripts']
       : array();
   }
   else {
@@ -527,3 +536,23 @@ function hosting_find_deploy_commands($node) {
   // @TODO: Look for site command overrides. Remember platform nodes run this too
 }
 
+
+function hosting_site_hosting_deploy_stages() {
+  return [
+    'build' => [
+      'title' => t('Build'),
+      'description' => t('Prepare source code.'),
+      'command' => 'composer install --no-dev --profile',
+    ],
+    'update' => [
+      'title' => t('Update'),
+      'description' => t('Apply changes to the site.'),
+      'command' => 'drush deploy',
+    ],
+    'test' => [
+      'title' => t('Test'),
+      'description' => t('Run tests against the site.'),
+      'command' => 'drush status',
+    ],
+  ];
+}
