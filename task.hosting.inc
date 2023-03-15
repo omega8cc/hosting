@@ -86,6 +86,19 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
     }
   }
 
+  // If task is already running for this RID, and --force option was not set, bail out.
+  // This isn't really an error, but I don't see any way to abando
+  $running_tasks = hosting_task_processing($task->rid);
+  $running_task = current($running_tasks);
+  if (count($running_tasks) && !drush_get_option('force', FALSE)) {
+    return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Task postponed: Another task is still running. To force, call: !command', array(
+      '!command' => "drush @hostmaster hosting-task $task->nid --force",
+      '!url' => url("node/$running_task", [
+        'absolute' => true,
+      ]),
+    )));
+  }
+
   if ($task->type == 'task') {
     $task->ref = node_load($task->rid);
     $task->options = array(
@@ -147,6 +160,14 @@ function drush_hosting_task()
   $task = &drush_get_context('HOSTING_TASK');
   $output = array();
   $mode = drush_get_option('debug', FALSE) ? 'GET' : 'POST';
+
+  $t = array(
+    '@title' => $task->title,
+    '@nid' => $task->nid,
+    '@url' => url("node/{$task->nid}", array('absolute' => true)),
+  );
+
+  drush_log(dt('Starting task "@title": @url', $t), 'ok');
 
   chdir(d('@hostmaster')->root);
 

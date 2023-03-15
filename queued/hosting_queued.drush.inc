@@ -150,16 +150,6 @@ function drush_hosting_queued() {
           drush_log(dt('Found task to execute. Pausing before execution.'));
           sleep(1);
 
-          // If task is already running for this RID, and --force option was not set, bail out.
-          $running_tasks = hosting_task_processing($task->rid);
-          if (count($running_tasks) && !drush_get_option('force', FALSE)) {
-            drush_log(dt('Task blocked. Other tasks currently processing on !url. Use --force option ignore this check.', array(
-              '!nid' => $task->nid,
-              '!url' => url("node/$task->rid"),
-            )), 'warning');
-            continue;
-          }
-
           // Execute the task.
           $backend_options = array();
           $backend_options['interactive'] = TRUE;

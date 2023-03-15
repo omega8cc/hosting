@@ -782,22 +782,18 @@ function hosting_tasks_queue($count = 20) {
  *   @see drush_invoke_process().
  */
 function hosting_task_execute($task, $backend_options = array()) {
-  // Log in watchdog and drush.
   $t = array(
     '@title' => $task->title,
     '@nid' => $task->nid,
     '@url' => url("node/{$task->nid}", array('absolute' => true)),
   );
-  watchdog('hosting_task', 'Starting task "@title": @url', $t, WATCHDOG_NOTICE, url("node/$task->nid"));
-  drush_log(dt('Starting task "@title": @url', $t), 'ok');
-
+  
   // Execute in it's own process.
   drush_invoke_process('@self', "hosting-task", array($task->nid), array('strict' => FALSE), $backend_options);
 
   // Log a message, depending on forked process or not.
   // If forked, the process may not have completed yet, so we should change the message.
   if (isset($backend_options['fork']) && $backend_options['fork']) {
-    drush_log(dt('Launched task "@title" in a forked process: @url', $t), 'ok');
   }
   // If not forked, load and display the task status.
   else {
