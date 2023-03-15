@@ -310,16 +310,15 @@ function hosting_task_menu_access($node, $task) {
         return in_array($task, ['enable', 'delete', 'deploy']);
       }
       else {
-        if ($task == 'install' && variable_get('hosting_allow_reinstall', TRUE)) {
-          return true;
+        // If site is enabled, block install tasks unless allowed.
+        if ($task == 'install' && !variable_get('hosting_allow_reinstall', TRUE)) {
+          return false;
         }
-        if ($task == 'delete' && !variable_get('hosting_require_disable_before_delete', TRUE)) {
-          return true;
+        // Block delete tasks unless allowed.
+        elseif ($task == 'delete' && variable_get('hosting_require_disable_before_delete', TRUE)) {
+          return false;
         }
-        if ($task == 'deploy') {
-          return true;
-        }
-        if ($task == 'disable') {
+        else {
           return true;
         }
       }
