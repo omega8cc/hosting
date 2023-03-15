@@ -914,7 +914,16 @@ function hosting_task_deploy_form($node) {
       $reinstall_title = t('Reinstall %profile', ['%profile' => $node->profile]);
     }
     elseif ($node->install_method == 'clone') {
-      $reinstall_title = t('Sync database');
+      
+      // @TODO: Save clone source in hosting site data.
+      $source = hosting_context_load($node->clone_source);
+      $reinstall_title = t('Re-install site: Clone !source', [
+        '!source' => l($source->title, 'http://' . $source->title, [
+          'attributes' => [
+            '_target' => 'blank',
+          ]
+        ]),
+      ]);
     }
     elseif ($node->install_method == 'empty') {
       $reinstall_title = t('Empty database');
@@ -933,7 +942,6 @@ function hosting_task_deploy_form($node) {
       )),
       '#type' => 'checkbox',
       '#default_value' => FALSE,
-      '#description' => t('The site will be destroyed before the <code>install</code> command is run.'),
       '#parents' => array(
         'confirm_destroy'
       ),
