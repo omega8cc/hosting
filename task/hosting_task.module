@@ -300,33 +300,28 @@ function hosting_task_menu_access($node, $task) {
       }
 
       $site_enabled = (hosting_task_outstanding($node->nid, 'enable') || ($node->site_status == HOSTING_SITE_ENABLED));
-      $deletable = ($task == "delete");
-      $enabable = ($task == "enable");
-      $deployable = ($task == "deploy");
-
+      
       // @TODO: Do not allow on protected sites.
       // @TODO: Improve UI to inform users this is a reinstall and data will be lost.
       // @TODO: Reduce tech debt, do not add to it.
-      $installable = ($task == "install");
-
-      $delete_or_enable = ($deletable || $enabable || $installable || $deployable);
 
       // If the site is not enabled, we can either delete it, or enable it again.
       if (!$site_enabled) {
-        return ($delete_or_enable);
+        return in_array($task, ['enable', 'delete', 'deploy']);
       }
       else {
-        // Site is enabled.
-        return (
-                 // If task is "install" and user is allowed to reinstall globally, allow re-install.
-                 // @TODO: Create a protected site property.
-                 ($installable && variable_get('hosting_allow_reinstall', TRUE))  ||
-
-                 // If we can just delete a site without disabling, allow that.
-                 (!variable_get('hosting_require_disable_before_delete', TRUE)) && $deletable
-                 // Otherwise we must disable it first, hide the delete task and the enable task as well.
-                 || !$delete_or_enable
-               );
+        if ($task == 'install' && variable_get('hosting_allow_reinstall', TRUE)) {
+          return true;
+        }
+        if ($task == 'delete' && !variable_get('hosting_require_disable_before_delete', TRUE)) {
+          return true;
+        }
+        if ($task == 'deploy') {
+          return true;
+        }
+        if ($task == 'disable') {
+          return true;
+        }
       }
     }
     if ($node->type == 'platform') {
