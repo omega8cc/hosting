@@ -878,35 +878,19 @@ function hosting_task_deploy_form($node) {
     }
   }
 
-  /**
-   * Replace once we are storing up to date git status. 
   $form['git_info'] = array(
-    '#title' => t('View git status in &path', array(
+    '#title' => t('Current Git State', array(
       '&path' => $node->git_root,
     )),
     '#type' => 'fieldset',
     '#collapsed' => true,
     '#collapsible' => true,
-    'status' => array(
-      '#prefix' => '<h4>' . t('Git Status') . '</h4><pre>',
-      '#markup' => $status,
-      '#suffix' => '</pre>',
-      '#access' => !empty($status),
-    ),
-    'diff' => array(
-      '#prefix' => '<h4>' . t('Git diff') . '</h4><pre>',
-      '#markup' => $diff,
-      '#suffix' => '</pre>',
-      '#access' => !empty($diff),
-    ),
-    'clean' => array(
-      '#prefix' => '<h4>',
-      '#markup' => t('Git working copy is clean. No changes.'),
-      '#suffix' => '</h4>',
-      '#access' => empty($diff) && empty($status),
+    'state' => array(
+      '#access' => !empty($node->git_status),
+      '#theme' => 'hosting_ascii',
+      '#output' =>$node->git_status,
     ),
   );
-   */
 
   return $form;
 }
