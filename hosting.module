@@ -1151,7 +1151,7 @@ function hosting_form_alter(&$form, &$form_state, $form_id) {
   }
   
   // Add settings to Node Forms with hosting context name.
-  if ($form['#node_edit_form'] == true && !empty($form_state['node']->hosting_name)) {
+  if (!empty($form['#node_edit_form']) && !empty($form_state['node']->hosting_name)) {
     
     // Merge settings from prior form generating functions, like hosting_site_form.
     $form['hosting_settings'] = array(
