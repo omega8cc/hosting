@@ -66,6 +66,7 @@ define('HOSTING_QUEUE_TYPE_SPREAD', 'spread');
 include_once dirname(__FILE__) . '/hosting.inc';
 include_once dirname(__FILE__) . '/hosting.queues.inc';
 include_once dirname(__FILE__) . '/hosting.features.inc';
+include_once dirname(__FILE__) . '/hosting.theme.inc';
 
 /**
  * Implements hook_menu().
@@ -550,6 +551,11 @@ function hosting_theme() {
         'dependencies' => NULL,
         'prefix' => NULL,
         'features' => NULL,
+      ),
+    ),
+    'hosting_ascii' => array(
+      'variables' => array(
+        'output' => '',
       ),
     ),
   );

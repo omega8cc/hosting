@@ -2,7 +2,7 @@
     "name": "drupal/hosting",
     "type": "drupal-module",
     "require": {
-        "sensiolabs/ansi-to-html": "^1.1",
+        "sensiolabs/ansi-to-html": "^1.2",
         "laravel-validation-rules/ip": "^1.4",
         "gitonomy/gitlib": "^1.3"
     },
