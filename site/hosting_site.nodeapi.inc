@@ -498,7 +498,7 @@ function hosting_site_load($nodes) {
 }
 
 function hosting_site_deploy_steps_form_element($values = [], array $parents = []) {
-  $deploy_steps = module_invoke_all('hosting_deploy_steps');
+  $deploy_steps = Provision_Context_site::getDeploySteps();
   foreach ($deploy_steps as $step => $info) {
     $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
     $element[$step] = [
