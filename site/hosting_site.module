@@ -842,40 +842,23 @@ function hosting_task_deploy_form($node) {
   drupal_set_title(t('Deploy code to @site?', $t));
   $form = array();
   if ($node->type == 'site') {
-    $form['current']['site'] = array(
+    $form['current']['site'] = [
       '#weight' => -1,
       '#type' => 'item',
       '#markup' => t('The site !site is currently on git reference !ref.', $t),
-    );
+    ];
 
-    $form['target_git_reference'] = array(
+    $form['target_git_reference'] = [
       '#title' => t('Deploy latest code from'),
       '#type' => 'select',
       '#options' => hosting_site_git_options($node->git_refs),
       '#default_value' => $node->git_reference,
       '#description' => t('Select the git branch or tag to deploy to this site.'),
-    );
+    ];
 
-    $form['steps'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Deploy Steps'),
-      '#description' => t('After code is deployed, run the following commands:'),
-    );
-
-    foreach ($node->steps as $step => $info) {
-      $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
-      $form['steps'][$step] = [
-        '#title' => t('@title: @description', [
-          '@title' => $info['title'],
-          '@description' => $info['description'],
-        ]) . '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
-        '#type' => 'checkbox',
-        '#default_value' => in_array($step, $node->deploy_stages),
-        '#parents' => array(
-          'parameters', $step,
-        ),
-      ];  
-    }
+    $form['steps'] = hosting_site_deploy_steps_form_element($node->hosting_settings['deployment']['steps']);
+    $form['steps']['#type'] = 'item';
+    $form['steps']['#title'] = t('then run');
   }
 
   $form['git_info'] = array(
