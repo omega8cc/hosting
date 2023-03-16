@@ -854,12 +854,15 @@ function hosting_task_deploy_form($node) {
     );
 
     // Allow the user to change git_reference here.
+
     $form['target_git_reference'] = array(
       '#title' => t('Target Git Reference'),
-      '#type' => 'textfield',
-      '#default_value' => isset($_GET['git_reference']) ? $_GET['git_reference'] : $node->git_reference,
+      '#type' => 'select',
+      '#options' => hosting_site_git_options($node->git_refs),
+      '#default_value' => $node->git_reference,
       '#description' => t('Select the git branch or tag to deploy to this site.'),
     );
+    dsm($form['target_git_reference'], 'git ref');
 
     $form['stages'] = array(
       '#type' => 'container',
@@ -1033,4 +1036,58 @@ function hosting_site_hosting_site_domain_alter(&$domain) {
 function hosting_site_clean_domain($domain) {
   // Domain names are case-insensitive.
   return strtolower(trim($domain));
+}
+
+/**
+ * @param $git_refs Results of 'git ls-remote' command.
+ *
+ * @return array
+ */
+function hosting_site_git_options($git_refs) {
+
+  // Build tag and branch list
+  $branches = array();
+  $tags = array();
+  $refs = array();
+
+  $lines = explode("\n", $git_refs);
+  foreach ($lines as $line_string) {
+
+    // "annotated" tags come with an extra row and these characters at the end.
+    // See http://stackoverflow.com/questions/15472107/when-listing-git-ls-remote-why-theres-after-the-tag-name
+    if (substr($line_string, -3, 3) == '^{}') {
+      continue;
+    }
+
+    // Example remote line:
+    // 9fc5727c0823d8d3300ba5aae3328d5998033e45 refs/heads/master
+    // 9fc5727c0823d8d3300ba5aae3328d5998033e45 refs/tags/1.0
+    $line = trim(substr($line_string, 40));
+    if (empty($line) || $line == 'HEAD') {
+      continue;
+    }
+
+    // If branch
+    if (strpos($line, 'refs/heads/') === 0) {
+      $git_ref = str_replace('refs/heads/', '', $line);
+      $branches[] = $git_ref;
+      $refs[$git_ref] = 'branch';
+    }
+    // else if tag
+    elseif (strpos($line, 'refs/tags/') === 0) {
+      $git_ref = str_replace('refs/tags/', '', $line);
+      $tags[] = $git_ref;
+      $refs[$git_ref] = 'tag';
+    }
+    // If not a tag or a head, continue.
+    // @TODO: Should we store alternative types? GitHub Pull Requests use this.
+    else {
+      continue;
+    }
+  }
+  $options = [
+    'branches' => array_combine($branches, $branches),
+    'tags'=> array_combine($tags, $tags),
+  ];
+  return $options;
 }
