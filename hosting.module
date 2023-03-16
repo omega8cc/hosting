@@ -320,10 +320,11 @@ function hosting_node_insert($node) {
 function hosting_node_load($nodes, $types) {
   // Decide whether any of $types are relevant to our purposes.
   // Gather our extra data for each of these nodes.
-  $result = db_query("SELECT nid, name AS hosting_name FROM {hosting_context} WHERE nid IN(:nids)", array(':nids' => array_keys($nodes)))->fetchAllKeyed();
+  $result = db_query("SELECT nid, name, settings FROM {hosting_context} WHERE nid IN(:nids)", array(':nids' => array_keys($nodes)))->fetchAllAssoc('nid');
   // Add our extra data to the node objects.
-  foreach ($result as $nid => $hosting_name) {
-    $nodes[$nid]->hosting_name = $hosting_name;
+  foreach ($result as $nid => $hosting_context) {
+    $nodes[$nid]->hosting_name = $hosting_context->name;
+    $nodes[$nid]->hosting_settings = isset($hosting_context->settings)? unserialize($hosting_context->settings): [];
     // Redispatch through our custom nodeapi implementation.
     hosting_nodeapi($nodes[$nid], 'load');
   }
@@ -375,6 +376,11 @@ function hosting_node_search_result($node) {
  * @see hook_nodeapi_TYPE_OP()
  */
 function hosting_node_update($node) {
+  // Update context settings.
+  if (!empty($node->hosting_settings)) {
+    hosting_context_register($node->nid, $node->hosting_name, $node->hosting_settings);
+  }
+  
   // Redispatch through our custom nodeapi implementation.
   hosting_nodeapi($node, 'update');
 }
@@ -1143,6 +1149,16 @@ function hosting_form_alter(&$form, &$form_state, $form_id) {
       $form['#submit'][] = 'hosting_form_submit_messages';
     }
   }
+  
+  // Add settings to Node Forms with hosting context name.
+  if ($form['#node_edit_form'] == true && !empty($form_state['node']->hosting_name)) {
+    
+    // Merge settings from prior form generating functions, like hosting_site_form.
+    $form['hosting_settings'] = array(
+      '#tree' => true,
+      '#note' => t('Any form elements put under $form["settings"] will be saved to hosting_context.settings automatically.'),
+    ) + ($form['hosting_settings'] ?? array());
+  }
 }
 
 /**
@@ -1216,14 +1232,20 @@ function hosting_context_load($name) {
  * @param string $name
  *   The name of the provision context.
  */
-function hosting_context_register($nid, $name) {
+function hosting_context_register($nid, $name, $settings = NULL) {
   // Check first to see if this nid exists in the system. If so, update its
   // name.
   if ($result = db_query("SELECT nid FROM {hosting_context} WHERE nid = :nid", array(':nid' => $nid))->fetch()) {
+    // Don't overwrite settings if empty.
+    $fields = [
+      'name' => $name,
+    ];
+    if ($settings) {
+      $fields['settings'] = serialize($settings); 
+    }
+
     db_update('hosting_context')
-      ->fields(array(
-        'name' => $name,
-      ))
+      ->fields($fields)
       ->condition('nid', $nid)
       ->execute();
   }
@@ -1233,6 +1255,7 @@ function hosting_context_register($nid, $name) {
       ->fields(array(
         'nid' => $nid,
         'name' => $name,
+        'settings' => serialize($settings),
       ))
       ->execute();
   }

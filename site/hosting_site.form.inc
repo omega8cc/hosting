@@ -281,6 +281,25 @@ function hosting_site_form($node, &$form_state) {
   }
   */
 
+  $form['site_settings'] = array(
+    '#type' => 'vertical_tabs',
+  );
+  
+  $form['hosting_settings']['deployment'] = array(
+    '#title' => t('Deployment Settings'),
+    '#type' => 'fieldset',
+    '#group' => 'site_settings',
+  );
+  $form['hosting_settings']['deployment']['is_site'] = array(
+    '#type' => 'value',
+    '#value' => true,
+  );
+  
+  $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node->hosting_settings['deployment']['steps'] ?? []);
+  $form['hosting_settings']['deployment']['steps']['#type'] = 'item';
+  $form['hosting_settings']['deployment']['steps']['#title'] = t('Default Deployment Steps');
+  $form['hosting_settings']['deployment']['steps']['#description'] = t('When deploying new code, run these steps.');
+
   return $form;
 }
 
@@ -375,14 +394,9 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
       $form['actions']['delete']['#type'] = 'hidden';
     }
 
-    $form['site_settings'] = array(
-      '#type' => 'vertical_tabs',
-      '#weight' => -11,
-    );
-
     // Put all fieldgroups into vertical tabs.
     foreach (element_children($form) as $elementChildId) {
-      if ($form[$elementChildId]['#type'] == 'fieldset') {
+      if (isset($form[$elementChildId]['#type']) && $form[$elementChildId]['#type'] == 'fieldset') {
         $form[$elementChildId]['#group'] = 'site_settings';
 
         // Un-break aegir contrib.

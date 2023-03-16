@@ -44,6 +44,12 @@ function hosting_schema() {
         'length' => HOSTING_MAX_ALIAS_LENGTH,
         'not null' => TRUE,
       ),
+      'settings' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'description' => 'A serialized array of settings for this context.',
+      ),
     ),
     'primary key' => array('nid'),
     'unique keys' => array(
@@ -643,4 +649,16 @@ function hosting_update_7304() {
     $display = array_combine($display, $display);
     variable_set('hosting_task_logs_types_display', $display);
   }
+}
+
+/**
+ * Add settings column to hosting_context table.
+ */
+function hosting_update_7400() {
+  db_add_field('hosting_context', 'settings', array(
+    'type' => 'text',
+    'not null' => FALSE,
+    'size' => 'big',
+    'description' => 'A serialized array of settings for this context.',
+  ));
 }

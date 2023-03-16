@@ -495,7 +495,22 @@ function hosting_site_load($nodes) {
   $node->deploy_stages = [
     'reset', 'build', 'update',
   ];
-  
+}
+
+function hosting_site_deploy_steps_form_element($values = []) {
+  $deploy_steps = module_invoke_all('hosting_deploy_steps');
+  foreach ($deploy_steps as $step => $info) {
+    $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
+    $element[$step] = [
+      '#title' => t('@title: @description', [
+          '@title' => $info['title'],
+          '@description' => $info['description'],
+        ]) . '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
+      '#type' => 'checkbox',
+      '#default_value' => $values[$step] ?? false,
+    ];
+  }
+  return $element;
 }
 
 function hosting_site_hosting_deploy_steps() {
