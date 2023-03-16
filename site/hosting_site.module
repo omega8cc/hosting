@@ -857,9 +857,16 @@ function hosting_task_deploy_form($node) {
     ];
 
     $parents = ['parameters'];
-    $form['steps'] = hosting_site_deploy_steps_form_element($node->hosting_settings['deployment']['steps'], $parents);
+    $form['steps'] = hosting_site_deploy_steps_form_element($node, $parents);
     $form['steps']['#type'] = 'item';
-    $form['steps']['#title'] = t('then run');
+    $form['steps']['#title'] = t('Run Deploy Steps');
+    $form['steps']['#description'] = t("Deploy steps can be defined in your project's <code>composer.json</code> file by adding an item to <code>scripts</code> named <code>deploy:build</code>, <code>deploy:update</code>, <code>deploy:test</code>, or <code>deploy:verify</code>. See an example in the !link project.", [
+      '!link' => l('opendevshop/drupal-project', 'https://github.com/opendevshop/drupal-project/blob/9.x/composer.json#L53', [
+        'attributes' => [
+          'target' => '_blank',
+        ],
+      ])
+    ]);
   }
 
   $form['git_info'] = array(

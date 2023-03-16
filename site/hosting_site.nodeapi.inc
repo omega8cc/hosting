@@ -497,17 +497,24 @@ function hosting_site_load($nodes) {
   ];
 }
 
-function hosting_site_deploy_steps_form_element($values = [], array $parents = []) {
-  $deploy_steps = Provision_Context_site::getDeploySteps();
-  foreach ($deploy_steps as $step => $info) {
+function hosting_site_deploy_steps_form_element($node, array $parents = []) {
+  
+  $site = new Provision_Context_site($node->hosting_name);
+  $site->setProperty('git_root', $node->git_root);
+  
+  foreach ($site->getDeploySteps() as $step => $info) {
+    $info['note'] = $info['overridden_by'] ?? '';
+    
     $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
     $element[$step] = [
-      '#title' => t('@title: @description', [
+      '#title' => t('@title: @description !code !note', [
           '@title' => $info['title'],
           '@description' => $info['description'],
-        ]) . '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
+          '!note' => $info['note'],
+          '!code' => '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
+        ]),
       '#type' => 'checkbox',
-      '#default_value' => $values[$step] ?? false,
+      '#default_value' => $node->hosting_settings['deployment']['steps'][$step] ?? false,
     ];
     if ($parents) {
       $element[$step]['#parents'] = $parents;

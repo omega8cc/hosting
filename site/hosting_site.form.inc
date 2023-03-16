@@ -295,7 +295,7 @@ function hosting_site_form($node, &$form_state) {
     '#value' => true,
   );
   
-  $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node->hosting_settings['deployment']['steps'] ?? []);
+  $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
   $form['hosting_settings']['deployment']['steps']['#type'] = 'item';
   $form['hosting_settings']['deployment']['steps']['#title'] = t('Default Deployment Steps');
   $form['hosting_settings']['deployment']['steps']['#description'] = t('When deploying new code, run these steps.');
