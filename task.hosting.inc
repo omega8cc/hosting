@@ -184,6 +184,9 @@ function drush_hosting_task()
       $function = $module . '_' . $hook;
       call_user_func_array($function, array(&$task));
     }
+    
+    // Save arbitrary data "settings".
+    $task->context_options['settings'] = $task->ref->hosting_settings ?? [];
 
     // Launch a provision-save for the platform before running it for the site.
     if ($task->ref->type == 'site') {
