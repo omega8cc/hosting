@@ -862,98 +862,27 @@ function hosting_task_deploy_form($node) {
       '#default_value' => $node->git_reference,
       '#description' => t('Select the git branch or tag to deploy to this site.'),
     );
-    dsm($form['target_git_reference'], 'git ref');
 
-    $form['stages'] = array(
-      '#type' => 'container',
-      'title' => array(
-        '#prefix' => '<h4>',
-        '#markup' => t('Deployment Stages'),
-        '#suffix' => '</h4>',
-      ),
-      'description' => array(
-        '#markup' => t('After code is deployed, run the following commands:'),
-      ),
+    $form['steps'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Deploy Steps'),
+      '#description' => t('After code is deployed, run the following commands:'),
     );
-    $form['stages']['reset'] = [
-      '#title' => t('Discard uncommitted code changes.') . '<pre> git reset --hard</pre>',
-      '#type' => 'checkbox',
-      '#default_value' => $node->git_reset,
-      '#parents' => array(
-        'parameters', 'reset',
-      ),
-    ];
 
-    foreach ($node->stages as $stage => $info) {
-      $form['stages'][$stage] = [
+    foreach ($node->steps as $step => $info) {
+      $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
+      $form['steps'][$step] = [
         '#title' => t('@title: @description', [
           '@title' => $info['title'],
           '@description' => $info['description'],
-        ]) . '<pre>' . $info['command'] . '</pre>',
+        ]) . '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
         '#type' => 'checkbox',
-        '#default_value' => in_array($stage, $node->deploy_stages),
+        '#default_value' => in_array($step, $node->deploy_stages),
         '#parents' => array(
-          'parameters', $stage,
+          'parameters', $step,
         ),
       ];  
     }
-
-    // Check for working copy changes and offer to reset them for the user.
-    $form['danger_zone'] = array(
-      '#type' => 'container',
-      'title' => array(
-        '#prefix' => '<h4>',
-        '#markup' => t('DANGER ZONE'),
-        '#suffix' => '</h4>',
-      ),
-      '#attributes' => array(
-        'class' => array(
-          'alert alert-danger'
-        ),
-      ),
-    );
-
-    if ($node->install_method == 'profile') {
-      $reinstall_title = t('Reinstall %profile', ['%profile' => $node->profile]);
-    }
-    elseif ($node->install_method == 'clone') {
-      
-      // @TODO: Save clone source in hosting site data.
-      $source = hosting_context_load($node->clone_source);
-      $reinstall_title = t('Re-install site: Clone !source', [
-        '!source' => l($source->title, 'http://' . $source->title, [
-          'attributes' => [
-            '_target' => 'blank',
-          ]
-        ]),
-      ]);
-    }
-    elseif ($node->install_method == 'empty') {
-      $reinstall_title = t('Empty database');
-    }
-    
-    $form['danger_zone']['install'] = array(
-      '#title' => $reinstall_title,
-      '#type' => 'checkbox',
-      '#parents' => array(
-        'parameters', 'install',
-      ),
-    );
-    $form['danger_zone']['confirm_destroy'] = array(
-      '#title' => t('I understand that all data in the site !link will be destroyed.', array(
-        '!link' => l($node->title, $node->title),
-      )),
-      '#type' => 'checkbox',
-      '#default_value' => FALSE,
-      '#parents' => array(
-        'confirm_destroy'
-      ),
-      '#states' => array(
-        'visible' => array(
-          ':input[name="parameters[install]"]' => array('checked' => TRUE),
-        ),
-      ),
-    );
   }
 
   /**

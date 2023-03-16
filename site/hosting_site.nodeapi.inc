@@ -488,57 +488,23 @@ function hosting_site_load($nodes) {
   $node->uri = $node->title;
 
   // Load default install_command, deploy_command, and test_command properties
-  $node->stages = module_invoke_all('hosting_deploy_stages');
-  drupal_alter('hosting_deploy_stages', $node->stages);
+  $node->steps = module_invoke_all('hosting_deploy_steps');
+  drupal_alter('hosting_deploy_steps', $node->stages);
 
   // The default stages when deploying this site.
   $node->deploy_stages = [
-    'build', 'update',
+    'reset', 'build', 'update',
   ];
   
 }
 
-/**
- * Load deploy command from site source code.
- *
- * Possible sources:
- *   1. Platform defaults: hosting_platform_load() (To be migrated to the devshop/platform class)
- *   2. Platform composer.json: extra.devshop.commands.$COMMAND_NAME
- *   3. Platform X.yml (@TODO).
- *   4. Site {hosting_site_commands}: SQL table in control site stores site-specific command overrides. (@TODO)
- *
- * Each source provides a command for each "phase". If subsequent sources provide
- * a command for a phase, it will override the earlier one.
- *
- * Examples:
- *
- * Composer Platform: Development Site.
- *
- *   1. Platform composer.json defines default composer install command. in `extra.devshop.commands.build`: composer install --no-dev --no-suggest --no-progress
- *   2. Site gets created with "install" option that overrides platform "install", which gets saved to {hosting_site_commands} entry: composer install --dev.
- *
- * @TODO: Move to drupal/provision once hosting requires drupal/provision.
- */
-function hosting_get_stage_commands($node) {
-  
-  $composer_json_path = $node->git_root . DIRECTORY_SEPARATOR . 'composer.json';
-  if (file_exists($composer_json_path)) {
-    $composer_data = json_decode(file_get_contents($composer_json_path), TRUE);
-    $commands = isset($composer_data['scripts'])
-      ? $composer_data['scripts']
-      : array();
-  }
-  else {
-    $commands = array();
-  }
-  return $commands;
-
-  // @TODO: Look for site command overrides. Remember platform nodes run this too
-}
-
-
-function hosting_site_hosting_deploy_stages() {
+function hosting_site_hosting_deploy_steps() {
   return [
+    'reset' => [
+      'title' => t('Reset'),
+      'description' => t('Discard uncommitted code changes.'),
+      'command' => 'git reset --hard',
+    ],
     'build' => [
       'title' => t('Build'),
       'description' => t('Prepare source code.'),
@@ -547,7 +513,10 @@ function hosting_site_hosting_deploy_stages() {
     'update' => [
       'title' => t('Update'),
       'description' => t('Apply changes to the site.'),
-      'command' => 'drush deploy',
+      'command' => [
+        'drush pm:update --no-cache-clear',
+        'drush cache:rebuild',
+      ],
     ],
     'test' => [
       'title' => t('Test'),
