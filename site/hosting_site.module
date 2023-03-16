@@ -856,7 +856,8 @@ function hosting_task_deploy_form($node) {
       '#description' => t('Select the git branch or tag to deploy to this site.'),
     ];
 
-    $form['steps'] = hosting_site_deploy_steps_form_element($node->hosting_settings['deployment']['steps']);
+    $parents = ['parameters'];
+    $form['steps'] = hosting_site_deploy_steps_form_element($node->hosting_settings['deployment']['steps'], $parents);
     $form['steps']['#type'] = 'item';
     $form['steps']['#title'] = t('then run');
   }

@@ -701,6 +701,12 @@ function hosting_task_restore_form_validate($form, &$form_state) {
   }
 }
 
+
+/**
+ * Generic form validate handler for tasks confirmation.
+ */
+function hosting_task_confirm_form_validate($form, &$form_state) {
+}
 /**
  * Generic form submit handler for tasks confirmation.
  *
