@@ -834,29 +834,22 @@ function hosting_site_hosting_task_guarded_nodes() {
  * @see hosting_task_confirm_form().
  */
 function hosting_task_deploy_form($node) {
+  $t = [
+    '@site' => $node->uri,
+    '!site' => l($node->uri, 'http://' . $node->uri, array('attributes' => array('target' => '_blank'))),
+    '!ref' => "<span class='badge badge-info'>" . $node->git_reference . "</span>",
+  ];
+  drupal_set_title(t('Deploy code to @site?', $t));
   $form = array();
   if ($node->type == 'site') {
     $form['current']['site'] = array(
-      '#type' => 'item',
       '#weight' => -1,
-      '#title' => t('Site'),
-      '#markup' => l($node->uri, 'http://' . $node->uri, array('attributes' => array('target' => '_blank'))),
-      '#description' => t('The site being deployed.'),
-    );
-
-    $form['current']['current_git_reference'] = array(
-      '#title' => t('Current Git Reference'),
       '#type' => 'item',
-      '#markup' => "<span class='badge badge-info'>" . $node->git_reference . "</span>",
-      '#description' => t('The current branch, tag, or SHA of the site code at &path.', array(
-        '&path' => $node->git_root,
-      )),
+      '#markup' => t('The site !site is currently on git reference !ref.', $t),
     );
-
-    // Allow the user to change git_reference here.
 
     $form['target_git_reference'] = array(
-      '#title' => t('Target Git Reference'),
+      '#title' => t('Deploy latest code from'),
       '#type' => 'select',
       '#options' => hosting_site_git_options($node->git_refs),
       '#default_value' => $node->git_reference,

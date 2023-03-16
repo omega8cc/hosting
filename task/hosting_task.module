@@ -33,8 +33,6 @@ function hosting_task_menu() {
       if (empty($info['hidden'])) {
         $path = sprintf("hosting_confirm/%%hosting_%s_wildcard/%s_%s", $type, $type, $task);
         $items[$path] = array(
-          'title' => $info['title'],
-          'description' => $info['description'],
           'page callback' => 'drupal_get_form',
           'page arguments' => array('hosting_task_confirm_form', 1, $task),
           'access callback' => 'hosting_task_menu_access_csrf',
@@ -647,7 +645,15 @@ function hosting_task_confirm_form($form, $form_state, $node, $task) {
     $form['#func_param_1'] = $node;
     $form['#func_param_2'] = $task;
   }
-  $question = t("Are you sure you want to @task @object?", array('@task' => $task, '@object' => $node->title));
+
+  // Allow hosting_task_confirm forms to use drupal_set_title().
+  $title = drupal_get_title();
+  if ($title == $tasks[$task]['title']) {
+    $question = t("Are you sure you want to @task @object?", array('@task' => $task, '@object' => $node->title));
+  }
+  else {
+    $question = $title;
+  }
   $path = !empty($_REQUEST['destination']) ? $_REQUEST['destination'] : 'node/' . $node->nid;
   $form = confirm_form($form, $question, $path, '', $tasks[$task]['title']);
 
