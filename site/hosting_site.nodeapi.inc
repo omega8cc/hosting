@@ -490,8 +490,12 @@ function hosting_site_load($nodes) {
 
 function hosting_site_deploy_steps_form_element($node, array $parents = []) {
   
+  $node->platform_node = node_load($node->platform);
+  
   $site = new Provision_Context_site($node->hosting_name);
+  $platform = new Provision_Context_platform($node->platform_node->hosting_name);
   $site->setProperty('git_root', $node->git_root);
+  $site->setProperty('platform', $platform);
   
   foreach ($site->getDeploySteps() as $step => $info) {
     $info['note'] = $info['overridden_by'] ?? '';
