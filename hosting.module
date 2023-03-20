@@ -1537,3 +1537,9 @@ function hosting_modules_disabled($modules) {
 
   hosting_features_disable($disable, $rebuild = TRUE, $disable_module = FALSE);
 }
+
+if (!function_exists('dt')) {
+  function dt($string, array $args = array(), array $options = array()) {
+    return t($string, $args, $options);
+  }
+}
