@@ -246,12 +246,10 @@ function drush_hosting_task()
   if ($task->task_type == 'delete' && !drush_get_error()) {
 
     // Use the task_arg if there is one, hosting_name as a backup. $node->ref->hosting_name may be missing.
-    $context_to_delete = $task->task_args['hosting_context'];
-
     // Run the "provision-save --delete" command on $context_to_delete.
-    if ($context_to_delete) {
+    if (!empty($task->task_args['hosting_context'])) {
       drush_log(dt("Deleting back-end context file for !context.", array(
-        '!context' => $context_to_delete,
+        '!context' => $task->task_args['hosting_context'],
       )), 'notice');
     }
   }
