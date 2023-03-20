@@ -486,15 +486,6 @@ function hosting_site_load($nodes) {
 
   // Set URI property from title.
   $node->uri = $node->title;
-
-  // Load default install_command, deploy_command, and test_command properties
-  $node->steps = module_invoke_all('hosting_deploy_steps');
-  drupal_alter('hosting_deploy_steps', $node->stages);
-
-  // The default stages when deploying this site.
-  $node->deploy_stages = [
-    'reset', 'build', 'update',
-  ];
 }
 
 function hosting_site_deploy_steps_form_element($node, array $parents = []) {
@@ -522,32 +513,4 @@ function hosting_site_deploy_steps_form_element($node, array $parents = []) {
     }
   }
   return $element;
-}
-
-function hosting_site_hosting_deploy_steps() {
-  return [
-    'reset' => [
-      'title' => t('Reset'),
-      'description' => t('Discard uncommitted code changes.'),
-      'command' => 'git reset --hard',
-    ],
-    'build' => [
-      'title' => t('Build'),
-      'description' => t('Prepare source code.'),
-      'command' => 'composer install --no-dev --profile',
-    ],
-    'update' => [
-      'title' => t('Update'),
-      'description' => t('Apply changes to the site.'),
-      'command' => [
-        'drush pm:update --no-cache-clear',
-        'drush cache:rebuild',
-      ],
-    ],
-    'test' => [
-      'title' => t('Test'),
-      'description' => t('Run tests against the site.'),
-      'command' => 'drush status',
-    ],
-  ];
 }
