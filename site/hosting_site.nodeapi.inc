@@ -488,7 +488,7 @@ function hosting_site_load($nodes) {
   $node->uri = $node->title;
 }
 
-function hosting_site_deploy_steps_form_element($node, array $parents = []) {
+function hosting_site_deploy_steps_form_element($node = null, array $parents = []) {
   
   $node->platform_node = node_load($node->platform);
   
