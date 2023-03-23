@@ -1150,9 +1150,8 @@ function hosting_form_alter(&$form, &$form_state, $form_id) {
     }
   }
   
-  // Add settings to Node Forms with hosting context name.
-  if (!empty($form['#node_edit_form']) && !empty($form_state['node']->hosting_name)) {
-    
+  // Add settings to Context Node Forms with hosting context name.
+  if (!empty($form['#node_edit_form']) && (in_array($form_state['node']->type, hosting_context_node_types()))) {
     // Merge settings from prior form generating functions, like hosting_site_form.
     $form['hosting_settings'] = array(
       '#tree' => true,
@@ -1338,7 +1337,9 @@ function hosting_context_nid($alias) {
  * if a nid is in the hosting_context table.
  */
 function hosting_context_node_types() {
-  return array('site', 'platform', 'server');
+  $types = ['site', 'platform', 'server'];
+  drupal_alter('hosting_context_types', $types);
+  return $types;
 }
 
 /**
