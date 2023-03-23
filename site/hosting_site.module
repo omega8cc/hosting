@@ -894,6 +894,10 @@ function hosting_task_deploy_form($node) {
       '#output' =>$node->git_status,
     ),
   );
+  $form['from'] = [
+    '#value' => $_SERVER['HTTP_HOST'],
+    '#type' => 'value'
+  ];
   return $form;
 }
 

@@ -976,6 +976,16 @@ function hosting_task_insert($node) {
     $node->task_args['hosting_context'] = $node->ref_context;
   }
 
+  // Load default deploy steps from the site when there are no args.
+  if ($node->task_type == 'deploy' && empty($node->task_args)) {
+    $node->ref = node_load($node->rid);
+    if (isset($node->ref->hosting_settings['deployment']['steps'])) {
+      $node->task_args = array_filter($node->ref->hosting_settings['deployment']['steps']);
+    }
+    $node->task_args['from'] = 'defaults';
+  }
+  
+  
   if (isset($node->task_args) && is_array($node->task_args)) {
     foreach ($node->task_args as $key => $value) {
       $id = db_insert('hosting_task_arguments')
