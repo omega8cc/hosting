@@ -108,13 +108,14 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
     // Save the platform being verified.
     node_save($node);
-    drush_log(dt('Metadata saved for %type %title [%url] %publish_path', [
+    drush_log(dt('Metadata saved for %type %title [%url] %publish_path git ref: %git_ref', [
       '%type' => $node->type,
       '%title' => $node->title,
       '%url' => url("node/{$node->nid}", [
         'absolute' => true,
       ]),
       '%publish_path' => $node->publish_path,
+      '%git_ref' => $node->git_reference,
     ]), 'p_log');
 
     
