@@ -852,7 +852,7 @@ function hosting_task_deploy_form($node) {
       '#title' => t('Deploy latest code from'),
       '#type' => 'select',
       '#options' => hosting_site_git_options($node->git_refs),
-      '#default_value' => $node->git_reference,
+      '#default_value' => $_GET['git_reference'] ?? $node->git_reference,
       '#description' => t('Select the git branch or tag to deploy to this site.'),
     ];
 
