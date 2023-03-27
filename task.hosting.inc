@@ -206,7 +206,7 @@ function drush_hosting_task()
         hosting_platform_post_hosting_verify_task($platform_task, $output);
 
         // Load new root from platform after verification. (to detect docroot)
-        $task->context_options['root'] = drush_get_option('root', $task->context_options['root']);
+        $task->context_options['root'] = $output['context']['root'];
       }
     }
 
