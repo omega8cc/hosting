@@ -1,0 +1,6 @@
+name = Git Commit Task
+description = Allows Aegir users to commit code from the web front-end.
+package = Aegir Git
+dependencies[] = hosting_site
+dependencies[] = hosting_git
+core = 7.x
