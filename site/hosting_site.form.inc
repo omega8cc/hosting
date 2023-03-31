@@ -341,8 +341,6 @@ function hosting_site_form($node, &$form_state) {
     ],
   ];
 
-  dsm($node->hosting_settings, 'hosting settings in node');
-  
   $form['hosting_settings']['install'] = hosting_site_install_methods_form_element($node);
   $form['hosting_settings']['install']['#type'] = 'fieldset';
   $form['hosting_settings']['install']['#weight'] = -100;
