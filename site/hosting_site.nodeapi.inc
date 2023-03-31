@@ -487,34 +487,3 @@ function hosting_site_load($nodes) {
   // Set URI property from title.
   $node->uri = $node->title;
 }
-
-function hosting_site_deploy_steps_form_element($node = null, array $parents = []) {
-  
-  $node->platform_node = node_load($node->platform);
-  
-  $site = new Provision_Context_site($node->hosting_name);
-  $platform = new Provision_Context_platform($node->platform_node->hosting_name);
-  $site->setProperty('git_root', $node->git_root);
-  $site->setProperty('platform', $platform);
-  
-  foreach ($site->getDeploySteps() as $step => $info) {
-    $info['note'] = $info['overridden_by'] ?? '';
-    
-    $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
-    $element[$step] = [
-      '#title' => t('@title: @description !code !note', [
-          '@title' => $info['title'],
-          '@description' => $info['description'],
-          '!note' => $info['note'],
-          '!code' => '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
-        ]),
-      '#type' => 'checkbox',
-      '#default_value' => $node->hosting_settings['deployment']['steps'][$step] ?? false,
-    ];
-    if ($parents) {
-      $element[$step]['#parents'] = $parents;
-      $element[$step]['#parents'][] = $step;
-    }
-  }
-  return $element;
-}

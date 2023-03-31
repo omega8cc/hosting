@@ -286,20 +286,68 @@ function hosting_site_form($node, &$form_state) {
   );
   
   $form['hosting_settings']['deployment'] = array(
-    '#title' => t('Deployment Settings'),
+    '#title' => t('Automation'),
     '#type' => 'fieldset',
     '#group' => 'site_settings',
   );
-  $form['hosting_settings']['deployment']['is_site'] = array(
-    '#type' => 'value',
-    '#value' => true,
+  $form['hosting_settings']['deployment']['methods'] = array(
+    '#title' => t('Deploy Methods'),
+    '#type' => 'fieldset',
   );
+  $form['hosting_settings']['deployment']['methods']['help'] = [
+    '#theme' => 'item_list',
+    '#items' => [
+      t("Deploy Tasks load the latest code into the site and run commands to clear caches and run updates."),
+      t('If <em>Continuous Deployment</em> is enabled, Deploy Tasks are created automatically using the steps chosen below.'),
+      t('If <em>Manual Deployment</em> is enabled, users can run Deploy Tasks whenever they choose.'),
+    ],
+    '#weight' => -10,
+  ];
+
+  $form['hosting_settings']['deployment']['methods']['continuous'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Continous Deployment'),
+    '#description' => t('Deliver code to the site as soon as it is available.'),    
+  ];
+  $form['hosting_settings']['deployment']['methods']['manual'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Manual Deployment'),
+    '#description' => t('Allow users to start deployments manually.'),   
+  ];
+  $form['hosting_settings']['deployment']['methods']['manual_overrides'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Allow step overrides for manual Deploy Tasks.'),
+    '#description' => t('When a user starts a deploy task, allow them to choose the Deploy Steps.'),
+    '#states' => [
+      'visible' => [
+        ':input[name="hosting_settings[deployment][methods][manual]"]' => ['checked'   => TRUE],
+      ]
+    ]
+  ];
   
   $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
-  $form['hosting_settings']['deployment']['steps']['#type'] = 'item';
-  $form['hosting_settings']['deployment']['steps']['#title'] = t('Default Deployment Steps');
-  $form['hosting_settings']['deployment']['steps']['#description'] = t('When deploying new code, run these steps.');
+  $form['hosting_settings']['deployment']['steps']['#title'] = t('Deploy Steps');
+  $form['hosting_settings']['deployment']['steps']['#type'] = 'fieldset';
+  
+  $form['hosting_settings']['deployment']['steps']['help'] = [
+    '#weight' => -10,
+    '#theme' => 'item_list',
+    '#items' => [
+      t('Deploy Steps define what commands are run after the latest code is delivered.'),
+      t("The commands used for Deploy Steps can be overridden by adding a script named <code>deploy:STEP</code> to this site's composer.json file. See !link.", [
+            '!link' => l(t('Composer Scripts Documentation'), 'https://getcomposer.org/doc/articles/scripts.md', ['absolute' => TRUE])
+      ]),
+      t('If Step Overrides are enabled for Manual Deployments, the steps below will be the default.'),
+    ],
+  ];
 
+  dsm($node->hosting_settings, 'hosting settings in node');
+  
+  $form['hosting_settings']['install'] = hosting_site_install_methods_form_element($node);
+  $form['hosting_settings']['install']['#type'] = 'fieldset';
+  $form['hosting_settings']['install']['#weight'] = -100;
+  $form['hosting_settings']['install']['#group'] = 'site_settings';
+  $form['hosting_settings']['install']['#title'] = t('Site Install');
   return $form;
 }
 
@@ -417,4 +465,224 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
       '#value' => 1,
     );
   }
+}
+
+
+/**
+ * Renders a "Deploy Steps" form element.
+ * 
+ * @TODO: Make this a real form element. 
+ * @param $node
+ * @param array $parents
+ * @return array
+ * @throws Exception
+ */
+function hosting_site_deploy_steps_form_element($node = null, array $parents = []) {
+  
+  $node->platform_node = node_load($node->platform);
+  
+  $site = new Provision_Context_site($node->hosting_name);
+  $platform = new Provision_Context_platform($node->platform_node->hosting_name);
+  $site->setProperty('git_root', $node->git_root);
+  $site->setProperty('platform', $platform);
+  
+  foreach ($site->getDeploySteps() as $step => $info) {
+    $info['note'] = $info['overridden_by'] ?? '';
+    
+    $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
+    $element[$step] = [
+      '#title' => t('@title: @description !code !note', [
+          '@title' => $info['title'],
+          '@description' => $info['description'],
+          '!note' => $info['note'],
+          '!code' => '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
+        ]),
+      '#type' => 'checkbox',
+      '#default_value' => $node->hosting_settings['deployment']['steps'][$step] ?? false,
+    ];
+    if ($parents) {
+      $element[$step]['#parents'] = $parents;
+      $element[$step]['#parents'][] = $step;
+    }
+  }
+  return $element;
+}
+
+/**
+ * Renders the "Install Methods" form element.
+ * 
+ * @TODO: Make this a real form element. 
+ * @param $node
+ * @param array $parents
+ * @return array
+ * @throws Exception
+ */
+function hosting_site_install_methods_form_element($node = null) {
+  
+  $values = $node->hosting_settings['install'];
+
+  $element = array(
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+    '#attributes' => array(
+      'class' => array('clearfix'),
+    ),
+    '#id' => 'install-method-form'
+  );
+  $element['method'] = array(
+    '#type' => 'radios',
+    '#required' => TRUE,
+    '#title' => t('Install Method'),
+    '#process' => array('devshop_environment_method_process'),
+    '#weight' => -99,
+    '#options' => array(
+      'profile' => t('Install Drupal'),
+      'clone' => t('Clone Environment'),
+      'manual' => t('Manual Install'),
+      'import' => t('Import Database'),
+    ),
+    '#default_value' => $values['method'] ?? 'profile',
+  );
+  $element['none'] = array(
+    '#type' => 'container',
+    '#weight' => -98,
+    '#states' => array(
+      'visible' => array(
+        ":input[name='hosting_settings[install][method]']" => array('value' => 'manual'),
+      ),
+    ),
+    'note' => array(
+      '#markup' => t('The site code and database will be set up. Visit the site to proceed through the install process.'),
+    ),
+  );
+
+  $element['install_profile'] = array(
+    '#type' => 'machine_name',
+    '#machine_name' => array(
+      'exists' => 'always_false',
+    ),
+    '#title' => t('Drupal Install Profile'),
+    '#required' => false,
+    '#default_value' => $values['install_profile'] ?? '', 
+    '#title_display' => 'invisible',
+    '#description' => t('(optional) Enter the exact name the install profile to use. It must already exist in your git branch or tag.'),
+    '#element_validate' => array(
+      'form_validate_machine_name'
+    ),
+    '#attributes' => array(
+      'placeholder' => t('Profile Name'),
+    ),
+    '#weight' => -97,
+    '#states' => array(
+      'visible' => array(
+       ":input[name='hosting_settings[install][method]']" => array('value' => 'profile'),
+      ),
+    ),
+  );
+
+  // Generate environments options.
+  $environment_options['@primary'] = t('Primary Environment');
+  foreach ($project->environments as $e => $environment) {
+    if ($e == 'NEW') {
+      continue;
+    }
+    $link = l(' <i class="fa fa-external-link"></i> ' . $environment->uri,  $environment->url, array(
+        'html' => TRUE,
+        'attributes' => array(
+          'target' => '_blank',
+          'class' => array('btn-text'),
+        ),
+      )) . '</small>';
+    $git_ref = $environment->git_ref;
+    $icon = isset($environment->git_ref_type) && $environment->git_ref_type == 'tag'? 'tag': 'code-fork';
+    $environment_options[$environment->drush_alias] = "<span>{$environment->name}</span> <small class='git-ref text-muted'><i class='fa fa-$icon'></i> $git_ref</small> <small>$link</small>";
+  }
+
+  // Add other aliases to the clone source.
+  if (isset($project->settings->aliases)) {
+    foreach ($project->settings->aliases as $alias => $data) {
+      $link = l('<i class="fa fa-external-link"></i> ' . $data['uri'], 'http://' . $data['uri'], array(
+          'html' => TRUE,
+          'attributes' => array(
+            'target' => '_blank',
+            'class' => array('btn-text'),
+          ),
+        )) . '</small>';
+      $remote = t('Unknown');
+      $environment_options["@{$project->name}.{$alias}"] = "<span>{$alias}</span> <small class='git-ref text-muted'><i class='fa fa-globa'></i> $remote</small> <small>$link</small>";
+    }
+  }
+
+  $environment_options['_other'] = t('Other Drush Alias');
+
+  if (count($environment_options)) {
+    $element['clone_source'] = array(
+      '#type' => 'radios',
+      '#title' => t('Environment to clone'),
+      '#weight' => -98,
+      '#options' => $environment_options,
+      '#default_value' => $values['clone_source'] ?? '@primary',
+      '#states' => array(
+        'visible' => array(
+         ":input[name='hosting_settings[install][method]']" => array('value' => 'clone'),
+        ),
+      ),
+    );
+  }
+
+  $element['clone_source_drush'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Drush Alias'),
+    '#default_value' => $values['clone_source_drush'] ?? '',
+    '#description' => t('Enter a Drush alias you would like to Sync your database and files from. The alias can be a global drush alias file or in your site codebase at ./drush/sites/self.site.yml.'),
+    '#element_validate' => array(
+      'devshop_projects_create_environment_form_validate_clone_source'
+    ),
+    '#weight' => -98,
+    '#attributes' => array(
+      'placeholder' => t('@drush.alias'),
+    ),
+    '#states' => array(
+      'visible' => array(
+        ":input[name='hosting_settings[install][clone_source]']" => array('value' => '_other'),
+        ":input[name='hosting_settings[install][method]']" => array('value' => 'clone'),
+      ),
+    ),
+  );
+
+  $element['import'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path to SQL'),
+    '#default_value' => $values['import'] ?? '',
+    '#description' =>
+      t('Enter either a remote MySQL address (such as mysql://username:password@host/database), or an absolute path to an SQL dump (such as /var/aegir/site-backup.sql).') .
+      '<span class="text-danger">' . t('This string is stored in plain text. Use with caution.') . '</span>'
+  ,
+    '#weight' => -98,
+    '#states' => array(
+      'visible' => array(
+       ":input[name='hosting_settings[install][method]']" => array('value' => 'import'),
+      ),
+    ),
+    '#element_validate' => array(
+      'devshop_projects_create_environment_form_validate_import'
+    ),
+  );
+
+  $element['import_files'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path to Files Directory'),
+    '#default_value' => $values['import_files'] ?? '',
+    '#description' =>
+      t('Enter an absolute path to a files directory (such as /var/aegir/backups/files-snapshot/).') .
+      '<span class="text-danger">' . t('This string is stored in plain text. Use with caution.') . '</span>',
+    '#weight' => -98,
+    '#states' => array(
+      'visible' => array(
+        ':input[name="hosting_settings[install][method]"]' => array('value' => 'import'),
+      ),
+    ),
+  );
+
+  return $element;
 }
