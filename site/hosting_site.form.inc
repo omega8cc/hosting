@@ -307,17 +307,20 @@ function hosting_site_form($node, &$form_state) {
   $form['hosting_settings']['deployment']['methods']['continuous'] = [
     '#type' => 'checkbox',
     '#title' => t('Continous Deployment'),
-    '#description' => t('Deliver code to the site as soon as it is available.'),    
+    '#description' => t('Deliver code to the site as soon as it is available.'),
+    '#default_value' => $node->hosting_settings['deployment']['methods']['continuous']    
   ];
   $form['hosting_settings']['deployment']['methods']['manual'] = [
     '#type' => 'checkbox',
     '#title' => t('Manual Deployment'),
     '#description' => t('Allow users to start deployments manually.'),   
+    '#default_value' => $node->hosting_settings['deployment']['methods']['manual']    
   ];
   $form['hosting_settings']['deployment']['methods']['manual_overrides'] = [
     '#type' => 'checkbox',
     '#title' => t('Allow step overrides for manual Deploy Tasks.'),
     '#description' => t('When a user starts a deploy task, allow them to choose the Deploy Steps.'),
+    '#default_value' => $node->hosting_settings['deployment']['methods']['manual_overrides'],    
     '#states' => [
       'visible' => [
         ':input[name="hosting_settings[deployment][methods][manual]"]' => ['checked'   => TRUE],
@@ -483,7 +486,6 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
   $platform = new Provision_Context_platform($node->platform_node->hosting_name);
   $site->setProperty('git_root', $node->git_root);
   $site->setProperty('platform', $platform);
-  
   foreach ($site->getDeploySteps() as $step => $info) {
     $info['note'] = $info['overridden_by'] ?? '';
     
