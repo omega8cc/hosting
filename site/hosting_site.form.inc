@@ -286,40 +286,22 @@ function hosting_site_form($node, &$form_state) {
   );
   
   $form['hosting_settings']['deployment'] = array(
-    '#title' => t('Automation'),
+    '#title' => t('Deployment'),
     '#type' => 'fieldset',
     '#group' => 'site_settings',
   );
   $form['hosting_settings']['deployment']['methods'] = array(
-    '#title' => t('Deploy Methods'),
-    '#type' => 'fieldset',
   );
-  $form['hosting_settings']['deployment']['methods']['help'] = [
-    '#theme' => 'item_list',
-    '#items' => [
-      t("Deploy Tasks load the latest code into the site and run commands to clear caches and run updates."),
-      t('If <em>Continuous Deployment</em> is enabled, Deploy Tasks are created automatically using the steps chosen below.'),
-      t('If <em>Manual Deployment</em> is enabled, users can run Deploy Tasks whenever they choose.'),
-    ],
-    '#weight' => -10,
-  ];
-
   $form['hosting_settings']['deployment']['methods']['continuous'] = [
     '#type' => 'checkbox',
     '#title' => t('Continous Deployment'),
-    '#description' => t('Deliver code to the site as soon as it is available.'),
+    '#description' => t('When new code is available, deploy it as soon as possible. If not selected, you must deploy new code manually.'),
     '#default_value' => $node->hosting_settings['deployment']['methods']['continuous']    
-  ];
-  $form['hosting_settings']['deployment']['methods']['manual'] = [
-    '#type' => 'checkbox',
-    '#title' => t('Manual Deployment'),
-    '#description' => t('Allow users to start deployments manually.'),   
-    '#default_value' => $node->hosting_settings['deployment']['methods']['manual']    
   ];
   $form['hosting_settings']['deployment']['methods']['manual_overrides'] = [
     '#type' => 'checkbox',
-    '#title' => t('Allow step overrides for manual Deploy Tasks.'),
-    '#description' => t('When a user starts a deploy task, allow them to choose the Deploy Steps.'),
+    '#title' => t('Allow overriding Deploy Steps'),
+    '#description' => t('When starting a deployment manually, allow users to select the steps to run.'),
     '#default_value' => $node->hosting_settings['deployment']['methods']['manual_overrides'],    
     '#states' => [
       'visible' => [
@@ -330,17 +312,15 @@ function hosting_site_form($node, &$form_state) {
   
   $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
   $form['hosting_settings']['deployment']['steps']['#title'] = t('Deploy Steps');
-  $form['hosting_settings']['deployment']['steps']['#type'] = 'fieldset';
+  $form['hosting_settings']['deployment']['steps']['#type'] = 'item';
   
   $form['hosting_settings']['deployment']['steps']['help'] = [
-    '#weight' => -10,
     '#theme' => 'item_list',
     '#items' => [
-      t('Deploy Steps define what commands are run after the latest code is delivered.'),
       t("The commands used for Deploy Steps can be overridden by adding a script named <code>deploy:STEP</code> to this site's composer.json file. See !link.", [
             '!link' => l(t('Composer Scripts Documentation'), 'https://getcomposer.org/doc/articles/scripts.md', ['absolute' => TRUE])
       ]),
-      t('If Step Overrides are enabled for Manual Deployments, the steps below will be the default.'),
+      t('If <em>Allow overriding Manual Deployment Steps</em> is selected, these will be the default steps.'),
     ],
   ];
 
