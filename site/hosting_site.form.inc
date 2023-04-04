@@ -119,79 +119,105 @@ function hosting_site_available_options($node, $platform = NULL) {
  */
 function hosting_site_form($node, &$form_state) {
   $form['#node'] = $node;
-
-  if (isset($node->nid)) {
-    $form['info'] = array(
-      '#prefix' => '<div class="clear-block" id="hosting-site-edit-info">',
-      '#suffix' => '<br /></div>',
-      '#weight' => -10,
-    );
-  }
-
-  _hosting_site_field($form, $node, 'title', array(
+  $form['title'] = [
     '#type' => 'textfield',
     '#title' => t('Domain name'),
+    '#description' => t('Enter the URI to use for this site. Do not include "https://" or "www". Additional domain names can be added below.'),
     '#required' => TRUE,
-    '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '',
-    '#weight' => -10,
-  ));
+    '#default_value' => $node->title,
+  ];
 
-  $editable = ((!isset($node->client) || !isset($node->nid)) || user_access('administer sites')) && hosting_feature('client');
-  $add_client_text = '';
-  if (user_access('administer clients') || user_access('create client')) {
-    $add_client_text = t('Click !here to add a new client.', array('!here' => l(t('here'), 'node/add/client', array('attributes' => array('target' => '_blank')))));
-  }
-  _hosting_site_field($form, $node, 'client', array(
-    '#type' => 'textfield',
-    '#required' => TRUE,
-    '#title' => t('Client'),
-    '#default_value' => _hosting_client_site_default($node),
-    '#description' => t('The client to whom this site belongs.') . ' ' . $add_client_text,
-    '#autocomplete_path' => 'hosting_client/autocomplete/client',
-  ), 'filter_xss', $editable);
+  $form['install'] = hosting_site_install_methods_form_element($node);
+  $form['install']['#parents'] = ['hosting_settings', 'install'];
+  
+  // Vertical Tabs
+  $form['settings'] = [
+    '#type' => 'vertical_tabs',
+  ];
 
-  // Override the defaults if the profile has been changed.
-  if (isset($form_state['values']['platform'])) {
-    $selected_platform = $form_state['values']['platform'];
-  }
-  else {
-    $selected_platform = NULL;
-  }
-  _hosting_site_field($form, $node, 'profile', array(
-    '#type' => 'textfield',
-    '#title' => t('Install profile'),
-    '#description' => t('The Drupal install profile to install.'),
-    '#default_value' => isset($node->profile) ? $node->profile : '',
-  ), '_hosting_node_link');
-
-  _hosting_site_field($form, $node, 'site_language', array(
+  $form['source'] = array(
+    '#title' => t('Source Code'),
+    '#type' => 'fieldset',
+    '#group' => 'settings',
+    'git' => hosting_site_git_form_element($node),
+  );
+  
+  $form['deployment'] = array(
+    '#title' => t('Deployment'),
+    '#type' => 'fieldset',
+    '#group' => 'settings',
+    'methods' => [],
+  );
+  
+  $form['general'] = array(
+    '#title' => t('Settings'),
+    '#type' => 'fieldset',
+    '#group' => 'settings',
+  );
+  
+  $form['deployment']['#parents'] = ['hosting_settings', 'deployment'];
+  $form['deployment']['methods']['continuous'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Continous Deployment'),
+    '#description' => t('When new code is available, deploy it as soon as possible. If not selected, you must deploy new code manually.'),
+    '#default_value' => $node->hosting_settings['deployment']['methods']['continuous']    
+  ];
+  $form['deployment']['methods']['manual_overrides'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Allow overriding Deploy Steps'),
+    '#description' => t('When starting a deployment manually, allow users to select the steps to run.'),
+    '#default_value' => $node->hosting_settings['deployment']['methods']['manual_overrides'],    
+    '#states' => [
+      'visible' => [
+        ':input[name="hosting_settings[deployment][methods][manual]"]' => ['checked'   => TRUE],
+      ]
+    ]
+  ];
+  
+  $form['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
+  $form['deployment']['steps']['#title'] = t('Deploy Steps');
+  $form['deployment']['steps']['#type'] = 'item';
+  $form['deployment']['steps']['help'] = [
+    '#theme' => 'item_list',
+    '#items' => [
+      t("The commands used for Deploy Steps can be overridden by adding a script named <code>deploy:STEP</code> to this site's composer.json file. See !link.", [
+            '!link' => l(t('Composer Scripts Documentation'), 'https://getcomposer.org/doc/articles/scripts.md', ['absolute' => TRUE])
+      ]),
+      t('If <em>Allow overriding Manual Deployment Steps</em> is selected, these will be the default steps.'),
+    ],
+  ];
+  $form['general']['site_language'] = [
     '#type' => 'textfield',
     '#title' => t('Language'),
     '#description' => t("The language code to install on the site by default. You can change this later when configuring the site."),
     '#attributes' => array('class' => array("hosting-site-form-site-language-options")),
-    '#default_value' => isset($node->site_language) ? $node->site_language : 'en',
-  ), '_hosting_language_name');
+    '#default_value' => $node->site_language ?? variable_get('hosting_default_site_language'),
+  ];
 
-  $platforms = _hosting_get_platforms(0, TRUE);
-
-  _hosting_site_field($form, $node, 'platform', array(
-    '#type' => 'radios',
-    '#title' => t('Platform'),
-    '#required' => TRUE,
-    '#description' => t('The platform you want the site to be hosted on.'),
-    '#options' => $platforms,
-    '#default_value' => isset($node->platform) ? $node->platform : null,
-  ), '_hosting_node_link');
-
-  _hosting_site_field($form, $node, 'db_server', array(
+  // Servers
+  $form['servers'] = [
+    '#title' => t('Servers'),
+    '#type' => 'fieldset',
+    '#group' => 'settings',
+  ];
+  $form['servers']['db_server'] = [
     '#type' => 'radios',
     '#title' => t('Database server'),
     '#required' => TRUE,
     '#description' => t('The database server the site will use to host its content.'),
     '#options' => hosting_get_servers('db'),
-    '#default_value' => isset($node->db_server) ? $node->db_server : HOSTING_DEFAULT_DB_SERVER,
-  ), '_hosting_node_link');
-
+    '#default_value' => $node->db_server ?? variable_get('hosting_default_db_server')
+  ];
+  $form['servers']['web_server'] = [
+    '#type' => 'radios',
+    '#title' => t('Web server'),
+    '#required' => TRUE,
+    '#description' => t('The web server the sites will be hosted on.'),
+    '#options' => hosting_get_servers('http'),
+    '#default_value' => $node->web_server ?? variable_get('hosting_default_web_server')
+  ];
+  
+  // @TODO: Move to entity saving function.
   foreach (array('verified', 'last_cron', 'site_status') as $extra_attribute) {
     $form["$extra_attribute"] = array(
       '#type' => 'value',
@@ -201,7 +227,7 @@ function hosting_site_form($node, &$form_state) {
 
   // Files Paths
   $form['file_paths'] = array(
-    '#title' => t('Site Files'),
+    '#title' => t('Data & Files'),
     '#description' => t('The directory to use for Drupal site files. Paths may be relative to the Drupal index, or absolute on the server. <em>CAUTION:</em> The web server user will be granted write access permission to these folders so that the Drupal site can receive uploaded files. Do not change unless you are aware of the security implications.'),
     '#type' => 'fieldset',
     '#collapsed' => TRUE,
@@ -250,85 +276,6 @@ function hosting_site_form($node, &$form_state) {
       );
     }
   }
-
-  /** @TODO: Get platform settings into site node form.
-  // Platform Settings
-  $form['platform_node'] = array(
-    '#title' => t('Platform Settings'),
-    '#type' => 'fieldset',
-    '#collapsed' => TRUE,
-    '#collapsible' => TRUE,
-  );
-
-  // Load the form for this site's platform.
-  $platform_node = node_load($node->platform);
-  $platform_form = drupal_get_form('platform_node_form', $platform_node);
-
-  // Clean up some things
-  unset($platform_form['actions']);
-  $platform_form['title']['#title'] = t('Platform Name');
-  $platform_form['git']['#group'] = 'site_settings';
-
-  // Tell hosting_site_node_update to skip adding the verify task. The site will include platform verification.
-  $platform_form['no_verify'] = array(
-    '#value' => TRUE,
-  );
-  _hosting_site_form_reset_parents_recursive($platform_form, 'platform_node');
-
-  // Add all platform form elements on to site form.
-  foreach (element_children($platform_form) as $element) {
-    $form['platform_node'][$element] = $platform_form[$element];
-  }
-  */
-
-  $form['site_settings'] = array(
-    '#type' => 'vertical_tabs',
-  );
-  
-  $form['hosting_settings']['deployment'] = array(
-    '#title' => t('Deployment'),
-    '#type' => 'fieldset',
-    '#group' => 'site_settings',
-  );
-  $form['hosting_settings']['deployment']['methods'] = array(
-  );
-  $form['hosting_settings']['deployment']['methods']['continuous'] = [
-    '#type' => 'checkbox',
-    '#title' => t('Continous Deployment'),
-    '#description' => t('When new code is available, deploy it as soon as possible. If not selected, you must deploy new code manually.'),
-    '#default_value' => $node->hosting_settings['deployment']['methods']['continuous']    
-  ];
-  $form['hosting_settings']['deployment']['methods']['manual_overrides'] = [
-    '#type' => 'checkbox',
-    '#title' => t('Allow overriding Deploy Steps'),
-    '#description' => t('When starting a deployment manually, allow users to select the steps to run.'),
-    '#default_value' => $node->hosting_settings['deployment']['methods']['manual_overrides'],    
-    '#states' => [
-      'visible' => [
-        ':input[name="hosting_settings[deployment][methods][manual]"]' => ['checked'   => TRUE],
-      ]
-    ]
-  ];
-  
-  $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
-  $form['hosting_settings']['deployment']['steps']['#title'] = t('Deploy Steps');
-  $form['hosting_settings']['deployment']['steps']['#type'] = 'item';
-  
-  $form['hosting_settings']['deployment']['steps']['help'] = [
-    '#theme' => 'item_list',
-    '#items' => [
-      t("The commands used for Deploy Steps can be overridden by adding a script named <code>deploy:STEP</code> to this site's composer.json file. See !link.", [
-            '!link' => l(t('Composer Scripts Documentation'), 'https://getcomposer.org/doc/articles/scripts.md', ['absolute' => TRUE])
-      ]),
-      t('If <em>Allow overriding Manual Deployment Steps</em> is selected, these will be the default steps.'),
-    ],
-  ];
-
-  $form['hosting_settings']['install'] = hosting_site_install_methods_form_element($node);
-  $form['hosting_settings']['install']['#type'] = 'fieldset';
-  $form['hosting_settings']['install']['#weight'] = -100;
-  $form['hosting_settings']['install']['#group'] = 'site_settings';
-  $form['hosting_settings']['install']['#title'] = t('Site Install');
   return $form;
 }
 
@@ -425,8 +372,8 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
 
     // Put all fieldgroups into vertical tabs.
     foreach (element_children($form) as $elementChildId) {
-      if (isset($form[$elementChildId]['#type']) && $form[$elementChildId]['#type'] == 'fieldset') {
-        $form[$elementChildId]['#group'] = 'site_settings';
+      if ($form[$elementChildId]['#type'] == 'fieldset') {
+        $form[$elementChildId]['#group'] = 'settings';
 
         // Un-break aegir contrib.
         unset($form[$elementChildId]['#prefix']);
@@ -448,6 +395,51 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
+
+/**
+ * Renders the "Install Methods" form element.
+ * 
+ * @TODO: Make this a real form element. 
+ * @param $node
+ * @param array $parents
+ * @return array
+ * @throws Exception
+ */
+function hosting_site_git_form_element($node = null) {
+  
+  $element = [
+  ];
+
+  $element['git_remote'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Git Repository URL'),
+    '#description' => t('The URL or path of the git repository to clone for this site.'),
+    '#default_value' => $node->git_remote,
+    '#required' => TRUE,
+  );
+
+  $element['git_root'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path to Clone'),
+    '#default_value' => $node->git_root,
+    '#description' => t('The full absolute path on the server to clone the codebase to.'),
+  );
+  $element['git_reference'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Git Reference'),
+    '#description' => t('The desired git branch or tag. If left blank, the default branch will be used.'),
+    '#default_value' => $node->git_reference,
+  );
+
+  $element['git_docroot'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Relative Docroot'),
+    '#description' => t('The relative path within the git repository to publish to the web.'),
+    '#default_value' => $node->git_docroot,
+  );
+
+  return $element;
+}
 
 /**
  * Renders a "Deploy Steps" form element.
@@ -502,6 +494,7 @@ function hosting_site_install_methods_form_element($node = null) {
   $values = $node->hosting_settings['install'];
 
   $element = array(
+    '#title' => t('Site Installation'),
     '#type' => 'fieldset',
     '#tree' => TRUE,
     '#attributes' => array(
