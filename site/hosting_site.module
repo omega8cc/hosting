@@ -424,6 +424,31 @@ function hosting_site_node_access($node, $op, $account) {
 }
 
 /**
+ * @TODO: Implement this. hosting_task_access is not used yet.
+ * Implements hook_hosting_task_access().
+ */
+function hosting_site_hosting_task_access($node, $task, $account) {
+  if ($node->type == 'site') {
+    // If site is enabled, don't show enable task
+    if ($node->site_status == HOSTING_SITE_ENABLED && $task == 'enable') {
+      return NODE_ACCESS_DENY;
+    }
+    // If site is disabled, don't show disable task
+    if ($node->site_status == HOSTING_SITE_DISABLED && $task == 'disable') {
+      return NODE_ACCESS_DENY;
+    }
+  
+    // If site is protected, block access to certain tasks.
+    if ($node->hosting_settings['protected'] && in_array($task, [
+      'disable', 'delete', 'sync', 'install'
+    ])) {
+      return NODE_ACCESS_DENY;
+    }
+  }
+
+}
+
+/**
  * Callback for site backup action.
  *
  * @see: hosting_task_action_info().

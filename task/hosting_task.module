@@ -93,6 +93,72 @@ function hosting_task_menu() {
 }
 
 /**
+ * @TODO: Implement this. hosting_task_access is not used yet.
+ * 
+ * Determines whether the current user may create a task on the node.
+ *
+ * @param $task
+ *   The task type the user wishes to create. 
+ * 
+ * @see hosting_available_tasks() 
+ * @see hook_hosting_tasks() 
+ * 
+ * @param $node
+ *   The node to test access on.
+ * 
+ * @param $account
+ *   Optional, a user object representing the user for whom the operation is to
+ *   be performed. Determines access for a user other than the current user.
+ *
+ * @return
+ *   TRUE if the operation may be performed, FALSE otherwise.
+ */
+function hosting_task_access($node, $task, $account = NULL) {
+  $rights = &drupal_static(__FUNCTION__, array());
+  
+  if (!$node || empty($node->rid)) {
+    // If there was no node to check against, or the $op was not one of the
+    // supported ones, we return access denied.
+    return FALSE;
+  }
+  // If no user object is supplied, the access check is for the current user.
+  if (empty($account)) {
+    $account = $GLOBALS['user'];
+  }
+  
+  // If user cannot view the node, deny.
+  if (node_access('view', $node)) {
+    return FALSE;
+  }
+  
+  // Use node nid as the static cache id.
+  $cid = $node->nid;
+
+  // If we've already checked access for this node, user and task, return from
+  // cache.
+  if (isset($rights[$account->uid][$cid][$task])) {
+    return $rights[$account->uid][$cid][$task];
+  }
+  
+  // We grant access to create tasks if both of the following conditions are met:
+  // - No modules say to deny access.
+  // - At least one module says to grant access.
+  // If no module specified either allow or deny, we fall back to the
+  // node_access table.
+  $access = module_invoke_all('hosting_task_access', $node, $task, $account);
+  if (in_array(NODE_ACCESS_DENY, $access, TRUE)) {
+    $rights[$account->uid][$cid][$task] = FALSE;
+    return FALSE;
+  }
+  elseif (in_array(NODE_ACCESS_ALLOW, $access, TRUE)) {
+    $rights[$account->uid][$cid][$task] = TRUE;
+    return TRUE;
+  }
+  
+  return user_access("create " . $task . " task");
+}
+
+/**
  * Read additional task log data, served via AJAX.
  */
 function hosting_task_log_ajax($node, $last_position, $id) {
