@@ -133,8 +133,25 @@ function hosting_site_form($node, &$form_state) {
     '#title' => t('Domain name'),
     '#required' => TRUE,
     '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '',
-    '#weight' => -10,
+    '#weight' => -20,
   ));
+  
+  // Settings
+  $form['hosting_settings']['general'] = array(
+    '#title' => t('Settings'),
+    '#type' => 'fieldset',
+    '#group' => 'site_settings',
+    '#weight' => -100,
+  );
+  
+  $form['hosting_settings']['general']['protected'] = array(
+    '#title' => t('Protect Site'),
+    '#description' => t('Prevent users from disabling, deleting or syncing to this site.'),
+    '#weight' => -10,
+    '#type' => 'checkbox',
+    '#default_value' => $node->hosting_settings['protected'],
+    '#parents' => ['hosting_settings', 'protected'],
+  );
 
   $editable = ((!isset($node->client) || !isset($node->nid)) || user_access('administer sites')) && hosting_feature('client');
   $add_client_text = '';
@@ -328,7 +345,7 @@ function hosting_site_form($node, &$form_state) {
   $form['hosting_settings']['install']['#type'] = 'fieldset';
   $form['hosting_settings']['install']['#weight'] = -100;
   $form['hosting_settings']['install']['#group'] = 'site_settings';
-  $form['hosting_settings']['install']['#title'] = t('Site Install');
+  $form['hosting_settings']['install']['#title'] = t('Install');
   return $form;
 }
 
@@ -536,14 +553,14 @@ function hosting_site_install_methods_form_element($node = null) {
     ),
   );
 
-  $element['install_profile'] = array(
+  $element['profile'] = array(
     '#type' => 'machine_name',
     '#machine_name' => array(
       'exists' => 'always_false',
     ),
     '#title' => t('Drupal Install Profile'),
     '#required' => false,
-    '#default_value' => $values['install_profile'] ?? '', 
+    '#default_value' => $node->profile, 
     '#title_display' => 'invisible',
     '#description' => t('(optional) Enter the exact name the install profile to use. It must already exist in your git branch or tag.'),
     '#element_validate' => array(
@@ -558,6 +575,8 @@ function hosting_site_install_methods_form_element($node = null) {
        ":input[name='hosting_settings[install][method]']" => array('value' => 'profile'),
       ),
     ),
+    // Pass to core hosting_site property.
+    '#parents' => ['profile'],
   );
 
   // Generate environments options.
