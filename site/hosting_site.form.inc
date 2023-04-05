@@ -153,6 +153,20 @@ function hosting_site_form($node, &$form_state) {
     '#parents' => ['hosting_settings', 'protected'],
   );
 
+  $form['hosting_settings']['general']['allow_reinstall'] = array(
+    '#title' => t('Allow Re-install'),
+    '#description' => t('Give users a way to destroy and reinstall the site. '),
+    '#weight' => -10,
+    '#type' => 'checkbox',
+    '#default_value' => $node->hosting_settings['allow_reinstall'],
+    '#parents' => ['hosting_settings', 'allow_reinstall'],
+    '#states' => [
+      'visible' => [
+        ':input[name="hosting_settings[protected]"]' => ['checked' => FALSE],
+      ],   
+    ],
+  );
+  
   $editable = ((!isset($node->client) || !isset($node->nid)) || user_access('administer sites')) && hosting_feature('client');
   $add_client_text = '';
   if (user_access('administer clients') || user_access('create client')) {
