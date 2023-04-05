@@ -365,15 +365,23 @@ function hosting_task_menu_access($node, $task) {
 
       $site_enabled = (hosting_task_outstanding($node->nid, 'enable') || ($node->site_status == HOSTING_SITE_ENABLED));
       
-      // @TODO: Do not allow on protected sites.
-      // @TODO: Improve UI to inform users this is a reinstall and data will be lost.
-      // @TODO: Reduce tech debt, do not add to it.
-
       // If the site is not enabled, we can either delete it, or enable it again.
       if (!$site_enabled) {
         return in_array($task, ['enable', 'delete', 'deploy']);
       }
       else {
+        
+        // Don't show enable task on enabled sites.
+        if ($task == 'enable') {
+          return FALSE;
+        }
+        
+        // If site is protected, block disable, delete, restore and sync tasks.
+        if ($node->hosting_settings['protected'] ?? FALSE) {
+          return !in_array($task, [
+            'install', 'disable', 'delete', 'restore', 'sync']);
+        } 
+        
         // If site is enabled, block install tasks unless allowed.
         if ($task == 'install' && !variable_get('hosting_allow_reinstall', TRUE)) {
           return false;

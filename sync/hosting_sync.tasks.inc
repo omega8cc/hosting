@@ -13,50 +13,9 @@ function hosting_sync_hosting_tasks() {
   $tasks['site']['sync'] = array(
     'title' => t('Sync data'),
     'description' => t('Synchronize database and files from another site and (optionally) run update.php, clear cache, and revert features. <strong>Data on the current site will be DESTROYED!</strong>'),
-    'access callback' => 'hosting_sync_hosting_task_menu_access',
     'dialog' => TRUE,
   );
   return $tasks;
-}
-
-/**
- * Access Callback for Aegir Tasks.
- *
- * This function defines access to the various aegir tasks.
- *
- * @arg $node object
- *   The node object is running the task. (Site, Platform, Server)
- *
- * @arg $task string
- *   The type of the task that is running.
- *
- * @see hosting_task_menu_access()
- */
-function hosting_sync_hosting_task_menu_access($node, $task) {
-  // If we are passed the nid by mistake.
-  if (!isset($node->nid)) {
-    $node = node_load($node);
-  }
-
-  if ($task == 'sync' && user_access('create sync task') && $node->type == 'site') {
-    // Determine site's profile name.
-    $profile = node_load($node->profile);
-
-    $ishostmaster = ($profile && $profile->short_name == 'hostmaster');
-    if ($ishostmaster) {
-      return FALSE;
-    }
-
-    // If we are deleted or in the process of deleting, we can't sync!
-    if (hosting_task_outstanding($node->nid, 'delete') || ($node->site_status == HOSTING_SITE_DELETED)) {
-      return FALSE;
-    }
-
-    // Otherwise, only show if the site is enabled.
-    return $node->site_status == HOSTING_SITE_ENABLED;
-  }
-
-  return FALSE;
 }
 
 /**
