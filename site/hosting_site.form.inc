@@ -188,12 +188,6 @@ function hosting_site_form($node, &$form_state) {
   else {
     $selected_platform = NULL;
   }
-  _hosting_site_field($form, $node, 'profile', array(
-    '#type' => 'textfield',
-    '#title' => t('Install profile'),
-    '#description' => t('The Drupal install profile to install.'),
-    '#default_value' => isset($node->profile) ? $node->profile : '',
-  ), '_hosting_node_link');
 
   _hosting_site_field($form, $node, 'site_language', array(
     '#type' => 'textfield',
@@ -354,12 +348,27 @@ function hosting_site_form($node, &$form_state) {
       t('If <em>Allow overriding Manual Deployment Steps</em> is selected, these will be the default steps.'),
     ],
   ];
-
-  $form['hosting_settings']['install'] = hosting_site_install_methods_form_element($node);
-  $form['hosting_settings']['install']['#type'] = 'fieldset';
-  $form['hosting_settings']['install']['#weight'] = -100;
-  $form['hosting_settings']['install']['#group'] = 'site_settings';
-  $form['hosting_settings']['install']['#title'] = t('Install');
+  // Hide the install form if editing a site that is protected.
+  if ($node->nid) {
+    $form['hosting_settings']['general']['install'] = hosting_site_install_methods_form_element($node);
+    $form['hosting_settings']['general']['#parents'] = ['hosting_settings'];
+    
+    $form['hosting_settings']['general']['install']['#states'] = [
+      'visible' => [
+        ':input[name="hosting_settings[protected]"]' => ['checked' => FALSE],
+        ':input[name="hosting_settings[allow_reinstall]"]' => ['checked' => TRUE],
+      ],   
+    ];  
+  }
+  else {
+    // On site create form, but install method on top.
+    $form['install'] = [
+      '#weight' => 0,
+    ];
+    $form['install']['install'] = hosting_site_install_methods_form_element($node);
+    $form['install']['install']['#type'] = 'fieldset';
+    $form['install']['install']['#parents'] = ['hosting_settings', 'install'];
+  }
   return $form;
 }
 
