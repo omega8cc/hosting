@@ -580,7 +580,7 @@ function hosting_site_install_methods_form_element($node = null) {
     ),
     '#title' => t('Drupal Install Profile'),
     '#required' => false,
-    '#default_value' => $node->profile,
+    '#default_value' => $values['profile'] ?? $node->profile ?? '',
     '#title_display' => 'invisible',
     '#description' => t('(optional) Enter the exact name the install profile to use. It must already exist in your git branch or tag.'),
     '#element_validate' => array(
@@ -595,8 +595,6 @@ function hosting_site_install_methods_form_element($node = null) {
        ":input[name='{$parent}[install][method]']" => array('value' => 'profile'),
       ),
     ),
-    // Pass to core hosting_site property.
-    '#parents' => ['profile'],
   );
 
   // Generate environments options.
