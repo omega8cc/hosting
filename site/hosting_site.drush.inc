@@ -209,6 +209,8 @@ function hosting_site_post_hosting_delete_task($task, $data) {
     $task->ref->site_status = HOSTING_SITE_DELETED;
     $task->ref->no_verify = TRUE;
     hosting_context_delete($task->ref->nid);
+    unset($task->ref->hosting_settings);
+    unset($task->ref->hosting_name);
     node_save($task->ref);
 
     // Record the backup created during delete.

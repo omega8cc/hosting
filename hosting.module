@@ -377,10 +377,10 @@ function hosting_node_search_result($node) {
  */
 function hosting_node_update($node) {
   // Update context settings.
-  if (!empty($node->hosting_settings)) {
+  if (!empty($node->hosting_settings) && !empty($node->hosting_name)) {
     hosting_context_register($node->nid, $node->hosting_name, $node->hosting_settings);
   }
-  
+
   // Redispatch through our custom nodeapi implementation.
   hosting_nodeapi($node, 'update');
 }
@@ -1149,7 +1149,7 @@ function hosting_form_alter(&$form, &$form_state, $form_id) {
       $form['#submit'][] = 'hosting_form_submit_messages';
     }
   }
-  
+
   // Add settings to Context Node Forms with hosting context name.
   if (!empty($form['#node_edit_form']) && (in_array($form_state['node']->type, hosting_context_node_types()))) {
     // Merge settings from prior form generating functions, like hosting_site_form.
@@ -1240,7 +1240,7 @@ function hosting_context_register($nid, $name, $settings = NULL) {
       'name' => $name,
     ];
     if ($settings) {
-      $fields['settings'] = serialize($settings); 
+      $fields['settings'] = serialize($settings);
     }
 
     db_update('hosting_context')
