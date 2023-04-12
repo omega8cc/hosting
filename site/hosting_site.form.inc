@@ -149,8 +149,7 @@ function hosting_site_form($node, &$form_state) {
     '#description' => t('Prevent users from disabling, deleting or syncing to this site.'),
     '#weight' => -10,
     '#type' => 'checkbox',
-    '#default_value' => $node->hosting_settings['protected'],
-    '#parents' => ['hosting_settings', 'protected'],
+    '#default_value' => $node->hosting_settings['general']['protected'],
   );
 
   $form['hosting_settings']['general']['allow_reinstall'] = array(
@@ -159,11 +158,10 @@ function hosting_site_form($node, &$form_state) {
     '#weight' => -10,
     '#type' => 'checkbox',
     '#default_value' => $node->hosting_settings['allow_reinstall'],
-    '#parents' => ['hosting_settings', 'allow_reinstall'],
     '#states' => [
       'visible' => [
-        ':input[name="hosting_settings[protected]"]' => ['checked' => FALSE],
-      ],   
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+      ],
     ],
   );
   
@@ -362,12 +360,11 @@ function hosting_site_form($node, &$form_state) {
   }
   else {
     // On site create form, but install method on top.
-    $form['install'] = [
-      '#weight' => 0,
-    ];
-    $form['install']['install'] = hosting_site_install_methods_form_element($node);
-    $form['install']['install']['#type'] = 'fieldset';
-    $form['install']['install']['#parents'] = ['hosting_settings', 'install'];
+    $form['hosting_settings']['install'] = hosting_site_install_methods_form_element($node);
+    $form['hosting_settings']['install']['#title'] = t('Installation');
+    $form['hosting_settings']['install']['#weight'] = -200;
+    $form['hosting_settings']['install']['#type'] = 'fieldset';
+    $form['hosting_settings']['install']['#group'] = 'site_settings';
   }
   return $form;
 }
@@ -540,7 +537,7 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
 function hosting_site_install_methods_form_element($node = null) {
   
   $values = $node->hosting_settings['install'];
-
+  $parent = $node->hosting_settings_parent ?? 'hosting_settings';
   $element = array(
     '#type' => 'fieldset',
     '#tree' => TRUE,
@@ -568,7 +565,7 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -98,
     '#states' => array(
       'visible' => array(
-        ":input[name='hosting_settings[install][method]']" => array('value' => 'manual'),
+        ":input[name='{$parent}[install][method]']" => array('value' => 'manual'),
       ),
     ),
     'note' => array(
@@ -583,7 +580,7 @@ function hosting_site_install_methods_form_element($node = null) {
     ),
     '#title' => t('Drupal Install Profile'),
     '#required' => false,
-    '#default_value' => $node->profile, 
+    '#default_value' => $node->profile,
     '#title_display' => 'invisible',
     '#description' => t('(optional) Enter the exact name the install profile to use. It must already exist in your git branch or tag.'),
     '#element_validate' => array(
@@ -595,7 +592,7 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -97,
     '#states' => array(
       'visible' => array(
-       ":input[name='hosting_settings[install][method]']" => array('value' => 'profile'),
+       ":input[name='{$parent}[install][method]']" => array('value' => 'profile'),
       ),
     ),
     // Pass to core hosting_site property.
@@ -646,7 +643,7 @@ function hosting_site_install_methods_form_element($node = null) {
       '#default_value' => $values['clone_source'] ?? '@primary',
       '#states' => array(
         'visible' => array(
-         ":input[name='hosting_settings[install][method]']" => array('value' => 'clone'),
+         ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
         ),
       ),
     );
@@ -666,8 +663,8 @@ function hosting_site_install_methods_form_element($node = null) {
     ),
     '#states' => array(
       'visible' => array(
-        ":input[name='hosting_settings[install][clone_source]']" => array('value' => '_other'),
-        ":input[name='hosting_settings[install][method]']" => array('value' => 'clone'),
+        ":input[name='{$parent}[install][clone_source]']" => array('value' => '_other'),
+        ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
       ),
     ),
   );
@@ -683,7 +680,7 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -98,
     '#states' => array(
       'visible' => array(
-       ":input[name='hosting_settings[install][method]']" => array('value' => 'import'),
+       ":input[name='{$parent}[install][method]']" => array('value' => 'import'),
       ),
     ),
     '#element_validate' => array(
@@ -701,7 +698,7 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -98,
     '#states' => array(
       'visible' => array(
-        ':input[name="hosting_settings[install][method]"]' => array('value' => 'import'),
+        ":input[name='{$parent}[install][method]']" => array('value' => 'import'),
       ),
     ),
   );

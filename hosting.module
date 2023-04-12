@@ -1373,6 +1373,29 @@ function hosting_log_types() {
 }
 
 /**
+ * @param $site_node
+ * @return mixed
+ */
+function hosting_get_site_settings_form($hosting_settings = [], $hosting_settings_parent = null) {
+  $site_node = new stdClass();
+
+  $site_node->type = 'site';
+  $site_node->hosting_settings = $hosting_settings;
+  $site_node->hosting_settings_parent = $hosting_settings_parent;
+  $site_node->profile = $site_node->hosting_settings['install']['profile'] ?? '';
+  $state = [
+    'build_info' => ['args' => [$site_node]],
+  ];
+  module_load_include('pages.inc', 'node');
+  $site_form = drupal_retrieve_form('site_node_form', $state);
+
+  // "profile" element in hosting_site_form gets set to parent node. Unset parents to put it back in our array.
+  unset($site_form['hosting_settings']['install']['profile']['#parents']);
+  return $site_form['hosting_settings'];
+
+}
+
+/**
  * General settings form.
  */
 function hosting_settings($form, &$form_state) {
@@ -1382,6 +1405,20 @@ function hosting_settings($form, &$form_state) {
     '#value' => t('Here you may set various general settings that apply to site management or to the frontend system.'),
     '#weight' => 0,
   );
+
+  // Default site settings
+  $form['hosting_site_defaults'] = hosting_get_site_settings_form(variable_get('hosting_site_defaults', NULL), 'hosting_site_defaults');
+  $form['hosting_site_defaults']['#type'] = 'item';
+  $form['hosting_site_defaults']['#tree'] = TRUE;
+  $form['hosting_site_defaults']['#title'] = t('Default Site Settings');
+  $form['hosting_site_defaults']['#weight'] = 90;
+  // If we have
+  $form['hosting_site_defaults']['install']['#validate'][] = 'hosting_settings_set_install';
+
+  $form['site_settings'] = [
+    '#type' => 'vertical_tabs',
+    '#weight' => 100,
+  ];
 
   $profiles = array();
   foreach (hosting_get_profiles() as $id => $name) {
@@ -1456,6 +1493,7 @@ function hosting_settings($form, &$form_state) {
     '#options' => $types,
     '#default_value' => variable_get('hosting_task_logs_types_display', $types),
   );
+
   return system_settings_form($form);
 }
 

@@ -437,9 +437,9 @@ function hosting_site_hosting_task_access($node, $task, $account) {
     if ($node->site_status == HOSTING_SITE_DISABLED && $task == 'disable') {
       return NODE_ACCESS_DENY;
     }
-  
+
     // If site is protected, block access to certain tasks.
-    if ($node->hosting_settings['protected'] && in_array($task, [
+    if ($node->hosting_settings['general']['protected'] && in_array($task, [
       'disable', 'delete', 'sync', 'install'
     ])) {
       return NODE_ACCESS_DENY;
@@ -891,7 +891,7 @@ function hosting_task_deploy_form($node) {
 
   $form['steps']['note'] = array(
     '#type' => 'container',
-  );  
+  );
   $form['steps']['note']['help'] = array(
     '#theme' => 'item_list',
     '#items' => array(

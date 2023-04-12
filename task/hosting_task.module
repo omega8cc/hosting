@@ -377,13 +377,13 @@ function hosting_task_menu_access($node, $task) {
         }
         
         // If site is protected, block disable, delete, restore and sync tasks.
-        if ($node->hosting_settings['protected'] ?? FALSE) {
+        if ($node->hosting_settings['general']['protected'] ?? FALSE) {
           return !in_array($task, [
             'install', 'disable', 'delete', 'restore', 'sync']);
         } 
         
         // If site is not protected and allow_reinstall is true
-        if ($task == 'install' && ($node->hosting_settings['protected'] ||  empty($node->hosting_settings['allow_reinstall']))) {
+        if ($task == 'install' && ($node->hosting_settings['general']['protected'] ||  empty($node->hosting_settings['allow_reinstall']))) {
           return false;
         }
         // Block delete tasks unless allowed.

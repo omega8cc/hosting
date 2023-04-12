@@ -49,10 +49,10 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
   $node->content['info']['protected'] = array(
     '#type' => 'item',
     '#title' => t('Protected'),
-    '#markup' => $node->hosting_settings['protected']? t('Yes'): t('No'),
+    '#markup' => $node->hosting_settings['general']['protected']? t('Yes'): t('No'),
     '#weight' => -9,
   );
-  
+
   $node->content['info']['verified'] = array(
     '#type' => 'item',
     '#title' => t('Verified'),
