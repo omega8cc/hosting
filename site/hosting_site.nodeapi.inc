@@ -291,7 +291,7 @@ function hosting_site_insert(&$node) {
   // Ensure that the last_cron value is set.
   $node->last_cron = isset($node->last_cron) ? $node->last_cron : 0;
   // Provide a dummy profile, e.g. for hosting-import.
-  $node->profile = isset($node->profile) ? $node->profile : '';
+  $node->profile = $node->hosting_settings['install']['profile'] ?? '';
 
   // If platform NID is not defined, but platform data is available,
   // create the platform.
@@ -426,7 +426,7 @@ function hosting_site_update(&$node) {
         'last_cron' => $node->last_cron,
         'cron_key' => $node->cron_key,
         'status' => $node->site_status,
-        'profile' => $node->profile,
+        'profile' => $node->hosting_settings['install']['profile'] ?? '',
         'language' => $node->site_language,
         'verified' => $node->verified,
         'file_public_path' => $node->file_public_path,
@@ -503,3 +503,4 @@ function hosting_site_load($nodes) {
   // Set URI property from title.
   $node->uri = $node->title;
 }
+
