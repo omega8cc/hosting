@@ -135,7 +135,7 @@ function hosting_site_form($node, &$form_state) {
     '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '',
     '#weight' => -20,
   ));
-  
+
   // Settings
   $form['hosting_settings']['general'] = array(
     '#title' => t('Settings'),
@@ -143,7 +143,7 @@ function hosting_site_form($node, &$form_state) {
     '#group' => 'site_settings',
     '#weight' => -100,
   );
-  
+
   $form['hosting_settings']['general']['protected'] = array(
     '#title' => t('Protect Site'),
     '#description' => t('Prevent users from disabling, deleting or syncing to this site.'),
@@ -164,7 +164,7 @@ function hosting_site_form($node, &$form_state) {
       ],
     ],
   );
-  
+
   $editable = ((!isset($node->client) || !isset($node->nid)) || user_access('administer sites')) && hosting_feature('client');
   $add_client_text = '';
   if (user_access('administer clients') || user_access('create client')) {
@@ -307,7 +307,7 @@ function hosting_site_form($node, &$form_state) {
   $form['site_settings'] = array(
     '#type' => 'vertical_tabs',
   );
-  
+
   $form['hosting_settings']['deployment'] = array(
     '#title' => t('Deployment'),
     '#type' => 'fieldset',
@@ -319,24 +319,24 @@ function hosting_site_form($node, &$form_state) {
     '#type' => 'checkbox',
     '#title' => t('Continous Deployment'),
     '#description' => t('When new code is available, deploy it as soon as possible. If not selected, you must deploy new code manually.'),
-    '#default_value' => $node->hosting_settings['deployment']['methods']['continuous']    
+    '#default_value' => $node->hosting_settings['deployment']['methods']['continuous']
   ];
   $form['hosting_settings']['deployment']['methods']['manual_overrides'] = [
     '#type' => 'checkbox',
     '#title' => t('Allow overriding Deploy Steps'),
     '#description' => t('When starting a deployment manually, allow users to select the steps to run.'),
-    '#default_value' => $node->hosting_settings['deployment']['methods']['manual_overrides'],    
+    '#default_value' => $node->hosting_settings['deployment']['methods']['manual_overrides'],
     '#states' => [
       'visible' => [
         ':input[name="hosting_settings[deployment][methods][manual]"]' => ['checked'   => TRUE],
       ]
     ]
   ];
-  
+
   $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
   $form['hosting_settings']['deployment']['steps']['#title'] = t('Deploy Steps');
   $form['hosting_settings']['deployment']['steps']['#type'] = 'item';
-  
+
   $form['hosting_settings']['deployment']['steps']['help'] = [
     '#theme' => 'item_list',
     '#items' => [
@@ -350,13 +350,13 @@ function hosting_site_form($node, &$form_state) {
   if ($node->nid) {
     $form['hosting_settings']['general']['install'] = hosting_site_install_methods_form_element($node);
     $form['hosting_settings']['general']['#parents'] = ['hosting_settings'];
-    
+
     $form['hosting_settings']['general']['install']['#states'] = [
       'visible' => [
         ':input[name="hosting_settings[protected]"]' => ['checked' => FALSE],
         ':input[name="hosting_settings[allow_reinstall]"]' => ['checked' => TRUE],
-      ],   
-    ];  
+      ],
+    ];
   }
   else {
     // On site create form, but install method on top.
@@ -488,24 +488,24 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
 
 /**
  * Renders a "Deploy Steps" form element.
- * 
- * @TODO: Make this a real form element. 
+ *
+ * @TODO: Make this a real form element.
  * @param $node
  * @param array $parents
  * @return array
  * @throws Exception
  */
 function hosting_site_deploy_steps_form_element($node = null, array $parents = []) {
-  
+
   $node->platform_node = node_load($node->platform);
-  
+
   $site = new Provision_Context_site($node->hosting_name);
   $platform = new Provision_Context_platform($node->platform_node->hosting_name);
   $site->setProperty('git_root', $node->git_root);
   $site->setProperty('platform', $platform);
   foreach ($site->getDeploySteps() as $step => $info) {
     $info['note'] = $info['overridden_by'] ?? '';
-    
+
     $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
     $element[$step] = [
       '#title' => t('@title: @description !code !note', [
@@ -527,15 +527,15 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
 
 /**
  * Renders the "Install Methods" form element.
- * 
- * @TODO: Make this a real form element. 
+ *
+ * @TODO: Make this a real form element.
  * @param $node
  * @param array $parents
  * @return array
  * @throws Exception
  */
 function hosting_site_install_methods_form_element($node = null) {
-  
+
   $values = $node->hosting_settings['install'];
   $parent = $node->hosting_settings_parent ?? 'hosting_settings';
   $element = array(
