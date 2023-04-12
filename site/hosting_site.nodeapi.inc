@@ -264,6 +264,15 @@ function hosting_site_delete($node) {
 }
 
 /**
+ * Impelements hook_prepare()
+ */
+function hosting_site_prepare($node) {
+  if (empty($node->nid)) {
+    $node->hosting_settings = variable_get('hosting_settings_site_defaults', []);
+  }
+}
+
+/**
  * Implements hook_nodeapi().
  */
 function hosting_site_nodeapi_site_presave(&$node) {

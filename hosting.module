@@ -1407,13 +1407,13 @@ function hosting_settings($form, &$form_state) {
   );
 
   // Default site settings
-  $form['hosting_site_defaults'] = hosting_get_site_settings_form(variable_get('hosting_site_defaults', NULL), 'hosting_site_defaults');
-  $form['hosting_site_defaults']['#type'] = 'item';
-  $form['hosting_site_defaults']['#tree'] = TRUE;
-  $form['hosting_site_defaults']['#title'] = t('Default Site Settings');
-  $form['hosting_site_defaults']['#weight'] = 90;
+  $form['hosting_settings_site_defaults'] = hosting_get_site_settings_form(variable_get('hosting_settings_site_defaults', NULL), 'hosting_settings_site_defaults');
+  $form['hosting_settings_site_defaults']['#type'] = 'item';
+  $form['hosting_settings_site_defaults']['#tree'] = TRUE;
+  $form['hosting_settings_site_defaults']['#title'] = t('Default Site Settings');
+  $form['hosting_settings_site_defaults']['#weight'] = 90;
   // If we have
-  $form['hosting_site_defaults']['install']['#validate'][] = 'hosting_settings_set_install';
+  $form['hosting_settings_site_defaults']['install']['#validate'][] = 'hosting_settings_set_install';
 
   $form['site_settings'] = [
     '#type' => 'vertical_tabs',
