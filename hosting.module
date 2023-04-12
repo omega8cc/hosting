@@ -1411,6 +1411,7 @@ function hosting_settings($form, &$form_state) {
   $form['hosting_settings_site_defaults']['#type'] = 'item';
   $form['hosting_settings_site_defaults']['#tree'] = TRUE;
   $form['hosting_settings_site_defaults']['#title'] = t('Default Site Settings');
+  $form['hosting_settings_site_defaults']['#description'] = t('These settings will be used when creating new sites.');
   $form['hosting_settings_site_defaults']['#weight'] = 90;
   // If we have
   $form['hosting_settings_site_defaults']['install']['#validate'][] = 'hosting_settings_set_install';
