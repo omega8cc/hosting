@@ -265,9 +265,10 @@ function hosting_site_delete($node) {
 
 /**
  * Impelements hook_prepare()
+ * Load default hosting_settings, unless they are already set.
  */
 function hosting_site_prepare($node) {
-  if (empty($node->nid)) {
+  if (empty($node->nid) && empty($node->hosting_settings)) {
     $node->hosting_settings = variable_get('hosting_settings_site_defaults', []);
   }
 }
