@@ -397,7 +397,7 @@ function hosting_task_menu_access($node, $task) {
         }
 
         // If site is not protected and allow_reinstall is true
-        if ($task == 'install' && ($node->hosting_settings['general']['protected'] ||  empty($node->hosting_settings['allow_reinstall']))) {
+        if ($task == 'install' && ($node->hosting_settings['general']['protected'] ||  empty($node->hosting_settings['general']['allow_reinstall']))) {
           return false;
         }
         // Block delete tasks unless allowed.

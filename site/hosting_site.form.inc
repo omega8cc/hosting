@@ -157,10 +157,10 @@ function hosting_site_form($node, &$form_state) {
     '#description' => t('Give users a way to destroy and reinstall the site. '),
     '#weight' => -10,
     '#type' => 'checkbox',
-    '#default_value' => $node->hosting_settings['allow_reinstall'],
+    '#default_value' => $node->hosting_settings['general']['allow_reinstall'],
     '#states' => [
       'visible' => [
-        ':input[name="hosting_settings[protected]"]' => ['checked' => FALSE],
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
       ],
     ],
   );
@@ -349,12 +349,12 @@ function hosting_site_form($node, &$form_state) {
   // Hide the install form if editing a site that is protected.
   if ($node->nid) {
     $form['hosting_settings']['general']['install'] = hosting_site_install_methods_form_element($node);
-    $form['hosting_settings']['general']['#parents'] = ['hosting_settings'];
+    $form['hosting_settings']['general']['install']['#parents'] = ['hosting_settings', 'install'];
 
     $form['hosting_settings']['general']['install']['#states'] = [
       'visible' => [
-        ':input[name="hosting_settings[protected]"]' => ['checked' => FALSE],
-        ':input[name="hosting_settings[allow_reinstall]"]' => ['checked' => TRUE],
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+        ':input[name="hosting_settings[general][allow_reinstall]"]' => ['checked' => TRUE],
       ],
     ];
   }
