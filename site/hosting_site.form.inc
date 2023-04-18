@@ -504,16 +504,18 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
   $site->setProperty('git_root', $node->git_root);
   $site->setProperty('platform', $platform);
   foreach ($site->getDeploySteps() as $step => $info) {
-    $info['note'] = $info['overridden_by'] ?? '';
+
+    if (!isset($info['command'])) {
+      $info['command'] = [];
+    }
 
     $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
     $element[$step] = [
-      '#title' => t('@title: @description !code !note', [
+      '#title' => t('@title: !note', [
           '@title' => $info['title'],
-          '@description' => $info['description'],
-          '!note' => $info['note'],
-          '!code' => '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
+          '!note' => $info['description'],
         ]),
+      '#description' => $info['note'] . (!empty($info['command'])? '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>': ''),
       '#type' => 'checkbox',
       '#default_value' => $node->hosting_settings['deployment']['steps'][$step] ?? false,
     ];
