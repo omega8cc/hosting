@@ -202,6 +202,7 @@ function drush_hosting_task()
       // Run platform verify task if this is a site install. Provision MUST run platform verify before provision-install.
       // We can't do this in drush_x_provision_install_x() hook because there's no set there yet, so the command can fail if composer didn't install.
       if ($task->task_type == 'install') {
+        chdir(d('@hostmaster')->root);
         $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify", $task->args, $task->options);
         hosting_platform_post_hosting_verify_task($platform_task, $output);
 

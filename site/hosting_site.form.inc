@@ -703,3 +703,47 @@ function hosting_site_install_methods_form_element($node = null) {
 
   return $element;
 }
+
+/**
+ * Confirmation form for site backups.
+ *
+ * @see hosting_task_confirm_form().
+ */
+function hosting_task_install_form($node) {
+
+  drupal_set_title(t('Are you sure you want to reinstall the site?'));
+
+  $form['install'] = hosting_site_install_methods_form_element($node);
+  $form['install']['#parents'] = ['hosting_settings', 'install'];
+  $form['install']['#element_validate'] = ['hosting_task_install_save_settings'];
+
+  $form['force'] = array(
+    '#title' => t('Destroy all data in this site'),
+    '#type' => 'checkbox',
+    '#required' => TRUE,
+    '#description' => t('WARNING: Taking this action will destroy all data in the site !link.', array(
+      '!link' => l($node->title, $node->title, array(
+        'options' => array(
+          'attributes' => array(
+            'target' => '_blank',
+          ),
+        ),
+      )),
+    )),
+  );
+
+  return $form;
+}
+
+
+/**
+ * Element validate hook for install task install settings.
+ */
+function hosting_task_install_save_settings($element, &$form_state) {
+  if ($form_state['values']['parameters']['force']) {
+    $site_node = $form_state['build_info']['args'][0];
+    $site_node->hosting_settings['install'] = $form_state['values']['hosting_settings']['install'];
+    $site_node->no_verify = TRUE;
+    node_save($site_node);
+  }
+}

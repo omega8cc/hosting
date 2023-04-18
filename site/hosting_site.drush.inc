@@ -16,12 +16,6 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['root'] = $task->ref->publish_path;
   $task->context_options['language'] = $task->ref->site_language;
 
-  if (!empty($task->ref->profile)) {
-    $task->context_options['profile'] = $task->ref->profile;
-  }
-  else {
-    $task->context_options['profile'] = '';
-  }
   // @TODO: Legacy refactor needed. Move to Hosting Client module.
   $client = node_load($task->ref->client);
   $user = user_load($task->uid);
@@ -30,10 +24,9 @@ function hosting_hosting_site_context_options(&$task) {
   }
   $task->context_options['client_name'] = $client->uname;
 
-  // Set "install_method" property, only if there is one present on the site node.
-  // "profile" is used by default, we don't have to set it here.
-  if (isset($task->ref->install_method) && !empty($task->ref->install_method)) {
-    $task->context_options['install_method'] = $task->ref->install_method;
+  // If install task is set to force-reinstall, pass to drush options.
+  if ($task->task_type == 'install' && !empty($task->task_args['force'])) {
+    $task->options['force-reinstall'] = 1;
   }
 
   // Set File directories if they exist
