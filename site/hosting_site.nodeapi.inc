@@ -417,7 +417,6 @@ function hosting_site_update(&$node) {
     if ($node->site_status == HOSTING_SITE_DELETED) {
       $node->no_verify = TRUE;
     }
-
     db_update('hosting_site')
       ->fields(array(
         'client' => $node->client,
@@ -437,8 +436,9 @@ function hosting_site_update(&$node) {
       ->condition('vid', $node->vid)
       ->execute();
 
-    // If platform_node is passed in the site node, save it.
+    // If platform_node is passed in the site node, save it (but without verification. site Verify will handle it.)
     if (isset($node->platform_node->nid)) {
+      $node->platform_node->no_verify = TRUE;
       node_save($node->platform_node);
     }
   }
