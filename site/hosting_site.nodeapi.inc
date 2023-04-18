@@ -281,6 +281,17 @@ function hosting_site_nodeapi_site_presave(&$node) {
 }
 
 /**
+ * Implements hook_nodeapi().
+ */
+function hosting_site_nodeapi_site_load(&$node) {
+
+  if ($node->type == 'site') {
+    // Pass primary properties into hosting_settings so they are canon.
+    $node->hosting_settings['install']['profile'] = $node->profile;
+  }
+}
+
+/**
  * Implements hook_insert().
  */
 function hosting_site_insert(&$node) {
@@ -460,7 +471,13 @@ function hosting_site_node_update($node) {
  */
 function hosting_site_load($nodes) {
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query('SELECT  client, db_server, db_name, platform, profile, web_server,
+    $additions = db_query('SELECT
+        client,
+        db_server,
+        db_name,
+        platform,
+        profile,
+        web_server,
         publish_path,
         language AS site_language,
         last_cron,
