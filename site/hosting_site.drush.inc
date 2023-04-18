@@ -27,7 +27,7 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['client_name'] = $client->uname;
 
   // If install task is set to force-reinstall, pass to drush options.
-  if ($task->task_type == 'install' && !empty($task->task_args['force'])) {
+  if ($task->task_type == 'install' && !empty($task->task_args['force-reinstall'])) {
     $task->options['force-reinstall'] = 1;
   }
 

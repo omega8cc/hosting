@@ -240,6 +240,7 @@ function drush_hosting_task()
   }
 
   // Call the drush command.
+  $task->options['task_nid'] = $task->nid;
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and

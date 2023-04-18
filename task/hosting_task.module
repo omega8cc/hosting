@@ -1047,27 +1047,6 @@ function hosting_task_action_info() {
 }
 
 /**
- * Implements hook_node_presave()
- *
- */
-function hosting_task_node_presave($node) {
-
-  // When creating a new task, if pre or post tasks are defined, create them.
-  if (empty($node->nid) && $node->type == 'task' && $node->task_type == 'deploy' && !empty($node->task_args['install'])) {
-
-    // Queue an install task before the deploy task so it runs first.
-    $task_args = $node->task_args;
-    $task_args['force'] = TRUE;
-    $task_args['deploy'] = TRUE;
-
-    hosting_add_task($node->rid, 'install', $task_args);
-
-    // Not sure why, but this cancels hosting_task_insert.
-
-  }
-}
-
-/**
  * Implements hook_insert().
  */
 function hosting_task_insert($node) {

@@ -719,7 +719,7 @@ function hosting_task_install_form($node) {
   $form['install']['#parents'] = ['hosting_settings', 'install'];
   $form['install']['#element_validate'] = ['hosting_task_install_save_settings'];
 
-  $form['force'] = array(
+  $form['force-reinstall'] = array(
     '#title' => t('Destroy all data in this site'),
     '#type' => 'checkbox',
     '#required' => TRUE,
