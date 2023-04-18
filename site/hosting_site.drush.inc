@@ -15,6 +15,8 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['uri'] = hosting_site_get_domain($task->ref->title);
   $task->context_options['root'] = $task->ref->publish_path;
   $task->context_options['language'] = $task->ref->site_language;
+  $task->context_options['profile'] = $task->ref->profile ?? '';
+  $task->context_options['install_method'] = $task->ref->hosting_settings['install']['method'] ?? '';
 
   // @TODO: Legacy refactor needed. Move to Hosting Client module.
   $client = node_load($task->ref->client);
