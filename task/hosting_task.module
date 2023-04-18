@@ -363,10 +363,16 @@ function hosting_task_menu_access($node, $task) {
         }
       }
 
+      $site_installed = $node->verified && $node->site_status == HOSTING_SITE_ENABLED;
       $site_enabled = (hosting_task_outstanding($node->nid, 'enable') || ($node->site_status == HOSTING_SITE_ENABLED));
 
+      // If the site was not installed, only allow install or delete.
+      if (!$site_installed) {
+        return in_array($task, ['install', 'delete']);
+      }
+
       // If the site is not enabled, we can either delete it, or enable it again.
-      if (!$site_enabled) {
+      elseif (!$site_enabled) {
         return in_array($task, ['enable', 'delete', 'deploy']);
       }
       else {
