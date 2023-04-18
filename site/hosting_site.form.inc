@@ -160,7 +160,7 @@ function hosting_site_form($node, &$form_state) {
     '#default_value' => $node->hosting_settings['allow_reinstall'],
     '#states' => [
       'visible' => [
-        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+        ':input[name="hosting_settings[protected]"]' => ['checked' => FALSE],
       ],
     ],
   );
