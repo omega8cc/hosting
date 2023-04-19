@@ -219,63 +219,18 @@ function hosting_task_sync_form($node) {
 
   $form['destination'] = array(
     '#type' => 'value',
-    '#value' => '@' . $node->hosting_name,
+    '#markup' => '@' . $node->hosting_name,
   );
 
   // What to sync?
   $form['database'] = array(
-    '#title' => t('Copy database from source.'),
+    '#title' => t('Sync database.'),
     '#type' => 'checkbox',
     '#default_value' => 1,
     '#prefix' => '<fieldset><legend>' . t('What to sync?') . '</legend>',
   );
   $form['files'] = array(
-    '#title' => t('Copy files from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  $form['modules'] = array(
-    '#title' => t('Copy modules from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 0,
-  );
-  $form['themes'] = array(
-    '#title' => t('Copy themes from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 0,
-  );
-  $form['libraries'] = array(
-    '#title' => t('Copy libraries from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 0,
-    '#suffix' => '</fieldset>',
-  );
-
-  // Options.
-  $form['registry-rebuild'] = array(
-    '#title' => t('Rebuild registry'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  $form['updatedb'] = array(
-    '#title' => t('Run update.php'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  if (_hosting_package_site_has_module($node, 'features')) {
-    $form['features-revert-all'] = array(
-      '#title' => t('Revert all features'),
-      '#type' => 'checkbox',
-      '#default_value' => TRUE,
-    );
-  }
-  $form['update-uri'] = array(
-    '#title' => t('Update URI in database content'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  $form['cache-clear'] = array(
-    '#title' => t('Clear cache'),
+    '#title' => t('Sync files.'),
     '#type' => 'checkbox',
     '#default_value' => 1,
   );
@@ -285,6 +240,12 @@ function hosting_task_sync_form($node) {
     '#description' => t('If this option is enabled, a backup of the destination will be created before any changes are made. <em>This is will allow you to restore later in case this was a mistake!</em>'),
     '#default_value' => 1,
   );
+  $form['deploy'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Run Deploy task after sync.'),
+    '#description' => t('After copying a database, your site might need updates or cleared caches. Check this box to run a Deploy task after the sync is complete.'),
+    '#default_value' => 1,
+  ];
 
   return $form;
 }
