@@ -519,11 +519,15 @@ function hosting_site_load($nodes) {
 
     // Set URI property from title.
     $node->uri = $node->title;
-    $node->url = ($node->https_enabled ? 'https://' : 'http://') . $node->title;
+    $node->url = (!empty($node->https_enabled) ? 'https://' : 'http://') . $node->title;
+
+    // Provide group and environment for drush YML aliases.
+    $node->group = str_replace('.', '', $node->uri);
+    $node->environment = "default";
 
     // Set drush alias.
     // This is the drush 9+ alias name.
-    $node->drush_alias = "@{$node->title}.default";
+    $node->drush_alias = "@{$node->group}.{$node->environment}";
   }
 }
 
