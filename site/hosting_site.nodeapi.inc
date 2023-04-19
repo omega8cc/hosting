@@ -507,18 +507,23 @@ function hosting_site_load($nodes) {
     foreach ($additions as $property => &$value) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
+
+    // Create a "servers" array based on our two base servers.
+    $node->servers['http'] = node_load($node->web_server);
+    $node->servers['db'] = node_load($node->db_server);
+
+    // Set default files paths if they are empty.
+    $node->file_public_path = $node->file_public_path ?: 'sites/' . $node->title . '/files';
+    $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
+    $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
+
+    // Set URI property from title.
+    $node->uri = $node->title;
+    $node->url = ($node->https_enabled ? 'https://' : 'http://') . $node->title;
+
+    // Set drush alias.
+    // This is the drush 9+ alias name.
+    $node->drush_alias = "@{$node->title}.default";
   }
-
-  // Create a "servers" array based on our two base servers.
-  $node->servers['http'] = node_load($node->web_server);
-  $node->servers['db'] = node_load($node->db_server);
-
-  // Set default files paths if they are empty.
-  $node->file_public_path = $node->file_public_path ?: 'sites/' . $node->title . '/files';
-  $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
-  $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
-
-  // Set URI property from title.
-  $node->uri = $node->title;
 }
 
