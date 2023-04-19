@@ -556,8 +556,8 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -99,
     '#options' => array(
       'profile' => t('Install Drupal'),
-      'clone' => t('Clone Environment'),
       'manual' => t('Manual Install'),
+      'clone' => t('Clone Site'),
       'import' => t('Import Database'),
     ),
     '#default_value' => $values['method'] ?? 'profile',
@@ -599,22 +599,25 @@ function hosting_site_install_methods_form_element($node = null) {
     ),
   );
 
-  // Generate environments options.
-  $environment_options['@primary'] = t('Primary Environment');
-  foreach ($project->environments as $e => $environment) {
-    if ($e == 'NEW') {
-      continue;
-    }
-    $link = l(' <i class="fa fa-external-link"></i> ' . $environment->uri,  $environment->url, array(
+  // Sync Source options.
+  $query = db_select('node', 'n');
+  $query->join('hosting_site', 's', 's.nid = n.nid');
+  $results = $query->fields('n', array('nid', 'title'))
+    ->condition('n.type', 'site')
+    ->condition('s.status', HOSTING_SITE_ENABLED)
+    ->execute()
+    ->fetchCol();
+  $sites = node_load_multiple($results);
+
+  foreach ($sites as $site) {
+    $link = l($site->uri . ' <i class="fa fa-external-link"></i>',  $site->url, array(
         'html' => TRUE,
         'attributes' => array(
           'target' => '_blank',
-          'class' => array('btn-text'),
         ),
       )) . '</small>';
-    $git_ref = $environment->git_ref;
-    $icon = isset($environment->git_ref_type) && $environment->git_ref_type == 'tag'? 'tag': 'code-fork';
-    $environment_options[$environment->drush_alias] = "<span>{$environment->name}</span> <small class='git-ref text-muted'><i class='fa fa-$icon'></i> $git_ref</small> <small>$link</small>";
+    $git_ref = $site->git_reference;
+    $site_options[$site->drush_alias] = "<span>{$site->uri}</span> <small class='git-ref text-muted'><i class='fa fa-$icon'></i> $git_ref</small> <small>$link</small>";
   }
 
   // Add other aliases to the clone source.
@@ -628,18 +631,18 @@ function hosting_site_install_methods_form_element($node = null) {
           ),
         )) . '</small>';
       $remote = t('Unknown');
-      $environment_options["@{$project->name}.{$alias}"] = "<span>{$alias}</span> <small class='git-ref text-muted'><i class='fa fa-globa'></i> $remote</small> <small>$link</small>";
+      $site_options["@{$project->name}.{$alias}"] = "<span>{$alias}</span> <small class='git-ref text-muted'><i class='fa fa-globa'></i> $remote</small> <small>$link</small>";
     }
   }
 
-  $environment_options['_other'] = t('Other Drush Alias');
+  $site_options['_other'] = t('Other Drush Alias');
 
-  if (count($environment_options)) {
+  if (count($site_options)) {
     $element['clone_source'] = array(
       '#type' => 'radios',
-      '#title' => t('Environment to clone'),
+      '#title' => t('Site to clone'),
       '#weight' => -98,
-      '#options' => $environment_options,
+      '#options' => $site_options,
       '#default_value' => $values['clone_source'] ?? '@primary',
       '#states' => array(
         'visible' => array(
