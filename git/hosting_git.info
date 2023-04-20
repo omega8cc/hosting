@@ -1,5 +1,5 @@
-name = Git integration
-description = Allows Hostmaster managed sites and platforms to use Git.
-package = Aegir Git
+name = Hosting Git
+description = Provides additional git tasks.
+package = Hosting
 dependencies[] = hosting_site
 core = 7.x

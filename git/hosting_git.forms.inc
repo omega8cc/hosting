@@ -1,66 +1,44 @@
 <?php
 
-use GitWrapper\GitWrapper;
-use GitWrapper\GitWorkingCopy;
-use GitWrapper\GitException;
 
 /**
- * Implements hook_hosting_tasks().
+ * Implements task confirm form for "git-branch" task.
  */
-function hosting_git_commit_hosting_tasks() {
-  $tasks = array();
+function hosting_task_git_branch_form($node) {
 
-  $tasks['site']['git-commit'] = array(
-    'title' => t('Git commit'),
-    'description' => t('Runs a git commit on the current site.'),
-    'access callback' => 'hosting_git_commit_task_access',
-    'dialog' => TRUE,
+  $form['current_git_ref'] = array(
+    '#type' => 'item',
+    '#title' => t('Current Git Reference'),
+    '#markup' => $node->git['git_ref'],
+    '#field_prefix' => '<code>',
+    '#field_suffix' => '</code>',
+    '#description' => t('The current git reference for this !type.', array('!type' => $node->type)),
   );
 
-  $tasks['platform']['git-commit'] = array(
-    'title' => t('Git commit'),
-    'description' => t('Runs a git commit on the current platform.'),
-    'access callback' => 'hosting_git_commit_task_access',
-    'dialog' => TRUE,
+  $form['git_ref'] = array(
+    '#title' => t('New Branch Name'),
+    '#description' => t("Enter a new branch name to create from the current working copy."),
+    '#type' => 'textfield',
+    '#default_value' => '',
+    '#element_validate' => ['hosting_git_checkout_git_ref_validate'],
+    '#attributes' => [
+      'placeholder' => 'new-git-branch'
+    ],
   );
 
-  return $tasks;
+  $form['push'] = array(
+    '#title' => t('Push the new branch.'),
+    '#description' => t("Push the new branch to the remote repository."),
+    '#type' => 'checkbox',
+    '#default_value' => TRUE,
+  );
+
+  drupal_set_title(t('Create a git branch.'));
+  return $form;
 }
 
 /**
- * Implements hook_perm()
- * @return array
- */
-function hosting_git_commit_permission() {
-  return array(
-    'create site git-commit task' => array(
-      'title' => t('create site git-commit task'),
-      'description' => t('Create site "git-commit" task.'),
-    ),
-    'create platform git-commit task' => array(
-      'title' => t('create platform git-commit task'),
-      'description' => t('Create platform "git-commit" task.'),
-    ),
-  );
-}
-
-
-/**
- * Access function for the pull task on sites.
- */
-function hosting_git_commit_task_access($node) {
-  // Only consider doing this if we have a git repo.
-  if (empty($node->git['repo_url'])) {
-    return FALSE;
-  }
-
-  if (user_access("create {$node->type} git-commit task") && node_access('view', $node)) {
-    return TRUE;
-  }
-}
-
-/**
- * @return mixed
+ * Implements task confirm form for "git-commit" task.
  */
 function hosting_task_git_commit_form($node) {
 
@@ -167,7 +145,6 @@ function hosting_task_git_commit_form($node) {
   return $form;
 }
 
-
 /**
  * Converts list of files to json encode for hosting task arguments table.
  * @param $element
@@ -178,4 +155,36 @@ function hosting_git_commit_validate_files($element, &$form_state) {
     $values = json_encode(array_filter(array_values($element['#value'])));
     form_set_value($element, $values, $form_state);
   }
+}
+
+/**
+ * Implements task confirm form for "git-tag" task.
+ */
+function hosting_task_git_tag_form($node) {
+
+  $form['git_ref'] = array(
+    '#title' => t('Tag'),
+    '#description' => t("Enter the tag you wish to create.        "),
+    '#type' => 'textfield',
+    '#default_value' => isset($_GET['git_tag'])? $_GET['git_tag']: '',
+    '#attributes' => array(
+      'placeholder' => 'v1.0.0',
+    )
+  );
+
+  $form['push'] = array(
+    '#title' => t('Push Tag to remote'),
+    '#description' => t("Push the tag to the repository's remote.     "),
+    '#type' => 'checkbox',
+    '#default_value' => TRUE,
+  );
+
+  $form['checkout'] = array(
+    '#title' => t('Checkout Tag'),
+    '#description' => t("When done creating the tag, check it out so the code stays at this tag."),
+    '#type' => 'checkbox',
+    '#default_value' => TRUE,
+  );
+
+  return $form;
 }
