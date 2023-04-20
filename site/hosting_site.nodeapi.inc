@@ -527,7 +527,7 @@ function hosting_site_load($nodes) {
 
     // Set drush alias.
     // This is the drush 9+ alias name.
-    $node->drush_alias = "@{$node->hosting_group}.{$node->environment}";
+    $node->drush_alias = "@{$node->hosting_group}.{$node->hosting_environment}";
   }
 }
 
