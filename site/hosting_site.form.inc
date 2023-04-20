@@ -347,7 +347,7 @@ function hosting_site_form($node, &$form_state) {
     ],
   ];
   // Hide the install form if editing a site that is protected.
-  if ($node->nid) {
+  if (!empty($node->nid)) {
     $form['hosting_settings']['general']['install'] = hosting_site_install_methods_form_element($node);
     $form['hosting_settings']['general']['install']['#parents'] = ['hosting_settings', 'install'];
 
@@ -501,7 +501,7 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
 
   $site = new Provision_Context_site($node->hosting_name);
   $platform = new Provision_Context_platform($node->platform_node->hosting_name);
-  $site->setProperty('git_root', $node->git_root);
+  $site->setProperty('git_root', $platform->git_root ?? '');
   $site->setProperty('platform', $platform);
   foreach ($site->getDeploySteps() as $step => $info) {
 
@@ -515,7 +515,7 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
           '@title' => $info['title'],
           '!note' => $info['description'],
         ]),
-      '#description' => $info['note'] . (!empty($info['command'])? '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>': ''),
+      '#description' => ($info['note'] ?? '') . (!empty($info['command'])? '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>': ''),
       '#type' => 'checkbox',
       '#default_value' => $node->hosting_settings['deployment']['steps'][$step] ?? false,
     ];
@@ -605,7 +605,7 @@ function hosting_site_install_methods_form_element($node = null) {
   $query->fields('n', array('nid', 'title'))
     ->condition('n.type', 'site');
 
-  if ($node->nid) {
+  if (!empty($node->nid)) {
     $query->condition('n.nid', $node->nid, '!=');
   }
 
@@ -622,7 +622,7 @@ function hosting_site_install_methods_form_element($node = null) {
         ),
       )) . '</small>';
     $git_ref = $site->git_reference;
-    $site_options[$site->drush_alias] = "<span>{$site->uri}</span> <small class='git-ref text-muted'><i class='fa fa-$icon'></i> $git_ref</small> <small>$link</small>";
+    $site_options[$site->drush_alias] = "<span>{$site->uri}</span> <small class='git-ref text-muted'>$git_ref</small> <small>$link</small>";
   }
 
   if (empty($site_options)) {
