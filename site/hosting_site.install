@@ -610,7 +610,7 @@ function hosting_site_update_7400() {
 /**
  * Set default site settings.
  */
-function hosting_site_update_7401() {
+function hosting_site_update_7402() {
   variable_set('hosting_settings_site_defaults', array(
     'general' => array(
       'protected' => 1,
@@ -630,7 +630,7 @@ function hosting_site_update_7401() {
     'install' => array(
       'method' => 'profile',
       'profile' => variable_get('hosting_default_profile'),
-      'clone_source' => '@primary',
+      'clone_source' => '_primary',
       'clone_source_drush' => '',
       'import' => '',
       'import_files' => '',
