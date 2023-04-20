@@ -203,7 +203,7 @@ function hosting_site_form($node, &$form_state) {
     '#required' => TRUE,
     '#description' => t('The platform you want the site to be hosted on.'),
     '#options' => $platforms,
-    '#default_value' => isset($node->platform) ? $node->platform : null,
+    '#default_value' => isset($node->platform) ? $node->platform : key($platforms),
   ), '_hosting_node_link');
 
   _hosting_site_field($form, $node, 'db_server', array(
@@ -602,10 +602,17 @@ function hosting_site_install_methods_form_element($node = null) {
   // Sync Source options.
   $query = db_select('node', 'n');
   $query->join('hosting_site', 's', 's.nid = n.nid');
-  $results = $query->fields('n', array('nid', 'title'))
-    ->condition('n.type', 'site')
+  $query->fields('n', array('nid', 'title'))
+    ->condition('n.type', 'site');
+
+  if ($node->nid) {
+    $query->condition('n.nid', $node->nid, '!=');
+  }
+
+  $results = $query
     ->execute()
     ->fetchCol();
+
   $sites = node_load_multiple($results);
   foreach ($sites as $site) {
     $link = l($site->uri . ' <i class="fa fa-external-link"></i>',  $site->url, array(
@@ -618,23 +625,31 @@ function hosting_site_install_methods_form_element($node = null) {
     $site_options[$site->drush_alias] = "<span>{$site->uri}</span> <small class='git-ref text-muted'><i class='fa fa-$icon'></i> $git_ref</small> <small>$link</small>";
   }
 
+  if (empty($site_options)) {
+    $description = t('There are no sites available to clone from. Ensure there is at least one other site enabled, or enter a drush alias.');
+    $default_value = '_other';
+  }
+  else {
+    $description = t('Select the site to copy data from, or enter a drush alias.');
+    $default_value = key($site_options);
+  }
+
   $site_options['_other'] = t('Other Drush Alias');
   drupal_alter('hosting_clone_source_options', $site_options, $node);
 
-  if (count($site_options)) {
-    $element['clone_source'] = array(
-      '#type' => 'radios',
-      '#title' => t('Site to clone'),
-      '#weight' => -98,
-      '#options' => $site_options,
-      '#default_value' => $values['clone_source'] ?? current($site_options),
-      '#states' => array(
-        'visible' => array(
-         ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
-        ),
+  $element['clone_source'] = array(
+    '#type' => 'radios',
+    '#title' => t('Site to clone'),
+    '#description' => $description,
+    '#weight' => -98,
+    '#options' => $site_options,
+    '#default_value' => $default_value,
+    '#states' => array(
+      'visible' => array(
+       ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
       ),
-    );
-  }
+    ),
+  );
 
   $element['clone_source_drush'] = array(
     '#type' => 'textfield',
