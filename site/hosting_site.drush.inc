@@ -18,6 +18,9 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['profile'] = $task->ref->profile ?? '';
   $task->context_options['install_method'] = $task->ref->hosting_settings['install']['method'] ?? '';
 
+  $task->context_options['hosting_group'] = $task->ref->hosting_group;
+  $task->context_options['hosting_environment'] = $task->ref->hosting_environment;
+
   // @TODO: Legacy refactor needed. Move to Hosting Client module.
   $client = node_load($task->ref->client);
   $user = user_load($task->uid);
