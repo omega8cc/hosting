@@ -102,7 +102,7 @@ function hosting_site_available_options($node, $platform = NULL) {
     $return['platform'] = array($platform);
   }
 
-  if (!isset($node->platform) || !in_array($node->platform, $return['platform'])) {
+  if (!isset($node->platform) || !in_array($node->platform, $return['platform']) && isset($return['platform'][0] )) {
     $node->platform = $return['platform'][0];
   }
 

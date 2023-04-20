@@ -641,7 +641,7 @@ function hosting_platform_insert($node) {
     ))
     ->execute();
   if (!isset($node->old_vid)) {
-    hosting_context_register($node->nid, 'platform_' . preg_replace("/[!\W]/", "", $node->title), $node->hosting_settings);
+    hosting_context_register($node->nid, 'platform_' . preg_replace("/[!\W]/", "", $node->title), $node->hosting_settings ?? []);
   }
 }
 
