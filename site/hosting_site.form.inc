@@ -627,7 +627,7 @@ function hosting_site_install_methods_form_element($node = null) {
       '#title' => t('Site to clone'),
       '#weight' => -98,
       '#options' => $site_options,
-      '#default_value' => $values['clone_source'] ?? '@primary',
+      '#default_value' => $values['clone_source'] ?? current($site_options),
       '#states' => array(
         'visible' => array(
          ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
