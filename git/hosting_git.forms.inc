@@ -9,7 +9,7 @@ function hosting_task_git_branch_form($node) {
   $form['current_git_ref'] = array(
     '#type' => 'item',
     '#title' => t('Current Git Reference'),
-    '#markup' => $node->git['git_ref'],
+    '#markup' => $node->git_reference,
     '#field_prefix' => '<code>',
     '#field_suffix' => '</code>',
     '#description' => t('The current git reference for this !type.', array('!type' => $node->type)),
