@@ -604,11 +604,9 @@ function hosting_site_install_methods_form_element($node = null) {
   $query->join('hosting_site', 's', 's.nid = n.nid');
   $results = $query->fields('n', array('nid', 'title'))
     ->condition('n.type', 'site')
-    ->condition('s.status', HOSTING_SITE_ENABLED)
     ->execute()
     ->fetchCol();
   $sites = node_load_multiple($results);
-
   foreach ($sites as $site) {
     $link = l($site->uri . ' <i class="fa fa-external-link"></i>',  $site->url, array(
         'html' => TRUE,
