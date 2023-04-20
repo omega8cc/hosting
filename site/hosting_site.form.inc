@@ -627,15 +627,14 @@ function hosting_site_install_methods_form_element($node = null) {
 
   if (empty($site_options)) {
     $description = t('There are no sites available to clone from. Ensure there is at least one other site enabled, or enter a drush alias.');
-    $default_value = '_other';
   }
   else {
     $description = t('Select the site to copy data from, or enter a drush alias.');
-    $default_value = key($site_options);
   }
 
   $site_options['_other'] = t('Other Drush Alias');
   drupal_alter('hosting_clone_source_options', $site_options, $node);
+  $default_value = $values['clone_source'] ?: key($site_options);
 
   $element['clone_source'] = array(
     '#type' => 'radios',
