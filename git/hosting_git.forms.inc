@@ -20,7 +20,8 @@ function hosting_task_git_branch_form($node) {
     '#description' => t("Enter a new branch name to create from the current working copy."),
     '#type' => 'textfield',
     '#default_value' => '',
-    '#element_validate' => ['hosting_git_checkout_git_ref_validate'],
+// @TODO: Validate branch name.
+//    '#element_validate' => ['hosting_git_checkout_git_ref_validate'],
     '#attributes' => [
       'placeholder' => 'new-git-branch'
     ],
