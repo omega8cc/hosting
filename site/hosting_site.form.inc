@@ -620,22 +620,8 @@ function hosting_site_install_methods_form_element($node = null) {
     $site_options[$site->drush_alias] = "<span>{$site->uri}</span> <small class='git-ref text-muted'><i class='fa fa-$icon'></i> $git_ref</small> <small>$link</small>";
   }
 
-  // Add other aliases to the clone source.
-  if (isset($project->settings->aliases)) {
-    foreach ($project->settings->aliases as $alias => $data) {
-      $link = l('<i class="fa fa-external-link"></i> ' . $data['uri'], 'http://' . $data['uri'], array(
-          'html' => TRUE,
-          'attributes' => array(
-            'target' => '_blank',
-            'class' => array('btn-text'),
-          ),
-        )) . '</small>';
-      $remote = t('Unknown');
-      $site_options["@{$project->name}.{$alias}"] = "<span>{$alias}</span> <small class='git-ref text-muted'><i class='fa fa-globa'></i> $remote</small> <small>$link</small>";
-    }
-  }
-
   $site_options['_other'] = t('Other Drush Alias');
+  drupal_alter('hosting_clone_source_options', $site_options, $node);
 
   if (count($site_options)) {
     $element['clone_source'] = array(

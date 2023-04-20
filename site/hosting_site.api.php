@@ -99,5 +99,19 @@ function hook_hosting_site_site_list_filters_alter(&$filters) {
 }
 
 /**
+ * Alters the list of clone sources shown on the install site confirm form and
+ *
+ * @see hosting_site_get_possible_site_list_filters()
+ * @see hosting_sites()
+ * @see hook_hosting_site_site_list_filters()
+ */
+function hook_hosting_clone_source_options_alter(&$filters) {
+  // Add a filter based on another module.
+  if (in_array('other_filter', $filters, TRUE)) {
+    $filters[] = 'my_filter';
+  }
+}
+
+/**
  * @} End of "addtogroup hooks".
  */
