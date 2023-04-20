@@ -641,9 +641,6 @@ function hosting_site_install_methods_form_element($node = null) {
     '#title' => t('Drush Alias'),
     '#default_value' => $values['clone_source_drush'] ?? '',
     '#description' => t('Enter a Drush alias you would like to Sync your database and files from. The alias can be a global drush alias file or in your site codebase at ./drush/sites/self.site.yml.'),
-    '#element_validate' => array(
-      'devshop_projects_create_environment_form_validate_clone_source'
-    ),
     '#weight' => -98,
     '#attributes' => array(
       'placeholder' => t('@drush.alias'),
