@@ -290,10 +290,10 @@ function hosting_site_nodeapi_site_load(&$node) {
     $node->hosting_settings['install']['profile'] = $node->profile;
 
     // Set hosting_group to hosting_name, if none is set.
-    $node->hosting_group = $node->hosting_group ?: $node->hosting_name;
+    $node->hosting_group = $node->hosting_group ?? $node->hosting_name;
 
     // Set hosting_environment to 'default', if none is set.
-    $node->hosting_environment = $node->hosting_environment ?: "default";
+    $node->hosting_environment = $node->hosting_environment ?? "default";
 
     // Set drush alias.
     // This is the drush 9+ alias name.
