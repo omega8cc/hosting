@@ -288,6 +288,17 @@ function hosting_site_nodeapi_site_load(&$node) {
   if ($node->type == 'site') {
     // Pass primary properties into hosting_settings so they are canon.
     $node->hosting_settings['install']['profile'] = $node->profile;
+
+    // Set hosting_group to hosting_name, if none is set.
+    $node->hosting_group = $node->hosting_group ?: $node->hosting_name;
+
+    // Set hosting_environment to 'default', if none is set.
+    $node->hosting_environment = $node->hosting_environment ?: "default";
+
+    // Set drush alias.
+    // This is the drush 9+ alias name.
+    $node->drush_alias = "@{$node->hosting_group}.{$node->hosting_environment}";
+
   }
 }
 
@@ -520,14 +531,6 @@ function hosting_site_load($nodes) {
     // Set URI property from title.
     $node->uri = $node->title;
     $node->url = (!empty($node->https_enabled) ? 'https://' : 'http://') . $node->title;
-
-    // Provide hosting_group and environment for drush YML aliases.
-    $node->hosting_group = str_replace('.', '', $node->uri);
-    $node->hosting_environment = "default";
-
-    // Set drush alias.
-    // This is the drush 9+ alias name.
-    $node->drush_alias = "@{$node->hosting_group}.{$node->hosting_environment}";
   }
 }
 
