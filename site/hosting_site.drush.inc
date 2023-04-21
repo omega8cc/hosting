@@ -86,7 +86,7 @@ function drush_hosting_site_pre_hosting_task($task) {
     $task->args[1] = implode(',', $backups);
   }
 
-  if ($task->task_type == 'deploy') {
+  if ($task->task_type == 'deploy' || $task->task_type == 'test') {
 
     // Create an array so as to not disrupt task_args.
     $task_arguments = $task->task_args;

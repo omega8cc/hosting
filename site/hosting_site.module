@@ -369,6 +369,14 @@ function hosting_site_hosting_tasks() {
     'provision_save' => TRUE,
   );
 
+  $tasks['site']['test'] = array(
+    'title' => t('Test'),
+    'description' => t('Test that a site is working properly.'),
+    'dialog' => TRUE,
+    'icon' => 'check-square-o ',
+    'provision_save' => TRUE,
+  );
+
   return $tasks;
 }
 
@@ -925,6 +933,30 @@ function hosting_task_deploy_form($node) {
   ];
   return $form;
 }
+
+/**
+ * Confirmation form for site test.
+ *
+ * @see hosting_task_confirm_form().
+ */
+function hosting_task_test_form($node)
+{
+  $deploy_form = hosting_task_deploy_form($node);
+  $t = [
+    '@site' => $node->uri,
+    '!site' => l($node->uri, 'http://' . $node->uri, array('attributes' => array('target' => '_blank'))),
+    '!ref' => "<span class='badge badge-info'>" . $node->git_reference . "</span>",
+  ];
+
+  drupal_set_title(t('Test @site?', $t));
+  $form['steps'] = $deploy_form['steps'];
+  $form['steps']['#title'] = t('Test Steps');
+  $form['steps']['#collapsed'] = false;
+  $form['steps']['#collapsible'] = false;
+
+  return $form;
+}
+
 
 /**
  * Confirmation form for site backups.
