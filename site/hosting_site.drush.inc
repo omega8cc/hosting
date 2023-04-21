@@ -20,6 +20,7 @@ function hosting_hosting_site_context_options(&$task) {
 
   $task->context_options['hosting_group'] = $task->ref->hosting_group;
   $task->context_options['hosting_environment'] = $task->ref->hosting_environment;
+  $task->context_options['drush_alias'] = $task->ref->drush_alias;
 
   // @TODO: Legacy refactor needed. Move to Hosting Client module.
   $client = node_load($task->ref->client);
