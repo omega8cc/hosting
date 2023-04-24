@@ -850,6 +850,8 @@ function hosting_platform_load($nodes) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
 
+    // Detect git ref type
+    $node->git_ref_type = hosting_git_ref_type($node);
   }
 }
 

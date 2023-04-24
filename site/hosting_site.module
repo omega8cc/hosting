@@ -1061,3 +1061,23 @@ function hosting_site_git_options($git_refs) {
   ];
   return $options;
 }
+
+/**
+ * Given a node with "git_refs" and "git_reference" property,
+ * return the git ref type
+ * @param $node
+ *
+ * @return string branch, tag, or ref
+ */
+function hosting_git_ref_type($node) {
+  $git_refs = hosting_site_git_options($node->git_refs);
+  if (!empty($git_refs['tags'][$node->git_reference])) {
+    return 'tag';
+  }
+  elseif (!empty($git_refs['branches'][$node->git_reference])) {
+    return 'branch';
+  }
+  else {
+    return 'ref';
+  }
+}

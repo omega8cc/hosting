@@ -545,6 +545,9 @@ function hosting_site_load($nodes) {
     // Set URI property from title.
     $node->uri = $node->title;
     $node->url = (!empty($node->https_enabled) ? 'https://' : 'http://') . $node->title;
+
+    // Detect git ref type.
+    $node->git_ref_type = hosting_git_ref_type($node);
   }
 }
 
