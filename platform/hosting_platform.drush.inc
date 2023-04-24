@@ -106,19 +106,15 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     }
     $node->no_verify = TRUE;
 
+    // Update platform metadata that might change.
     // Load git information from context.
     $options = $data['context'];
-     
     if (isset($options['git_sha'])) {
       $node->git_sha = $options['git_sha'];
       $node->git_last = $options['git_last'];
       $node->git_status = substr($options['git_status'], 0,2000);
       $node->git_refs = $options['git_refs'];
-      $node->git_reference = $options['git_reference'];
-      $node->git_remote = $options['git_remote'];
-      $node->git_root = $options['git_root'];
       $node->git_docroot = $options['git_docroot'];
-      $node->git_reset = $options['git_reset'];
     }
 
     // Save the platform being verified.
@@ -133,8 +129,8 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       '%git_ref' => $node->git_reference,
     ]), 'p_log');
 
-    
-    
+
+
     hosting_package_sync($packages['base']);
     hosting_package_sync($packages['sites-all']);
     hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
