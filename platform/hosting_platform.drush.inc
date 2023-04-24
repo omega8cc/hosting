@@ -59,6 +59,21 @@ function hosting_platform_drush_context_import($context, &$node) {
 }
 
 /**
+ * Implements hook_hosting_TASK_TYPE_task_rollback()
+ *
+ * Ensures post_hosting_verify_task runs even if task failed.
+ *
+ * @param $task
+ * @param $data
+ *
+ * @return void
+ */
+function hosting_platform_hosting_verify_task_rollback($task, $data) {
+  hosting_platform_post_hosting_verify_task($task, $data);
+}
+
+
+/**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
  * Sets the platform verified timestamp, to discren when it was verified.
@@ -177,6 +192,16 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
  */
 function hosting_platform_post_hosting_deploy_task($task, $data) {
   hosting_platform_post_hosting_verify_task($task, $data);
+}
+
+/**
+ * Implements hook_hosting_TASK_task_rollback()
+ * For deploy tasks, trigger the same code as verify task rollback.
+ */
+function hosting_platform_hosting_deploy_task_rollback($task, $data) {
+  // Trick hosting_platform_hosting_verify_task_rollback() into saving platform data by setting the node to platform.
+  $task->ref = node_load($task->ref->platform);
+  hosting_platform_hosting_verify_task_rollback($task, $data);
 }
 
 /**
