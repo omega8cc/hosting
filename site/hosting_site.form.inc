@@ -162,6 +162,9 @@ function hosting_site_form($node, &$form_state) {
       'visible' => [
         ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
       ],
+      'unchecked' => [
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+      ],
     ],
   );
 
@@ -524,6 +527,17 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
       $element[$step]['#parents'][] = $step;
     }
   }
+
+  // Hide install step if site is protected.
+  $element['install']['#states'] = [
+    'visible' => [
+      ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+    ],
+    'unchecked' => [
+      ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+    ],
+  ];
+
   return $element;
 }
 
