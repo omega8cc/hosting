@@ -93,18 +93,16 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
     // Load git information from context.
     $options = $data['context'];
-     
-    if (isset($options['git_sha'])) {
-      $node->git_sha = $options['git_sha'];
-      $node->git_last = $options['git_last'];
-      $node->git_status = substr($options['git_status'], 0,2000);
-      $node->git_refs = $options['git_refs'];
-      $node->git_reference = $options['git_reference'];
-      $node->git_remote = $options['git_remote'];
-      $node->git_root = $options['git_root'];
-      $node->git_docroot = $options['git_docroot'];
-      $node->git_reset = $options['git_reset'];
-    }
+
+    $node->git_root = d($task->ref->hosting_name)->git_root;
+    $node->git_remote = d($task->ref->hosting_name)->git_remote;
+    $node->git_reference = d($task->ref->hosting_name)->git_reference;
+    $node->git_docroot = d($task->ref->hosting_name)->git_docroot;
+    $node->git_reset = d($task->ref->hosting_name)->git_reset;
+    $node->git_refs = d($task->ref->hosting_name)->git_refs;
+    $node->git_last = d($task->ref->hosting_name)->git_last;
+    $node->git_status = d($task->ref->hosting_name)->git_status;
+    $node->git_refs = d($task->ref->hosting_name)->git_refs;
 
     // Save the platform being verified.
     node_save($node);
@@ -118,8 +116,8 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       '%git_ref' => $node->git_reference,
     ]), 'p_log');
 
-    
-    
+
+
     hosting_package_sync($packages['base']);
     hosting_package_sync($packages['sites-all']);
     hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
