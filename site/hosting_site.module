@@ -891,6 +891,7 @@ function hosting_task_deploy_form($node) {
 
     $parents = ['parameters'];
     $form['steps'] = hosting_site_deploy_steps_form_element($node, $parents);
+    $form['steps']['#access'] = $node->hosting_settings['deployment']['manual_overrides'];
     $form['steps']['#type'] = 'fieldset';
     $form['steps']['#collapsible'] = true;
     $form['steps']['#collapsed'] = true;
