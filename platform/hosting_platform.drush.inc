@@ -69,7 +69,7 @@ function hosting_platform_drush_context_import($context, &$node) {
  * @return void
  */
 function hosting_platform_hosting_verify_task_rollback($task, $data) {
-  hosting_platform_post_hosting_verify_task($task, $data);
+  // hosting_platform_post_hosting_verify_task($task, $data);
 }
 
 
