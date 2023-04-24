@@ -429,7 +429,7 @@ function hosting_site_node_insert($node) {
     // When deploy tasks are created, update the site's git_reference if needed.
     if ($node->task_type == 'deploy') {
       $node->ref = node_load($node->rid);
-      if (!empty($node->task_args['target_git_reference']) && $node->task_args['target_git_reference'] != $node->ref->git_reference){
+      if (!empty($node->task_args['target_git_reference']) ){
         $platform = node_load($node->ref->platform);
         $platform->git_reference = $node->task_args['target_git_reference'];
         $platform->no_verify = TRUE;
