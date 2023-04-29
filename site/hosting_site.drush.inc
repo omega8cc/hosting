@@ -9,8 +9,18 @@
  * Implements hook_hosting_TASK_OBJECT_context_options().
  */
 function hosting_hosting_site_context_options(&$task) {
+  $task->context_options['server'] = '@server_master';
   $task->context_options['db_server'] = hosting_context_name($task->ref->db_server);
-  $task->context_options['platform'] = hosting_context_name($task->ref->platform);
+  $task->context_options['web_server'] = hosting_context_name($task->ref->web_server);
+
+  //  $task->context_options['platform'] = hosting_context_name($task->ref->platform);
+
+  // Pass git options.
+  $task->context_options['git_root'] = $task->ref->git_root;
+  $task->context_options['git_remote'] = $task->ref->git_remote;
+  $task->context_options['git_reference'] = $task->ref->git_reference;
+  $task->context_options['git_docroot'] = $task->ref->git_docroot;
+  $task->context_options['git_reset'] = $task->ref->git_reset;
 
   $task->context_options['drush_script'] = realpath(d()->root .'/../vendor/drush/drush/drush.php');
   $task->context_options['uri'] = hosting_site_get_domain($task->ref->title);
@@ -40,6 +50,7 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['file_public_path'] = $task->ref->file_public_path;
   $task->context_options['file_private_path'] = $task->ref->file_private_path;
   $task->context_options['file_temporary_path'] = $task->ref->file_temporary_path;
+  
 }
 
 /**
