@@ -37,9 +37,6 @@ class Provision_Service_http_https_apache extends Provision_Service_http_https {
     // Replace the server config with our own. See the class for more info.
     $this->configs['server'][] = 'Provision_Config_Apache_Https_Server';
 
-    // Just re-use the standard platform config.
-    $this->configs['platform'][] = 'Provision_Config_Apache_Platform';
-
     $this->configs['site'][] = 'Provision_Config_Apache_Https_Site';
   }
 
