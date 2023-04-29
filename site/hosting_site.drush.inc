@@ -61,11 +61,23 @@ function hosting_site_drush_context_import($context, &$node) {
     if (!isset($node->title)) {
       $node->title = hosting_site_get_domain($context->uri); // force lowercase for existing uri
     }
+    $node->profile = $context->profile;
     $node->site_language = $context->language;
     $node->cron_key = $context->cron_key;
     $node->db_server = hosting_context_nid($context->db_server->name);
-    $node->platform = hosting_context_nid($context->platform->name);
-    $node->profile = $context->profile;
+    $node->web_server = hosting_context_nid($context->web_server);
+
+    $node->publish_path = $context->root;
+
+    $node->git_root = $context->git_root;
+    $node->git_remote = $context->git_remote;
+    $node->git_reference = $context->git_reference;
+    $node->git_reset = $context->git_reset;
+    $node->git_docroot = $context->git_docroot;
+    $node->git_sha = $context->git_sha;
+    $node->git_refs = $context->git_refs;
+    $node->git_last = $context->git_last;
+    $node->git_status = $context->git_status;
 
     $client = node_load(HOSTING_DEFAULT_CLIENT);
     if ($context->client_name) {
