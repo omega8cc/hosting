@@ -91,7 +91,7 @@ function letsencrypt_provision_apache_vhost_config($uri, $data) {
     return '';
   }
 
-  $server = d()->platform->web_server;
+  $server = d()->web_server;
   if (($server->Certificate_service_type == 'LetsEncrypt') && ($challenge_path = $server->letsencrypt_challenge_path)) {
     drush_log(dt("Injecting Let's Encrypt 'well-known' ACME challenge directory ':path' into Apache vhost entry.", array(
       ':path' => $challenge_path,
