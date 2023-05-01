@@ -84,7 +84,7 @@ function hosting_platform_hosting_verify_task_rollback($task, $data) {
 function hosting_platform_post_hosting_verify_task($task, $data) {
 
   $node = $task->ref;
-  if ($node->type == 'platform' || $node->type == 'site') {
+  if ($node->type == 'platform') {
     $context = $data['context'];
     $packages = $context['packages'];
 
