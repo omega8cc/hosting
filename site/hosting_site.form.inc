@@ -533,9 +533,6 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
     'visible' => [
       ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
     ],
-    'unchecked' => [
-      ':input[name="hosting_settings[general][protected]"]' => ['checked' => TRUE],
-    ],
   ];
 
   return $element;
