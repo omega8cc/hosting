@@ -126,7 +126,8 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
     node_save($task);
     drush_set_context('HOSTING_TASK', $task);
     drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
-
+    module_invoke_all('hosting_task_update_status', $task, $task->task_status);
+    
     // Load Task Info.
     $tasks_info = hosting_available_tasks($task->ref->type);
 
