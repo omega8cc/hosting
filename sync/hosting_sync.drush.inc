@@ -26,17 +26,8 @@ function drush_hosting_sync_pre_hosting_task() {
     $task->args[] = $task->task_args['destination'];
     $task->options['database'] = $task->task_args['database'];
     $task->options['files'] = $task->task_args['files'];
-    $task->options['modules'] = $task->task_args['modules'] ?? [];
-    $task->options['themes'] = $task->task_args['themes'] ?? [];
-    $task->options['libraries'] = $task->task_args['libraries'] ?? [];
-    $task->options['registry-rebuild'] = $task->task_args['registry-rebuild'];
-    $task->options['updatedb'] = $task->task_args['updatedb'];
-    $task->options['update-uri'] = $task->task_args['update-uri'];
-    $task->options['cache-clear'] = $task->task_args['cache-clear'];
+    $task->options['deploy'] = $task->task_args['deploy'];
     $task->options['backup'] = $task->task_args['backup'];
-    if (isset($task->task_args['features_revert_all'])) {
-      $task->options['features-revert-all'] = $task->task_args['features-revert-all'];
-    }
   }
 }
 
@@ -54,6 +45,12 @@ function hosting_sync_post_hosting_sync_task($task, $data) {
     //$task->ref = $destination;
     $task->task_args['description'] = t('Before sync from %source', array('%source' => $task->task_args['source']));
     hosting_site_post_hosting_backup_task($task, $data);
+  }
+  if ($task->ref->type == 'site' && $task->task_args['deploy']) {
+    $deploy_task = hosting_add_task($task->rid, 'deploy');
+    drush_log(dt('Deploy task has been queued: !link', [
+      '!link' => url("node/$deploy_task->nid", ['absolute' => true]),
+    ]), 'p_ok');
   }
 }
 

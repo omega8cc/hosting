@@ -102,7 +102,7 @@ function hosting_site_available_options($node, $platform = NULL) {
     $return['platform'] = array($platform);
   }
 
-  if (!isset($node->platform) || !in_array($node->platform, $return['platform'])) {
+  if (!isset($node->platform) || !in_array($node->platform, $return['platform']) && isset($return['platform'][0] )) {
     $node->platform = $return['platform'][0];
   }
 
@@ -123,6 +123,50 @@ function hosting_site_form($node, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Domain name'),
     '#description' => t('Enter the URI to use for this site. Do not include "https://" or "www". Additional domain names can be added below.'),
+    '#required' => TRUE,
+    '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '',
+    '#weight' => -20,
+  ));
+
+  // Settings
+  $form['hosting_settings']['general'] = array(
+    '#title' => t('Settings'),
+    '#type' => 'fieldset',
+    '#group' => 'site_settings',
+    '#weight' => -100,
+  );
+
+  $form['hosting_settings']['general']['protected'] = array(
+    '#title' => t('Protect Site'),
+    '#description' => t('Prevent users from disabling, deleting or syncing to this site.'),
+    '#weight' => -10,
+    '#type' => 'checkbox',
+    '#default_value' => $node->hosting_settings['general']['protected'],
+  );
+
+  $form['hosting_settings']['general']['allow_reinstall'] = array(
+    '#title' => t('Allow Re-install'),
+    '#description' => t('Give users a way to destroy and reinstall the site. '),
+    '#weight' => -10,
+    '#type' => 'checkbox',
+    '#default_value' => $node->hosting_settings['general']['allow_reinstall'],
+    '#states' => [
+      'visible' => [
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+      ],
+      'unchecked' => [
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => TRUE],
+      ],
+    ],
+  );
+
+  $editable = ((!isset($node->client) || !isset($node->nid)) || user_access('administer sites')) && hosting_feature('client');
+  $add_client_text = '';
+  if (user_access('administer clients') || user_access('create client')) {
+    $add_client_text = t('Click !here to add a new client.', array('!here' => l(t('here'), 'node/add/client', array('attributes' => array('target' => '_blank')))));
+  }
+  _hosting_site_field($form, $node, 'client', array(
+    '#type' => 'textfield',
     '#required' => TRUE,
     '#default_value' => $node->title,
   ];
@@ -275,6 +319,99 @@ function hosting_site_form($node, &$form_state) {
         '#value' => $form['file_paths'][$i]['#default_value'],
       );
     }
+  }
+
+  /** @TODO: Get platform settings into site node form.
+  // Platform Settings
+  $form['platform_node'] = array(
+    '#title' => t('Platform Settings'),
+    '#type' => 'fieldset',
+    '#collapsed' => TRUE,
+    '#collapsible' => TRUE,
+  );
+
+  // Load the form for this site's platform.
+  $platform_node = node_load($node->platform);
+  $platform_form = drupal_get_form('platform_node_form', $platform_node);
+
+  // Clean up some things
+  unset($platform_form['actions']);
+  $platform_form['title']['#title'] = t('Platform Name');
+  $platform_form['git']['#group'] = 'site_settings';
+
+  // Tell hosting_site_node_update to skip adding the verify task. The site will include platform verification.
+  $platform_form['no_verify'] = array(
+    '#value' => TRUE,
+  );
+  _hosting_site_form_reset_parents_recursive($platform_form, 'platform_node');
+
+  // Add all platform form elements on to site form.
+  foreach (element_children($platform_form) as $element) {
+    $form['platform_node'][$element] = $platform_form[$element];
+  }
+  */
+
+  $form['site_settings'] = array(
+    '#type' => 'vertical_tabs',
+  );
+
+  $form['hosting_settings']['deployment'] = array(
+    '#title' => t('Deployment'),
+    '#type' => 'fieldset',
+    '#group' => 'site_settings',
+  );
+  $form['hosting_settings']['deployment']['methods'] = array(
+  );
+  $form['hosting_settings']['deployment']['continuous'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Continous Deployment'),
+    '#description' => t('When new code is available, deploy it as soon as possible. If not selected, you must deploy new code manually.'),
+    '#default_value' => $node->hosting_settings['deployment']['continuous']
+  ];
+  $form['hosting_settings']['deployment']['manual_overrides'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Allow overriding Deploy Steps'),
+    '#description' => t('When starting a deployment manually, allow users to select the steps to run.'),
+    '#default_value' => $node->hosting_settings['deployment']['manual_overrides'],
+    '#states' => [
+      'visible' => [
+        ':input[name="hosting_settings[deployment][methods][manual]"]' => ['checked'   => TRUE],
+      ]
+    ]
+  ];
+
+  $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
+  $form['hosting_settings']['deployment']['steps']['#title'] = t('Deploy Steps');
+  $form['hosting_settings']['deployment']['steps']['#type'] = 'item';
+
+  $form['hosting_settings']['deployment']['steps']['help'] = [
+    '#theme' => 'item_list',
+    '#items' => [
+      t("The commands used for Deploy Steps can be overridden by adding a script named <code>deploy:STEP</code> to this site's composer.json file. See !link.", [
+            '!link' => l(t('Composer Scripts Documentation'), 'https://getcomposer.org/doc/articles/scripts.md', ['absolute' => TRUE])
+      ]),
+      t('If <em>Allow overriding Manual Deployment Steps</em> is selected, these will be the default steps.'),
+    ],
+  ];
+  // Hide the install form if editing a site that is protected.
+  if (!empty($node->nid)) {
+    $form['hosting_settings']['general']['install'] = hosting_site_install_methods_form_element($node);
+    $form['hosting_settings']['general']['install']['#parents'] = ['hosting_settings', 'install'];
+
+    $form['hosting_settings']['general']['install']['#states'] = [
+      'visible' => [
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+        ':input[name="hosting_settings[general][allow_reinstall]"]' => ['checked' => TRUE],
+      ],
+    ];
+  }
+  else {
+    // On site create form, but install method on top.
+    $form['hosting_settings']['install'] = hosting_site_install_methods_form_element($node);
+    $form['hosting_settings']['install']['#title'] = t('Installation');
+    $form['hosting_settings']['install']['#weight'] = -200;
+    $form['hosting_settings']['install']['#type'] = 'fieldset';
+    $form['hosting_settings']['install']['#group'] = 'site_settings';
   }
   return $form;
 }
@@ -443,32 +580,34 @@ function hosting_site_git_form_element($node = null) {
 
 /**
  * Renders a "Deploy Steps" form element.
- * 
- * @TODO: Make this a real form element. 
+ *
+ * @TODO: Make this a real form element.
  * @param $node
  * @param array $parents
  * @return array
  * @throws Exception
  */
 function hosting_site_deploy_steps_form_element($node = null, array $parents = []) {
-  
+
   $node->platform_node = node_load($node->platform);
-  
+
   $site = new Provision_Context_site($node->hosting_name);
   $platform = new Provision_Context_platform($node->platform_node->hosting_name);
-  $site->setProperty('git_root', $node->git_root);
+  $site->setProperty('git_root', $platform->git_root ?? '');
   $site->setProperty('platform', $platform);
   foreach ($site->getDeploySteps() as $step => $info) {
-    $info['note'] = $info['overridden_by'] ?? '';
-    
+
+    if (!isset($info['command'])) {
+      $info['command'] = [];
+    }
+
     $info['command'] = is_string($info['command'])? array($info['command']): $info['command'];
     $element[$step] = [
-      '#title' => t('@title: @description !code !note', [
+      '#title' => t('@title: !note', [
           '@title' => $info['title'],
-          '@description' => $info['description'],
-          '!note' => $info['note'],
-          '!code' => '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>',
+          '!note' => $info['description'],
         ]),
+      '#description' => ($info['note'] ?? '') . (!empty($info['command'])? '<pre>' . implode(PHP_EOL, $info['command']) . '</pre>': ''),
       '#type' => 'checkbox',
       '#default_value' => $node->hosting_settings['deployment']['steps'][$step] ?? false,
     ];
@@ -477,22 +616,30 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
       $element[$step]['#parents'][] = $step;
     }
   }
+
+  // Hide install step if site is protected.
+  $element['install']['#states'] = [
+    'visible' => [
+      ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+    ],
+  ];
+
   return $element;
 }
 
 /**
  * Renders the "Install Methods" form element.
- * 
- * @TODO: Make this a real form element. 
+ *
+ * @TODO: Make this a real form element.
  * @param $node
  * @param array $parents
  * @return array
  * @throws Exception
  */
 function hosting_site_install_methods_form_element($node = null) {
-  
-  $values = $node->hosting_settings['install'];
 
+  $values = $node->hosting_settings['install'];
+  $parent = $node->hosting_settings_parent ?? 'hosting_settings';
   $element = array(
     '#title' => t('Site Installation'),
     '#type' => 'fieldset',
@@ -510,8 +657,8 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -99,
     '#options' => array(
       'profile' => t('Install Drupal'),
-      'clone' => t('Clone Environment'),
       'manual' => t('Manual Install'),
+      'clone' => t('Clone Site'),
       'import' => t('Import Database'),
     ),
     '#default_value' => $values['method'] ?? 'profile',
@@ -521,7 +668,7 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -98,
     '#states' => array(
       'visible' => array(
-        ":input[name='hosting_settings[install][method]']" => array('value' => 'manual'),
+        ":input[name='{$parent}[install][method]']" => array('value' => 'manual'),
       ),
     ),
     'note' => array(
@@ -529,14 +676,14 @@ function hosting_site_install_methods_form_element($node = null) {
     ),
   );
 
-  $element['install_profile'] = array(
+  $element['profile'] = array(
     '#type' => 'machine_name',
     '#machine_name' => array(
       'exists' => 'always_false',
     ),
     '#title' => t('Drupal Install Profile'),
     '#required' => false,
-    '#default_value' => $values['install_profile'] ?? '', 
+    '#default_value' => $values['profile'] ?? $node->profile ?? '',
     '#title_display' => 'invisible',
     '#description' => t('(optional) Enter the exact name the install profile to use. It must already exist in your git branch or tag.'),
     '#element_validate' => array(
@@ -548,77 +695,75 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -97,
     '#states' => array(
       'visible' => array(
-       ":input[name='hosting_settings[install][method]']" => array('value' => 'profile'),
+       ":input[name='{$parent}[install][method]']" => array('value' => 'profile'),
       ),
     ),
   );
 
-  // Generate environments options.
-  $environment_options['@primary'] = t('Primary Environment');
-  foreach ($project->environments as $e => $environment) {
-    if ($e == 'NEW') {
-      continue;
-    }
-    $link = l(' <i class="fa fa-external-link"></i> ' . $environment->uri,  $environment->url, array(
+  // Sync Source options.
+  $query = db_select('node', 'n');
+  $query->join('hosting_site', 's', 's.nid = n.nid');
+  $query->fields('n', array('nid', 'title'))
+    ->condition('n.type', 'site');
+
+  if (!empty($node->nid)) {
+    $query->condition('n.nid', $node->nid, '!=');
+  }
+
+  $results = $query
+    ->execute()
+    ->fetchCol();
+
+  $sites = node_load_multiple($results);
+  foreach ($sites as $site) {
+    $link = l($site->uri . ' <i class="fa fa-external-link"></i>',  $site->url, array(
         'html' => TRUE,
         'attributes' => array(
           'target' => '_blank',
-          'class' => array('btn-text'),
         ),
       )) . '</small>';
-    $git_ref = $environment->git_ref;
-    $icon = isset($environment->git_ref_type) && $environment->git_ref_type == 'tag'? 'tag': 'code-fork';
-    $environment_options[$environment->drush_alias] = "<span>{$environment->name}</span> <small class='git-ref text-muted'><i class='fa fa-$icon'></i> $git_ref</small> <small>$link</small>";
+    $git_ref = $site->git_reference;
+    $site_options[$site->drush_alias] = "<span>{$site->uri}</span> <small class='git-ref text-muted'>$git_ref</small> <small>$link</small>";
   }
 
-  // Add other aliases to the clone source.
-  if (isset($project->settings->aliases)) {
-    foreach ($project->settings->aliases as $alias => $data) {
-      $link = l('<i class="fa fa-external-link"></i> ' . $data['uri'], 'http://' . $data['uri'], array(
-          'html' => TRUE,
-          'attributes' => array(
-            'target' => '_blank',
-            'class' => array('btn-text'),
-          ),
-        )) . '</small>';
-      $remote = t('Unknown');
-      $environment_options["@{$project->name}.{$alias}"] = "<span>{$alias}</span> <small class='git-ref text-muted'><i class='fa fa-globa'></i> $remote</small> <small>$link</small>";
-    }
+  if (empty($site_options)) {
+    $description = t('There are no sites available to clone from. Ensure there is at least one other site enabled, or enter a drush alias.');
+  }
+  else {
+    $description = t('Select the site to copy data from, or enter a drush alias.');
   }
 
-  $environment_options['_other'] = t('Other Drush Alias');
+  $site_options['_other'] = t('Other Drush Alias');
+  drupal_alter('hosting_clone_source_options', $site_options, $node);
+  $default_value = $values['clone_source'] ?: key($site_options);
 
-  if (count($environment_options)) {
-    $element['clone_source'] = array(
-      '#type' => 'radios',
-      '#title' => t('Environment to clone'),
-      '#weight' => -98,
-      '#options' => $environment_options,
-      '#default_value' => $values['clone_source'] ?? '@primary',
-      '#states' => array(
-        'visible' => array(
-         ":input[name='hosting_settings[install][method]']" => array('value' => 'clone'),
-        ),
+  $element['clone_source'] = array(
+    '#type' => 'radios',
+    '#title' => t('Site to clone'),
+    '#description' => $description,
+    '#weight' => -98,
+    '#options' => $site_options,
+    '#default_value' => $default_value,
+    '#states' => array(
+      'visible' => array(
+       ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
       ),
-    );
-  }
+    ),
+  );
 
   $element['clone_source_drush'] = array(
     '#type' => 'textfield',
     '#title' => t('Drush Alias'),
     '#default_value' => $values['clone_source_drush'] ?? '',
     '#description' => t('Enter a Drush alias you would like to Sync your database and files from. The alias can be a global drush alias file or in your site codebase at ./drush/sites/self.site.yml.'),
-    '#element_validate' => array(
-      'devshop_projects_create_environment_form_validate_clone_source'
-    ),
     '#weight' => -98,
     '#attributes' => array(
       'placeholder' => t('@drush.alias'),
     ),
     '#states' => array(
       'visible' => array(
-        ":input[name='hosting_settings[install][clone_source]']" => array('value' => '_other'),
-        ":input[name='hosting_settings[install][method]']" => array('value' => 'clone'),
+        ":input[name='{$parent}[install][clone_source]']" => array('value' => '_other'),
+        ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
       ),
     ),
   );
@@ -634,7 +779,7 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -98,
     '#states' => array(
       'visible' => array(
-       ":input[name='hosting_settings[install][method]']" => array('value' => 'import'),
+       ":input[name='{$parent}[install][method]']" => array('value' => 'import'),
       ),
     ),
     '#element_validate' => array(
@@ -652,10 +797,54 @@ function hosting_site_install_methods_form_element($node = null) {
     '#weight' => -98,
     '#states' => array(
       'visible' => array(
-        ':input[name="hosting_settings[install][method]"]' => array('value' => 'import'),
+        ":input[name='{$parent}[install][method]']" => array('value' => 'import'),
       ),
     ),
   );
 
   return $element;
+}
+
+/**
+ * Confirmation form for site backups.
+ *
+ * @see hosting_task_confirm_form().
+ */
+function hosting_task_install_form($node) {
+
+  drupal_set_title(t('Are you sure you want to reinstall the site?'));
+
+  $form['install'] = hosting_site_install_methods_form_element($node);
+  $form['install']['#parents'] = ['hosting_settings', 'install'];
+  $form['install']['#element_validate'] = ['hosting_task_install_save_settings'];
+
+  $form['force-reinstall'] = array(
+    '#title' => t('Destroy all data in this site'),
+    '#type' => 'checkbox',
+    '#required' => TRUE,
+    '#description' => t('WARNING: Taking this action will destroy all data in the site !link.', array(
+      '!link' => l($node->title, $node->title, array(
+        'options' => array(
+          'attributes' => array(
+            'target' => '_blank',
+          ),
+        ),
+      )),
+    )),
+  );
+
+  return $form;
+}
+
+
+/**
+ * Element validate hook for install task install settings.
+ */
+function hosting_task_install_save_settings($element, &$form_state) {
+  if ($form_state['values']['parameters']['force']) {
+    $site_node = $form_state['build_info']['args'][0];
+    $site_node->hosting_settings['install'] = $form_state['values']['hosting_settings']['install'];
+    $site_node->no_verify = TRUE;
+    node_save($site_node);
+  }
 }

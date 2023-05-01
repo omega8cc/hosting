@@ -93,6 +93,72 @@ function hosting_task_menu() {
 }
 
 /**
+ * @TODO: Implement this. hosting_task_access is not used yet.
+ *
+ * Determines whether the current user may create a task on the node.
+ *
+ * @param $task
+ *   The task type the user wishes to create.
+ *
+ * @see hosting_available_tasks()
+ * @see hook_hosting_tasks()
+ *
+ * @param $node
+ *   The node to test access on.
+ *
+ * @param $account
+ *   Optional, a user object representing the user for whom the operation is to
+ *   be performed. Determines access for a user other than the current user.
+ *
+ * @return
+ *   TRUE if the operation may be performed, FALSE otherwise.
+ */
+function hosting_task_access($node, $task, $account = NULL) {
+  $rights = &drupal_static(__FUNCTION__, array());
+
+  if (!$node || empty($node->rid)) {
+    // If there was no node to check against, or the $op was not one of the
+    // supported ones, we return access denied.
+    return FALSE;
+  }
+  // If no user object is supplied, the access check is for the current user.
+  if (empty($account)) {
+    $account = $GLOBALS['user'];
+  }
+
+  // If user cannot view the node, deny.
+  if (node_access('view', $node)) {
+    return FALSE;
+  }
+
+  // Use node nid as the static cache id.
+  $cid = $node->nid;
+
+  // If we've already checked access for this node, user and task, return from
+  // cache.
+  if (isset($rights[$account->uid][$cid][$task])) {
+    return $rights[$account->uid][$cid][$task];
+  }
+
+  // We grant access to create tasks if both of the following conditions are met:
+  // - No modules say to deny access.
+  // - At least one module says to grant access.
+  // If no module specified either allow or deny, we fall back to the
+  // node_access table.
+  $access = module_invoke_all('hosting_task_access', $node, $task, $account);
+  if (in_array(NODE_ACCESS_DENY, $access, TRUE)) {
+    $rights[$account->uid][$cid][$task] = FALSE;
+    return FALSE;
+  }
+  elseif (in_array(NODE_ACCESS_ALLOW, $access, TRUE)) {
+    $rights[$account->uid][$cid][$task] = TRUE;
+    return TRUE;
+  }
+
+  return user_access("create " . $task . " task");
+}
+
+/**
  * Read additional task log data, served via AJAX.
  */
 function hosting_task_log_ajax($node, $last_position, $id) {
@@ -297,19 +363,47 @@ function hosting_task_menu_access($node, $task) {
         }
       }
 
+      $site_installing = hosting_task_outstanding($node->nid, 'install');
+      $site_installed = $node->verified && $node->site_status == HOSTING_SITE_ENABLED;
       $site_enabled = (hosting_task_outstanding($node->nid, 'enable') || ($node->site_status == HOSTING_SITE_ENABLED));
-      
-      // @TODO: Do not allow on protected sites.
-      // @TODO: Improve UI to inform users this is a reinstall and data will be lost.
-      // @TODO: Reduce tech debt, do not add to it.
+
+      // If site is in the process of installing, don't allow any tasks.
+      if ($site_installing) {
+        return false;
+      }
+
+      // If the site was not installed, only allow install or delete.
+      if (!$site_installed) {
+        return in_array($task, ['install', 'delete']);
+      }
 
       // If the site is not enabled, we can either delete it, or enable it again.
-      if (!$site_enabled) {
+      elseif (!$site_enabled) {
         return in_array($task, ['enable', 'delete', 'deploy']);
       }
+
+      // Site is installed and enabled...
       else {
-        // If site is enabled, block install tasks unless allowed.
-        if ($task == 'install' && !variable_get('hosting_allow_reinstall', TRUE)) {
+
+
+        // Don't show enable task on enabled sites.
+        if ($task == 'enable') {
+          return FALSE;
+        }
+
+        // If site is protected, block disable, delete, restore and sync tasks.
+        if ($node->hosting_settings['general']['protected'] ?? FALSE) {
+          $blocked_tasks = ['install', 'disable', 'delete', 'restore', 'sync'];
+          if (in_array($task, $blocked_tasks)) {
+            return FALSE;
+          }
+          else {
+            return TRUE;
+          }
+        }
+
+        // If site is not protected and allow_reinstall is true
+        if ($task == 'install' && ($node->hosting_settings['general']['protected'] ||  empty($node->hosting_settings['general']['allow_reinstall']))) {
           return false;
         }
         // Block delete tasks unless allowed.
@@ -372,12 +466,17 @@ function hosting_task_menu_access($node, $task) {
 function hosting_task_menu_access_csrf($node, $task) {
   global $user;
 
-  $interactive_tasks = array('migrate', 'clone');
+  $tasks = hosting_available_tasks($node->type);
+
+  // Check if task type is available for node type.
+  if (!isset($tasks[$task])) {
+    throw new \Exception(t('Task Type "@type" not found for "@node" nodes. See hook_hosting_tasks'));
+  }
 
   // To prevent CSRF attacks, a unique token based upon user is used. Deny
   // access if the token is missing or invalid. We only do this on
-  // non-interactive tasks.
-  if (!in_array($task, $interactive_tasks) && (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], $user->uid))) {
+  // tasks with dialog.
+  if (!empty($tasks[$task]['dialog']) && (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], $user->uid))) {
     return FALSE;
   }
   // Call the main menu access handler.
@@ -793,7 +892,7 @@ function hosting_task_execute($task, $backend_options = array()) {
     '@nid' => $task->nid,
     '@url' => url("node/{$task->nid}", array('absolute' => true)),
   );
-  
+
   // Execute in it's own process.
   drush_invoke_process('@self', "hosting-task", array($task->nid), array('strict' => FALSE), $backend_options);
 
@@ -984,8 +1083,7 @@ function hosting_task_insert($node) {
     }
     $node->task_args['from'] = 'defaults';
   }
-  
-  
+
   if (isset($node->task_args) && is_array($node->task_args)) {
     foreach ($node->task_args as $key => $value) {
       $id = db_insert('hosting_task_arguments')

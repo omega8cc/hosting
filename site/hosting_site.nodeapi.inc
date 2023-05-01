@@ -46,6 +46,13 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
     );
   }
 
+  $node->content['info']['protected'] = array(
+    '#type' => 'item',
+    '#title' => t('Protected'),
+    '#markup' => $node->hosting_settings['general']['protected']? t('Yes'): t('No'),
+    '#weight' => -9,
+  );
+
   $node->content['info']['verified'] = array(
     '#type' => 'item',
     '#title' => t('Verified'),
@@ -257,10 +264,42 @@ function hosting_site_delete($node) {
 }
 
 /**
+ * Impelements hook_prepare()
+ * Load default hosting_settings, unless they are already set.
+ */
+function hosting_site_prepare($node) {
+  if (empty($node->nid) && empty($node->hosting_settings)) {
+    $node->hosting_settings = variable_get('hosting_settings_site_defaults', []);
+  }
+}
+
+/**
  * Implements hook_nodeapi().
  */
 function hosting_site_nodeapi_site_presave(&$node) {
   $node->title = hosting_site_get_domain($node->title);
+}
+
+/**
+ * Implements hook_nodeapi().
+ */
+function hosting_site_nodeapi_site_load(&$node) {
+
+  if ($node->type == 'site') {
+    // Pass primary properties into hosting_settings so they are canon.
+    $node->hosting_settings['install']['profile'] = $node->profile;
+
+    // Set hosting_group to hosting_name, if none is set.
+    $node->hosting_group = $node->hosting_group ?? $node->hosting_name;
+
+    // Set hosting_environment to 'default', if none is set.
+    $node->hosting_environment = $node->hosting_environment ?? "default";
+
+    // Set drush alias.
+    // This is the drush 9+ alias name.
+    $node->drush_alias = "@{$node->hosting_group}.{$node->hosting_environment}";
+
+  }
 }
 
 /**
@@ -275,7 +314,7 @@ function hosting_site_insert(&$node) {
   // Ensure that the last_cron value is set.
   $node->last_cron = isset($node->last_cron) ? $node->last_cron : 0;
   // Provide a dummy profile, e.g. for hosting-import.
-  $node->profile = isset($node->profile) ? $node->profile : '';
+  $node->profile = $node->hosting_settings['install']['profile'] ?? '';
 
   // If platform NID is not defined, but platform data is available,
   // create the platform.
@@ -375,12 +414,26 @@ function hosting_site_insert(&$node) {
 function hosting_site_node_insert($node) {
   if ($node->type == "site") {
     if ((empty($node->old_vid))) {
-      hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : str_replace('.', '', $node->title));
+      hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : str_replace('.', '', $node->title), $node->hosting_settings);
       if (isset($node->import)) {
         hosting_add_task($node->nid, 'import');
       }
       else {
         hosting_add_task($node->nid, 'install');
+      }
+    }
+  }
+
+  if ($node->type == 'task') {
+
+    // When deploy tasks are created, update the site's git_reference if needed.
+    if ($node->task_type == 'deploy') {
+      $node->ref = node_load($node->rid);
+      if (!empty($node->task_args['target_git_reference']) ){
+        $platform = node_load($node->ref->platform);
+        $platform->git_reference = $node->task_args['target_git_reference'];
+        $platform->no_verify = TRUE;
+        node_save($platform);
       }
     }
   }
@@ -400,7 +453,6 @@ function hosting_site_update(&$node) {
     if ($node->site_status == HOSTING_SITE_DELETED) {
       $node->no_verify = TRUE;
     }
-
     db_update('hosting_site')
       ->fields(array(
         'client' => $node->client,
@@ -410,7 +462,7 @@ function hosting_site_update(&$node) {
         'last_cron' => $node->last_cron,
         'cron_key' => $node->cron_key,
         'status' => $node->site_status,
-        'profile' => $node->profile,
+        'profile' => $node->hosting_settings['install']['profile'] ?? '',
         'language' => $node->site_language,
         'verified' => $node->verified,
         'file_public_path' => $node->file_public_path,
@@ -420,8 +472,9 @@ function hosting_site_update(&$node) {
       ->condition('vid', $node->vid)
       ->execute();
 
-    // If platform_node is passed in the site node, save it.
+    // If platform_node is passed in the site node, save it (but without verification. site Verify will handle it.)
     if (isset($node->platform_node->nid)) {
+      $node->platform_node->no_verify = TRUE;
       node_save($node->platform_node);
     }
   }
@@ -443,7 +496,13 @@ function hosting_site_node_update($node) {
  */
 function hosting_site_load($nodes) {
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query('SELECT  client, db_server, db_name, platform, profile, web_server,
+    $additions = db_query('SELECT
+        client,
+        db_server,
+        db_name,
+        platform,
+        profile,
+        web_server,
         publish_path,
         language AS site_language,
         last_cron,
@@ -473,17 +532,22 @@ function hosting_site_load($nodes) {
     foreach ($additions as $property => &$value) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
+
+    // Create a "servers" array based on our two base servers.
+    $node->servers['http'] = node_load($node->web_server);
+    $node->servers['db'] = node_load($node->db_server);
+
+    // Set default files paths if they are empty.
+    $node->file_public_path = $node->file_public_path ?: 'sites/' . $node->title . '/files';
+    $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
+    $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
+
+    // Set URI property from title.
+    $node->uri = $node->title;
+    $node->url = (!empty($node->https_enabled) ? 'https://' : 'http://') . $node->title;
+
+    // Detect git ref type.
+    $node->git_ref_type = hosting_git_ref_type($node);
   }
-
-  // Create a "servers" array based on our two base servers.
-  $node->servers['http'] = node_load($node->web_server);
-  $node->servers['db'] = node_load($node->db_server);
-
-  // Set default files paths if they are empty.
-  $node->file_public_path = $node->file_public_path ?: 'sites/' . $node->title . '/files';
-  $node->file_private_path = $node->file_private_path ?: 'sites/' . $node->title . '/private/files';
-  $node->file_temporary_path = $node->file_temporary_path ?: 'sites/' . $node->title . '/private/temp';
-
-  // Set URI property from title.
-  $node->uri = $node->title;
 }
+

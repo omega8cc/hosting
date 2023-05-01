@@ -13,50 +13,9 @@ function hosting_sync_hosting_tasks() {
   $tasks['site']['sync'] = array(
     'title' => t('Sync data'),
     'description' => t('Synchronize database and files from another site and (optionally) run update.php, clear cache, and revert features. <strong>Data on the current site will be DESTROYED!</strong>'),
-    'access callback' => 'hosting_sync_hosting_task_menu_access',
     'dialog' => TRUE,
   );
   return $tasks;
-}
-
-/**
- * Access Callback for Aegir Tasks.
- *
- * This function defines access to the various aegir tasks.
- *
- * @arg $node object
- *   The node object is running the task. (Site, Platform, Server)
- *
- * @arg $task string
- *   The type of the task that is running.
- *
- * @see hosting_task_menu_access()
- */
-function hosting_sync_hosting_task_menu_access($node, $task) {
-  // If we are passed the nid by mistake.
-  if (!isset($node->nid)) {
-    $node = node_load($node);
-  }
-
-  if ($task == 'sync' && user_access('create sync task') && $node->type == 'site') {
-    // Determine site's profile name.
-    $profile = node_load($node->profile);
-
-    $ishostmaster = ($profile && $profile->short_name == 'hostmaster');
-    if ($ishostmaster) {
-      return FALSE;
-    }
-
-    // If we are deleted or in the process of deleting, we can't sync!
-    if (hosting_task_outstanding($node->nid, 'delete') || ($node->site_status == HOSTING_SITE_DELETED)) {
-      return FALSE;
-    }
-
-    // Otherwise, only show if the site is enabled.
-    return $node->site_status == HOSTING_SITE_ENABLED;
-  }
-
-  return FALSE;
 }
 
 /**
@@ -260,63 +219,18 @@ function hosting_task_sync_form($node) {
 
   $form['destination'] = array(
     '#type' => 'value',
-    '#value' => '@' . $node->hosting_name,
+    '#markup' => '@' . $node->hosting_name,
   );
 
   // What to sync?
   $form['database'] = array(
-    '#title' => t('Copy database from source.'),
+    '#title' => t('Sync database.'),
     '#type' => 'checkbox',
     '#default_value' => 1,
     '#prefix' => '<fieldset><legend>' . t('What to sync?') . '</legend>',
   );
   $form['files'] = array(
-    '#title' => t('Copy files from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  $form['modules'] = array(
-    '#title' => t('Copy modules from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 0,
-  );
-  $form['themes'] = array(
-    '#title' => t('Copy themes from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 0,
-  );
-  $form['libraries'] = array(
-    '#title' => t('Copy libraries from source.'),
-    '#type' => 'checkbox',
-    '#default_value' => 0,
-    '#suffix' => '</fieldset>',
-  );
-
-  // Options.
-  $form['registry-rebuild'] = array(
-    '#title' => t('Rebuild registry'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  $form['updatedb'] = array(
-    '#title' => t('Run update.php'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  if (_hosting_package_site_has_module($node, 'features')) {
-    $form['features-revert-all'] = array(
-      '#title' => t('Revert all features'),
-      '#type' => 'checkbox',
-      '#default_value' => TRUE,
-    );
-  }
-  $form['update-uri'] = array(
-    '#title' => t('Update URI in database content'),
-    '#type' => 'checkbox',
-    '#default_value' => 1,
-  );
-  $form['cache-clear'] = array(
-    '#title' => t('Clear cache'),
+    '#title' => t('Sync files.'),
     '#type' => 'checkbox',
     '#default_value' => 1,
   );
@@ -326,6 +240,12 @@ function hosting_task_sync_form($node) {
     '#description' => t('If this option is enabled, a backup of the destination will be created before any changes are made. <em>This is will allow you to restore later in case this was a mistake!</em>'),
     '#default_value' => 1,
   );
+  $form['deploy'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Run Deploy task after sync.'),
+    '#description' => t('After copying a database, your site might need updates or cleared caches. Check this box to run a Deploy task after the sync is complete.'),
+    '#default_value' => 1,
+  ];
 
   return $form;
 }

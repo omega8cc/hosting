@@ -108,7 +108,7 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
     // Drop the database
     drush_log(dt('Dropping tables for destination database (@destination)', array('@destination' => $destination)), 'ok');
 
-    $destination = '@' . d()->group . '.' . d()->environment;
+    $destination = '@' . d()->hosting_group . '.' . d()->hosting_environment;
     $options = "--structure-tables-key=common --extra-dump='--no-tablespaces --single-transaction=false --set-gtid-purged=OFF'";
     $command = "drush sql-sync $options $source $destination";
 

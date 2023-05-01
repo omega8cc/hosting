@@ -641,7 +641,7 @@ function hosting_platform_insert($node) {
     ))
     ->execute();
   if (!isset($node->old_vid)) {
-    hosting_context_register($node->nid, 'platform_' . preg_replace("/[!\W]/", "", $node->title));
+    hosting_context_register($node->nid, 'platform_' . preg_replace("/[!\W]/", "", $node->title), $node->hosting_settings ?? []);
   }
 }
 
@@ -850,6 +850,8 @@ function hosting_platform_load($nodes) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
 
+    // Detect git ref type
+    $node->git_ref_type = hosting_git_ref_type($node);
   }
 }
 

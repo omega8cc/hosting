@@ -1,0 +1,8 @@
+name = Aegir HTTPS Nginx
+description = A service to support the NGINX web server with HTTPS functionality.
+package = Aegir HTTPS
+dependencies[] = hosting_https
+dependencies[] = hosting_nginx
+core = 7.x
+
+files[] = hosting_nginx_https.service.inc

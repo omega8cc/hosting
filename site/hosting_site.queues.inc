@@ -30,22 +30,41 @@ function hosting_git_queue() {
   $query->join('hosting_platform', 'p', 'p.nid = s.platform');
   $query->join('node', 'n', 'n.nid = s.nid');
   $result = $query
-    ->fields('c', array('name'))
+    ->fields('c', array('name', 'nid'))
     ->fields('p', array('git_root'))
     ->condition('n.status', NODE_PUBLISHED)
     ->condition('s.status', HOSTING_SITE_ENABLED)
     ->isNotNull('git_root')
     ->condition('git_root', '', '!=')
     ->execute()
-    ->fetchAllKeyed();
+    ->fetchAllAssoc('name');
 
   $hostmaster_path = d('@hostmaster')->root;
   $bin_path = realpath(dirname($hostmaster_path) . '/bin');
-  drush_log(format_plural(count($result), dt('Checking git remotes on 1 site...'), dt('Checking git remotes on @count sites...')), 'notice');
-  foreach ($result as $name => $path) {
-    if ($path && file_exists($path)) {
-      $command = "cd $path && $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
-      drush_shell_proc_open($command);  
+  foreach ($result as $name => $site) {
+    $site_node = node_load($site->nid);
+    $t = [
+      '@name' => $site->name,
+      '@git_root' => $site->git_root,
+    ];
+
+    if ($site_node->git_ref_type != 'branch') {
+      $t['@reason'] = t('Not on a branch');
+    }
+    elseif (!isset($site_node->hosting_settings['deployment']['continuous'])) {
+      $t['@reason'] = t('Continuous deployment is disabled.');
+    }
+    else {
+      $t['@reason'] = 'unsure.';
+    }
+
+    if ($site_node->git_ref_type == 'branch' && ($site_node->hosting_settings['deployment']['continuous'] ?? false)) {
+      drush_log(dt('Checking site @name at @git_root...', $t), 'notice');
+      $command = "cd {$site_node->git_root} && $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
+      drush_shell_proc_open($command);
+    }
+    else {
+      drush_log(dt('Skipping deployment for site @name at @git_root because @reason', $t), 'notice');
     }
   }
 }
@@ -56,7 +75,7 @@ function hosting_git_queue() {
  * Runs in the hosting-queue-runner loop.
  *
  *
- * Runs way too fast. needs work. 
+ * Runs way too fast. needs work.
  * @see drush_hosting_queued()
  */
 //function hosting_site_hosting_queued_execute() {

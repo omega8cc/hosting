@@ -8,6 +8,7 @@
  * Implements hook_hosting_TASK_OBJECT_context_options().
  */
 function hosting_hosting_platform_context_options(&$task) {
+  $task->context_options['drush_script'] = realpath(d()->root .'/../vendor/drush/drush/drush.php');
   $task->context_options['server'] = '@server_master';
   $task->context_options['web_server'] = hosting_context_name($task->ref->web_server);
   // Trim the path so we dont pass extra spaces.
@@ -24,7 +25,7 @@ function hosting_hosting_platform_context_options(&$task) {
   // Pass git options.
   $task->context_options['git_root'] = $task->ref->git_root;
   $task->context_options['git_remote'] = $task->ref->git_remote;
-  $task->context_options['git_reference'] = isset($task->task_args['target_git_reference'])? $task->task_args['target_git_reference']: $task->ref->git_reference;
+  $task->context_options['git_reference'] = $task->ref->git_reference;
   $task->context_options['git_docroot'] = $task->ref->git_docroot;
   $task->context_options['git_reset'] = $task->ref->git_reset;
 
@@ -59,6 +60,21 @@ function hosting_platform_drush_context_import($context, &$node) {
 }
 
 /**
+ * Implements hook_hosting_TASK_TYPE_task_rollback()
+ *
+ * Ensures post_hosting_verify_task runs even if task failed.
+ *
+ * @param $task
+ * @param $data
+ *
+ * @return void
+ */
+function hosting_platform_hosting_verify_task_rollback($task, $data) {
+  // hosting_platform_post_hosting_verify_task($task, $data);
+}
+
+
+/**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
  * Sets the platform verified timestamp, to discren when it was verified.
@@ -91,19 +107,15 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     }
     $node->no_verify = TRUE;
 
+    // Update platform metadata that might change.
     // Load git information from context.
     $options = $data['context'];
-     
     if (isset($options['git_sha'])) {
       $node->git_sha = $options['git_sha'];
       $node->git_last = $options['git_last'];
       $node->git_status = substr($options['git_status'], 0,2000);
       $node->git_refs = $options['git_refs'];
-      $node->git_reference = $options['git_reference'];
-      $node->git_remote = $options['git_remote'];
-      $node->git_root = $options['git_root'];
       $node->git_docroot = $options['git_docroot'];
-      $node->git_reset = $options['git_reset'];
     }
 
     // Save the platform being verified.
@@ -118,8 +130,8 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       '%git_ref' => $node->git_reference,
     ]), 'p_log');
 
-    
-    
+
+
     hosting_package_sync($packages['base']);
     hosting_package_sync($packages['sites-all']);
     hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
@@ -177,6 +189,16 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
  */
 function hosting_platform_post_hosting_deploy_task($task, $data) {
   hosting_platform_post_hosting_verify_task($task, $data);
+}
+
+/**
+ * Implements hook_hosting_TASK_task_rollback()
+ * For deploy tasks, trigger the same code as verify task rollback.
+ */
+function hosting_platform_hosting_deploy_task_rollback($task, $data) {
+  // Trick hosting_platform_hosting_verify_task_rollback() into saving platform data by setting the node to platform.
+  $task->ref = node_load($task->ref->platform);
+  hosting_platform_hosting_verify_task_rollback($task, $data);
 }
 
 /**

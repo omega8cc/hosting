@@ -184,7 +184,7 @@ function drush_hosting_task()
       $function = $module . '_' . $hook;
       call_user_func_array($function, array(&$task));
     }
-    
+
     // Save arbitrary data "settings".
     $task->context_options['settings'] = $task->ref->hosting_settings ?? [];
 
@@ -198,10 +198,15 @@ function drush_hosting_task()
       // drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
       // Save Platform Alias file.
       drush_invoke_process('@none', 'provision-save', array('@' . $platform_node->hosting_name), $platform_task->context_options, array('method' => $mode, 'integrate' => TRUE));
+      drush_log(dt('Saved alias: @name | @data', [
+        '@name' => $platform_node->hosting_name,
+        '@data' => print_r($platform_task->context_options, 1),
+      ]), 'ok');
 
       // Run platform verify task if this is a site install. Provision MUST run platform verify before provision-install.
       // We can't do this in drush_x_provision_install_x() hook because there's no set there yet, so the command can fail if composer didn't install.
       if ($task->task_type == 'install') {
+        chdir(d('@hostmaster')->root);
         $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify", $task->args, $task->options);
         hosting_platform_post_hosting_verify_task($platform_task, $output);
 
@@ -216,7 +221,7 @@ function drush_hosting_task()
       '@name' => $task->ref->hosting_name,
       '@data' => print_r($task->context_options, 1),
     ]), 'ok');
-    
+
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
@@ -239,6 +244,7 @@ function drush_hosting_task()
   }
 
   // Call the drush command.
+  $task->options['task_nid'] = $task->nid;
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
 
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and

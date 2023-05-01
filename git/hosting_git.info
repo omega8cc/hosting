@@ -1,0 +1,5 @@
+name = Hosting Git
+description = Provides additional git tasks.
+package = Hosting
+dependencies[] = hosting_site
+core = 7.x

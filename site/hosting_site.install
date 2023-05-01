@@ -6,6 +6,37 @@
  */
 
 /**
+ * Implements hook_site_install()
+ */
+function hosting_site_install() {
+  variable_set('hosting_settings_site_defaults', array(
+    'general' => array(
+      'protected' => 1,
+      'allow_reinstall' => 0,
+    ),
+    'deployment' => array(
+      'methods' => array(
+        'continuous' => 1,
+        'manual_overrides' => 0,
+      ),
+      'steps' => array(
+        'build' => 1,
+        'update' => 1,
+        'test' => 0,
+      ),
+    ),
+    'install' => array(
+      'method' => 'profile',
+      'profile' => variable_get('hosting_default_profile'),
+      'clone_source' => '',
+      'clone_source_drush' => '',
+      'import' => '',
+      'import_files' => '',
+    ),
+  ));
+}
+
+/**
  * Implements hook_schema().
  */
 function hosting_site_schema() {
@@ -574,4 +605,35 @@ function hosting_site_update_7400() {
 
   db_query("UPDATE {hosting_site} s LEFT JOIN {hosting_package} p ON s.profile = p.nid SET s.profile = p.short_name");
 
+}
+
+/**
+ * Set default site settings.
+ */
+function hosting_site_update_7402() {
+  variable_set('hosting_settings_site_defaults', array(
+    'general' => array(
+      'protected' => 1,
+      'allow_reinstall' => 0,
+    ),
+    'deployment' => array(
+      'methods' => array(
+        'continuous' => 1,
+        'manual_overrides' => 0,
+      ),
+      'steps' => array(
+        'build' => 1,
+        'update' => 1,
+        'test' => 0,
+      ),
+    ),
+    'install' => array(
+      'method' => 'profile',
+      'profile' => variable_get('hosting_default_profile'),
+      'clone_source' => '',
+      'clone_source_drush' => '',
+      'import' => '',
+      'import_files' => '',
+    ),
+  ));
 }

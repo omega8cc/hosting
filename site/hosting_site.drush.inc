@@ -9,19 +9,30 @@
  * Implements hook_hosting_TASK_OBJECT_context_options().
  */
 function hosting_hosting_site_context_options(&$task) {
+  $task->context_options['server'] = '@server_master';
   $task->context_options['db_server'] = hosting_context_name($task->ref->db_server);
-  $task->context_options['platform'] = hosting_context_name($task->ref->platform);
+  $task->context_options['web_server'] = hosting_context_name($task->ref->web_server);
 
+  //  $task->context_options['platform'] = hosting_context_name($task->ref->platform);
+
+  // Pass git options.
+  $task->context_options['git_root'] = $task->ref->git_root;
+  $task->context_options['git_remote'] = $task->ref->git_remote;
+  $task->context_options['git_reference'] = $task->ref->git_reference;
+  $task->context_options['git_docroot'] = $task->ref->git_docroot;
+  $task->context_options['git_reset'] = $task->ref->git_reset;
+
+  $task->context_options['drush_script'] = realpath(d()->root .'/../vendor/drush/drush/drush.php');
   $task->context_options['uri'] = hosting_site_get_domain($task->ref->title);
   $task->context_options['root'] = $task->ref->publish_path;
   $task->context_options['language'] = $task->ref->site_language;
+  $task->context_options['profile'] = $task->ref->profile ?? '';
+  $task->context_options['install_method'] = $task->ref->hosting_settings['install']['method'] ?? '';
 
-  if (!empty($task->ref->profile)) {
-    $task->context_options['profile'] = $task->ref->profile;
-  }
-  else {
-    $task->context_options['profile'] = '';
-  }
+  $task->context_options['hosting_group'] = $task->ref->hosting_group;
+  $task->context_options['hosting_environment'] = $task->ref->hosting_environment;
+  $task->context_options['drush_alias'] = $task->ref->drush_alias;
+
   // @TODO: Legacy refactor needed. Move to Hosting Client module.
   $client = node_load($task->ref->client);
   $user = user_load($task->uid);
@@ -30,16 +41,16 @@ function hosting_hosting_site_context_options(&$task) {
   }
   $task->context_options['client_name'] = $client->uname;
 
-  // Set "install_method" property, only if there is one present on the site node.
-  // "profile" is used by default, we don't have to set it here.
-  if (isset($task->ref->install_method) && !empty($task->ref->install_method)) {
-    $task->context_options['install_method'] = $task->ref->install_method;
+  // If install task is set to force-reinstall, pass to drush options.
+  if ($task->task_type == 'install' && !empty($task->task_args['force-reinstall'])) {
+    $task->options['force-reinstall'] = 1;
   }
 
   // Set File directories if they exist
   $task->context_options['file_public_path'] = $task->ref->file_public_path;
   $task->context_options['file_private_path'] = $task->ref->file_private_path;
   $task->context_options['file_temporary_path'] = $task->ref->file_temporary_path;
+  
 }
 
 /**
@@ -50,11 +61,23 @@ function hosting_site_drush_context_import($context, &$node) {
     if (!isset($node->title)) {
       $node->title = hosting_site_get_domain($context->uri); // force lowercase for existing uri
     }
+    $node->profile = $context->profile;
     $node->site_language = $context->language;
     $node->cron_key = $context->cron_key;
     $node->db_server = hosting_context_nid($context->db_server->name);
-    $node->platform = hosting_context_nid($context->platform->name);
-    $node->profile = $context->profile;
+    $node->web_server = hosting_context_nid($context->web_server);
+
+    $node->publish_path = $context->root;
+
+    $node->git_root = $context->git_root;
+    $node->git_remote = $context->git_remote;
+    $node->git_reference = $context->git_reference;
+    $node->git_reset = $context->git_reset;
+    $node->git_docroot = $context->git_docroot;
+    $node->git_sha = $context->git_sha;
+    $node->git_refs = $context->git_refs;
+    $node->git_last = $context->git_last;
+    $node->git_status = $context->git_status;
 
     $client = node_load(HOSTING_DEFAULT_CLIENT);
     if ($context->client_name) {
@@ -87,7 +110,7 @@ function drush_hosting_site_pre_hosting_task($task) {
     $task->args[1] = implode(',', $backups);
   }
 
-  if ($task->task_type == 'deploy') {
+  if ($task->task_type == 'deploy' || $task->task_type == 'test') {
 
     // Create an array so as to not disrupt task_args.
     $task_arguments = $task->task_args;
@@ -208,6 +231,9 @@ function hosting_site_post_hosting_delete_task($task, $data) {
   if ($task->ref->type == 'site') {
     $task->ref->site_status = HOSTING_SITE_DELETED;
     $task->ref->no_verify = TRUE;
+    hosting_context_delete($task->ref->nid);
+    unset($task->ref->hosting_settings);
+    unset($task->ref->hosting_name);
     node_save($task->ref);
 
     // Record the backup created during delete.

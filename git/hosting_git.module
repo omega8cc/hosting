@@ -1,0 +1,57 @@
+<?php
+/**
+ * @file
+ * Provides Git integration
+ */
+
+require_once('hosting_git.forms.inc');
+
+/**
+ * Implements hook_hosting_tasks().
+ */
+function hosting_git_hosting_tasks() {
+  $tasks = array();
+
+  $tasks['site']['git-commit'] = array(
+    'title' => t('Git commit'),
+    'description' => t('Runs a git commit on the current site.'),
+    'dialog' => TRUE,
+  );
+  $tasks['site']['git-branch'] = array(
+    'title' => t('Create Git Branch'),
+    'description' => t('Creates a new branch from the current working copy.'),
+    'dialog' => TRUE,
+  );
+  $tasks['site']['git-tag'] = array(
+    'title' => t('Create Git Tag'),
+    'description' => t('Creates a new git tag.'),
+    'dialog' => TRUE,
+  );
+  $tasks['site']['git-push'] = array(
+    'title' => t('Create Git Tag'),
+    'description' => t('Creates a new git tag.'),
+    'dialog' => TRUE,
+  );
+  return $tasks;
+}
+
+/**
+ * Implements hook_perm()
+ * @return array
+ */
+function hosting_git_permission() {
+  return array(
+    'create site git-commit task' => array(
+      'title' => t('create site git-commit task'),
+      'description' => t('Create site "git-commit" task.'),
+    ),
+    'create site git-branch task' => array(
+      'title' => t('create site git-checkout task'),
+      'description' => t('Create a git-checkout task for sites'),
+    ),
+    'create site git-tag task' => array(
+      'title' => t('create site git-tag task'),
+      'description' => t('Create a git-tag task for sites'),
+    ),
+  );
+}

@@ -377,10 +377,10 @@ function hosting_node_search_result($node) {
  */
 function hosting_node_update($node) {
   // Update context settings.
-  if (!empty($node->hosting_settings)) {
+  if (!empty($node->hosting_settings) && !empty($node->hosting_name)) {
     hosting_context_register($node->nid, $node->hosting_name, $node->hosting_settings);
   }
-  
+
   // Redispatch through our custom nodeapi implementation.
   hosting_nodeapi($node, 'update');
 }
@@ -1149,7 +1149,7 @@ function hosting_form_alter(&$form, &$form_state, $form_id) {
       $form['#submit'][] = 'hosting_form_submit_messages';
     }
   }
-  
+
   // Add settings to Context Node Forms with hosting context name.
   if (!empty($form['#node_edit_form']) && (in_array($form_state['node']->type, hosting_context_node_types()))) {
     // Merge settings from prior form generating functions, like hosting_site_form.
@@ -1240,7 +1240,7 @@ function hosting_context_register($nid, $name, $settings = NULL) {
       'name' => $name,
     ];
     if ($settings) {
-      $fields['settings'] = serialize($settings); 
+      $fields['settings'] = serialize($settings);
     }
 
     db_update('hosting_context')
@@ -1373,6 +1373,29 @@ function hosting_log_types() {
 }
 
 /**
+ * @param $site_node
+ * @return mixed
+ */
+function hosting_get_site_settings_form($hosting_settings = [], $hosting_settings_parent = null) {
+  $site_node = new stdClass();
+
+  $site_node->type = 'site';
+  $site_node->hosting_settings = $hosting_settings;
+  $site_node->hosting_settings_parent = $hosting_settings_parent;
+  $site_node->profile = $site_node->hosting_settings['install']['profile'] ?? '';
+  $state = [
+    'build_info' => ['args' => [$site_node]],
+  ];
+  module_load_include('pages.inc', 'node');
+  $site_form = drupal_retrieve_form('site_node_form', $state);
+
+  // "profile" element in hosting_site_form gets set to parent node. Unset parents to put it back in our array.
+  unset($site_form['hosting_settings']['install']['profile']['#parents']);
+  return $site_form['hosting_settings'];
+
+}
+
+/**
  * General settings form.
  */
 function hosting_settings($form, &$form_state) {
@@ -1383,24 +1406,39 @@ function hosting_settings($form, &$form_state) {
     '#weight' => 0,
   );
 
-  $profiles = array();
-  foreach (hosting_get_profiles() as $id => $name) {
-    $profile = hosting_package_instance_load(array('p.nid' => $id));
-    $profiles[$profile->short_name] = theme('hosting_site_profile', array('profile' => $profile, 'html' => ''));
-    // Don't allow a site to be provisioned a restricted profile.
-    if (in_array($name, array('Hostslave', 'Hostmaster'))) {
-      unset($profiles[$profile->short_name]);
-    }
-  }
-  natcasesort($profiles);
-  $default_value = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->short_name;
-  $form['hosting_default_profile'] = array(
-    '#type' => 'select',
-    '#title' => t('Default profile'),
-    '#options' => $profiles,
-    '#description' => t('The default install profile to use when creating new sites.'),
-    '#default_value' => $default_value,
-  );
+  // Default site settings
+  $form['hosting_settings_site_defaults'] = hosting_get_site_settings_form(variable_get('hosting_settings_site_defaults', NULL), 'hosting_settings_site_defaults');
+  $form['hosting_settings_site_defaults']['#type'] = 'item';
+  $form['hosting_settings_site_defaults']['#tree'] = TRUE;
+  $form['hosting_settings_site_defaults']['#title'] = t('Default Site Settings');
+  $form['hosting_settings_site_defaults']['#description'] = t('These settings will be used when creating new sites.');
+  $form['hosting_settings_site_defaults']['#weight'] = 90;
+  // If we have
+  $form['hosting_settings_site_defaults']['install']['#validate'][] = 'hosting_settings_set_install';
+
+  $form['site_settings'] = [
+    '#type' => 'vertical_tabs',
+    '#weight' => 100,
+  ];
+//
+//  $profiles = array();
+//  foreach (hosting_get_profiles() as $id => $name) {
+//    $profile = hosting_package_instance_load(array('p.nid' => $id));
+//    $profiles[$profile->short_name] = theme('hosting_site_profile', array('profile' => $profile, 'html' => ''));
+//    // Don't allow a site to be provisioned a restricted profile.
+//    if (in_array($name, array('Hostslave', 'Hostmaster'))) {
+//      unset($profiles[$profile->short_name]);
+//    }
+//  }
+//  natcasesort($profiles);
+//  $default_value = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->short_name;
+//  $form['hosting_default_profile'] = array(
+//    '#type' => 'select',
+//    '#title' => t('Default profile'),
+//    '#options' => $profiles,
+//    '#description' => t('The default install profile to use when creating new sites.'),
+//    '#default_value' => $default_value,
+//  );
   $form['hosting_ignore_default_profiles'] = array(
     '#type' => 'checkbox',
     '#title' => t('Hide platforms with non-default profiles'),
@@ -1456,6 +1494,7 @@ function hosting_settings($form, &$form_state) {
     '#options' => $types,
     '#default_value' => variable_get('hosting_task_logs_types_display', $types),
   );
+
   return system_settings_form($form);
 }
 
