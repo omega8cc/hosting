@@ -55,7 +55,7 @@ function hosting_git_queue() {
       $t['@reason'] = t('Continuous deployment is disabled.');
     }
     else {
-      $t['@reason'] = '';
+      $t['@reason'] = 'unsure.';
     }
 
     if ($site_node->git_ref_type == 'branch' && ($site_node->hosting_settings['deployment']['continuous'] ?? false)) {
