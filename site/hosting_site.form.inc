@@ -126,7 +126,7 @@ function hosting_site_form($node, &$form_state) {
     '#required' => TRUE,
     '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '',
     '#weight' => -20,
-  ));
+  ];
 
   // Settings
   $form['hosting_settings']['general'] = array(
@@ -165,11 +165,11 @@ function hosting_site_form($node, &$form_state) {
   if (user_access('administer clients') || user_access('create client')) {
     $add_client_text = t('Click !here to add a new client.', array('!here' => l(t('here'), 'node/add/client', array('attributes' => array('target' => '_blank')))));
   }
-  _hosting_site_field($form, $node, 'client', array(
+  _hosting_site_field($form, $node, 'client', [
     '#type' => 'textfield',
     '#required' => TRUE,
     '#default_value' => $node->title,
-  ];
+  ]);
 
   $form['install'] = hosting_site_install_methods_form_element($node);
   $form['install']['#parents'] = ['hosting_settings', 'install'];
