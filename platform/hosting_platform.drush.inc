@@ -68,7 +68,7 @@ function hosting_platform_drush_context_import($context, &$node) {
 function hosting_platform_post_hosting_verify_task($task, $data) {
 
   $node = $task->ref;
-  if ($node->type == 'platform') {
+  if ($node->type == 'platform' || $node->type == 'site') {
     $context = $data['context'];
     $packages = $context['packages'];
 
