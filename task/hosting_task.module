@@ -1002,7 +1002,7 @@ function hosting_available_tasks($type = NULL, $reset = FALSE) {
     // Invoke hook_hosting_tasks_alter().
     drupal_alter('hosting_tasks', $cache);
   }
-  if (isset($type)) {
+  if (!empty($cache[$type])) {
     return $cache[$type];
   }
   else {
@@ -1799,6 +1799,10 @@ function hosting_task_table($node) {
   );
 
   $tasklist = hosting_task_fetch_tasks($node->nid);
+  if (empty($tasklist[$node->type])) {
+    return '';
+  }
+
   $rows = array();
 
   foreach ($tasklist as $task => $info) {

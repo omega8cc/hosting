@@ -107,38 +107,38 @@ function hosting_platform_edit_form_on_site_page_access($op, $site) {
  */
 function hosting_platform_hosting_tasks() {
   $tasks = array();
-  $tasks['platform']['verify'] = array(
-    'title' => t('Verify Platform'),
-    'description' => t('Verify that the platform is correctly installed and working.'),
-    'weight' => 10,
-    'provision_save' => TRUE,
-    // @TODO: Uncomment when/if "provision verify" is ready.
-    // 'command' => 'verify',
-  );
-  $tasks['platform']['delete'] = array(
-    'title' => t('Delete Platform'),
-    'description' => t('Deleting this platform will completely remove it from the hosting system.
-        This process can not be undone. It can not be performed if you have sites currently
-        running on this platform.
-        Are you really sure you want to delete this platform?'),
-    'weight' => 10,
-    'dialog' => TRUE,
-  );
-  $tasks['platform']['lock'] = array(
-    'title' => t('Lock'),
-    'description' => t('Locking this platform will not delete or disable it or its sites, but will
-        prevent any new sites from being created on it. This may be useful when you have sites that
-        cannot be migrated onto a newer platform, but you wish to prevent other users or clients
-        from continuing to provision on this platform. The platform can be unlocked later.
-        Are you really sure you want to lock this platform?'),
-    'weight' => 10,
-  );
-  $tasks['platform']['unlock'] = array(
-    'title' => t('Unlock'),
-    'description' => t('Unlocking this platform will allow sites to be provisioned on it.
-        Are you really sure you want to unlock this platform?'),
-    'weight' => 10,
-  );
+//  $tasks['platform']['verify'] = array(
+//    'title' => t('Verify Platform'),
+//    'description' => t('Verify that the platform is correctly installed and working.'),
+//    'weight' => 10,
+//    'provision_save' => TRUE,
+//    // @TODO: Uncomment when/if "provision verify" is ready.
+//    // 'command' => 'verify',
+//  );
+//  $tasks['platform']['delete'] = array(
+//    'title' => t('Delete Platform'),
+//    'description' => t('Deleting this platform will completely remove it from the hosting system.
+//        This process can not be undone. It can not be performed if you have sites currently
+//        running on this platform.
+//        Are you really sure you want to delete this platform?'),
+//    'weight' => 10,
+//    'dialog' => TRUE,
+//  );
+//  $tasks['platform']['lock'] = array(
+//    'title' => t('Lock'),
+//    'description' => t('Locking this platform will not delete or disable it or its sites, but will
+//        prevent any new sites from being created on it. This may be useful when you have sites that
+//        cannot be migrated onto a newer platform, but you wish to prevent other users or clients
+//        from continuing to provision on this platform. The platform can be unlocked later.
+//        Are you really sure you want to lock this platform?'),
+//    'weight' => 10,
+//  );
+//  $tasks['platform']['unlock'] = array(
+//    'title' => t('Unlock'),
+//    'description' => t('Unlocking this platform will allow sites to be provisioned on it.
+//        Are you really sure you want to unlock this platform?'),
+//    'weight' => 10,
+//  );
 
   return $tasks;
 }
@@ -616,9 +616,10 @@ function hosting_platform_node_presave($node) {
  * Implements hook_insert().
  */
 function hosting_platform_insert($node) {
-  if (empty($node->no_verify)) {
-    hosting_add_task($node->nid, 'verify');
-  }
+  // platforms don't run tasks.
+  //  if (empty($node->no_verify)) {
+  //    hosting_add_task($node->nid, 'verify');
+  //  }
   $id = db_insert('hosting_platform')
     ->fields(array(
       'vid' => $node->vid,
@@ -682,17 +683,18 @@ function hosting_platform_update($node) {
       ->execute();
   }
 
-  // Trigger verify tasks for each enabled site.
-  if (empty($node->no_verify)) {
-
-    $sites = hosting_get_sites_by_status($node->nid, HOSTING_SITE_ENABLED);
-    if (empty($sites)) {
-      hosting_add_task($node->nid, 'verify');
-    }
-    foreach ($sites as $site_nid => $site) {
-      hosting_add_task($site->nid, 'verify');
-    }
-  }
+  // No more platforms.
+//  // Trigger verify tasks for each enabled site.
+//  if (empty($node->no_verify)) {
+//
+//    $sites = hosting_get_sites_by_status($node->nid, HOSTING_SITE_ENABLED);
+//    if (empty($sites)) {
+//      hosting_add_task($node->nid, 'verify');
+//    }
+//    foreach ($sites as $site_nid => $site) {
+//      hosting_add_task($site->nid, 'verify');
+//    }
+//  }
 }
 
 /**
@@ -961,9 +963,13 @@ function hosting_platform_view($node, $view_mode, $langcode = NULL) {
 
   // Task list.
   if ($view_mode == 'full' && $node->nid) {
+    $table = hosting_task_table($node);
+    if (empty($table)) {
+      return $node;
+    }
     $node->content['tasks_view'] = array(
       '#type' => 'item',
-      '#markup' => hosting_task_table($node),
+      '#markup' => $table,
       '#prefix' => '<div id="hosting-task-list">',
       '#suffix' => '</div>',
       '#weight' => 9,
