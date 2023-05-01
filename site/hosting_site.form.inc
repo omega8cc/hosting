@@ -163,7 +163,7 @@ function hosting_site_form($node, &$form_state) {
         ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
       ],
       'unchecked' => [
-        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+        ':input[name="hosting_settings[general][protected]"]' => ['checked' => TRUE],
       ],
     ],
   );
@@ -534,7 +534,7 @@ function hosting_site_deploy_steps_form_element($node = null, array $parents = [
       ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
     ],
     'unchecked' => [
-      ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
+      ':input[name="hosting_settings[general][protected]"]' => ['checked' => TRUE],
     ],
   ];
 
