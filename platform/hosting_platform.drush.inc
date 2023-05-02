@@ -173,7 +173,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
   // When a server is verified, queue up a verify task for every site.
   if ($task->ref->type == 'server') {
-    $query = db_query("SELECT s.nid FROM {hosting_platform} p LEFT JOIN {hosting_site} s WHERE s.status <> :status AND web_server = :web_server", array(':status' => HOSTING_PLATFORM_DELETED, ':web_server' => $task->ref->nid));
+    $query = db_query("SELECT s.nid FROM {hosting_platform} p LEFT JOIN {hosting_site} s ON p.nid = s.platform WHERE s.status <> :status AND web_server = :web_server", array(':status' => HOSTING_PLATFORM_DELETED, ':web_server' => $task->ref->nid));
     while ($nid = $query->fetch()) {
       hosting_add_task($nid->nid, 'verify');
     }
