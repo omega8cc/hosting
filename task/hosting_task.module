@@ -1002,8 +1002,11 @@ function hosting_available_tasks($type = NULL, $reset = FALSE) {
     // Invoke hook_hosting_tasks_alter().
     drupal_alter('hosting_tasks', $cache);
   }
-  if (!empty($cache[$type])) {
+  if (!empty($type) && !empty($cache[$type])) {
     return $cache[$type];
+  }
+  elseif (!empty($type) && empty($cache[$type])) {
+    return [];
   }
   else {
     return $cache;
@@ -1799,7 +1802,7 @@ function hosting_task_table($node) {
   );
 
   $tasklist = hosting_task_fetch_tasks($node->nid);
-  if (empty($tasklist[$node->type])) {
+  if (empty($tasklist)) {
     return '';
   }
 
@@ -1955,13 +1958,14 @@ function hosting_task_fetch_tasks($rid) {
     ORDER BY n.changed ASC", array(':ntype' => 'task', ':trid' => $rid));
 
   foreach ($result as $obj) {
-    $return[$obj->task_type] = array(
+    $task_nodes[$obj->task_type] = array(
       'nid' => $obj->nid,
       'task_status' => $obj->task_status,
       'exists' => TRUE,
     );
   }
 
+  $return = [];
   $tasks = hosting_available_tasks($node->type);
   ksort($tasks);
 
@@ -1973,8 +1977,11 @@ function hosting_task_fetch_tasks($rid) {
 
     $access_callback = !empty($hook_task['access callback']) ? $hook_task['access callback'] : 'hosting_task_menu_access';
 
-    $task = array();
-    $task = array_merge($return[$type], $hook_task);
+    // Load last task node info into available tasks array.
+    $task = $hook_task;
+    if (!empty($task_nodes[$type])) {
+      $task = array_merge($task_nodes[$type], $task);
+    }
 
     $allowed = (isset($task['exists']) && !in_array($task['task_status'], array(HOSTING_TASK_QUEUED, HOSTING_TASK_PROCESSING))) || !isset($task['exists']);
     if ($allowed && empty($task['hidden']) && $access_callback($node, $type)) {
