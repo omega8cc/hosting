@@ -1221,7 +1221,7 @@ function hosting_task_load($nodes) {
     }
 
     // Load task_command property from hook_hosting_tasks data.
-    $node->task_command = $types[$node->ref_type][$node->task_type]['command'];
+    $node->task_command = $types[$node->ref_type][$node->task_type]['command'] ?? '';
   }
 }
 
