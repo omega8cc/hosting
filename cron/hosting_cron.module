@@ -133,6 +133,9 @@ function hosting_cron_node_load($nodes, $types) {
   foreach ($nodes as $nid => &$node) {
     if ($node->type == 'site') {
 
+      $this_cron_interval = null;
+      $node->cron_interval = null;
+
       $result = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
       if ($result) {
         $this_cron_interval = array('cron_interval' => $result);
