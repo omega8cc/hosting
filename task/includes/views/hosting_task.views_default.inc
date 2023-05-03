@@ -107,7 +107,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['path']['field'] = 'path';
   $handler->display->display_options['fields']['path']['relationship'] = 'rid';
   $handler->display->display_options['fields']['path']['exclude'] = TRUE;
-  /* Field: Hosting Site: Canonical URL */
+  /* Field: Hosting Site Aliases: Canonical URL */
   $handler->display->display_options['fields']['canonical']['id'] = 'canonical';
   $handler->display->display_options['fields']['canonical']['table'] = 'hosting_site';
   $handler->display->display_options['fields']['canonical']['field'] = 'canonical';
@@ -169,7 +169,7 @@ function hosting_task_views_default_views() {
     'task' => 'task',
   );
   $handler->display->display_options['filters']['type']['expose']['operator'] = FALSE;
-  /* Filter criterion: Content: Published status */
+  /* Filter criterion: Content: Published */
   $handler->display->display_options['filters']['status']['id'] = 'status';
   $handler->display->display_options['filters']['status']['table'] = 'node';
   $handler->display->display_options['filters']['status']['field'] = 'status';
@@ -278,7 +278,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['path']['field'] = 'path';
   $handler->display->display_options['fields']['path']['relationship'] = 'rid';
   $handler->display->display_options['fields']['path']['exclude'] = TRUE;
-  /* Field: Hosting Site: Canonical URL */
+  /* Field: Hosting Site Aliases: Canonical URL */
   $handler->display->display_options['fields']['canonical']['id'] = 'canonical';
   $handler->display->display_options['fields']['canonical']['table'] = 'hosting_site';
   $handler->display->display_options['fields']['canonical']['field'] = 'canonical';
@@ -321,30 +321,6 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['nid']['alter']['path'] = 'hosting/task/[nid]';
   $handler->display->display_options['fields']['nid']['alter']['link_class'] = 'hosting-button-enabled hosting-button-log hosting-button-dialog';
   $handler->display->display_options['fields']['nid']['element_class'] = 'hosting-actions';
-  /* Field: Bulk operations: Content */
-  $handler->display->display_options['fields']['views_bulk_operations']['id'] = 'views_bulk_operations';
-  $handler->display->display_options['fields']['views_bulk_operations']['table'] = 'views_entity_node';
-  $handler->display->display_options['fields']['views_bulk_operations']['field'] = 'views_bulk_operations';
-  $handler->display->display_options['fields']['views_bulk_operations']['label'] = 'Delete Tasks';
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['display_type'] = '0';
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['enable_select_all_pages'] = 1;
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['enable_select_this_page'] = 1;
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['row_clickable'] = 1;
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['force_single'] = 0;
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['entity_load_capacity'] = '10';
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_operations'] = array(
-    'action::views_bulk_operations_delete_item' => array(
-      'selected' => 1,
-      'postpone_processing' => 0,
-      'skip_confirmation' => 0,
-      'skip_permission_check' => 0,
-      'override_label' => 0,
-      'label' => '',
-      'settings' => array(
-        'log' => 0,
-      ),
-    ),
-  );
   $handler->display->display_options['path'] = 'hosting/tasks';
   $handler->display->display_options['menu']['type'] = 'normal';
   $handler->display->display_options['menu']['title'] = 'Tasks';
@@ -452,7 +428,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['path']['field'] = 'path';
   $handler->display->display_options['fields']['path']['relationship'] = 'rid';
   $handler->display->display_options['fields']['path']['exclude'] = TRUE;
-  /* Field: Hosting Site: Canonical URL */
+  /* Field: Hosting Site Aliases: Canonical URL */
   $handler->display->display_options['fields']['canonical']['id'] = 'canonical';
   $handler->display->display_options['fields']['canonical']['table'] = 'hosting_site';
   $handler->display->display_options['fields']['canonical']['field'] = 'canonical';
@@ -534,7 +510,9 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['tab_options']['description'] = 'All tasks for this item.';
   $handler->display->display_options['tab_options']['weight'] = '0';
 
-  // Exported view: hosting_task_history
+  $views[$view->name] = $view;
+
+  // Exported view: hosting_task_list
   $view = new view();
   $view->name = 'hosting_task_history';
   $view->description = '';
