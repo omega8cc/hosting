@@ -24,8 +24,14 @@ function drush_hosting_clone_pre_hosting_task($task) {
     }
 
     if (module_exists('hosting_alias')) {
-      $task->options['aliases'] = str_replace("\n", ",", $task->task_args['aliases']);
-      $task->options['redirection'] = $task->task_args['redirection'];
+      $task->options['aliases'] = null;
+      $task->options['redirection'] = null;
+      if (isset($task->task_args['aliases'])) {
+        $task->options['aliases'] = str_replace("\n", ",", (string) $task->task_args['aliases']);
+      }
+      if (isset($task->task_args['redirection'])) {
+        $task->options['redirection'] = $task->task_args['redirection'];
+      }
     }
   }
 }
@@ -40,8 +46,10 @@ function hosting_clone_post_hosting_clone_task($task, $data) {
     $target = $task->task_args['target_platform'];
     $clone = new stdClass();
     # copy some of the settings of the cloned site ($task->ref) to $clone
-    foreach (array('type', 'status', 'uid', 'comment', 'promote', 'moderate', 'sticky', 'name', 'format', 'client', 'db_server', 'profile', 'site_status', 'site_language') as $field) {
-      $clone->$field = $task->ref->$field;
+    foreach (['type', 'status', 'uid', 'comment', 'promote', 'moderate', 'sticky', 'name', 'format', 'client', 'db_server', 'profile', 'site_status', 'site_language'] as $field) {
+      if (isset($task->ref->$field)) {
+        $clone->$field = $task->ref->$field;
+      }
     }
     $clone->title = hosting_site_clean_domain($task->task_args['new_uri']);
     $clone->hosting_name = hosting_site_get_domain($clone->title);
@@ -55,10 +63,7 @@ function hosting_clone_post_hosting_clone_task($task, $data) {
       $clone->db_server = $task->task_args['new_db_server'];
     }
 
-    $profile = hosting_package_instance_load(array(
-      'i.rid' => $target,
-      'p.short_name' => $data['context']['profile'],
-    ));
+    $profile = hosting_package_instance_load(['i.rid' => $target, 'p.short_name' => $data['context']['profile']]);
     if ($profile) {
       $clone->profile = $profile->package_id;
     }
