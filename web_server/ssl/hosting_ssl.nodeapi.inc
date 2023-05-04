@@ -28,7 +28,7 @@ function hosting_ssl_site_form(&$form, &$form_state, $form_id) {
       $ssl_available = TRUE;
     }
   }
-  elseif (count(hosting_ssl_get_servers('http')) > 0) {
+  elseif ((is_countable(hosting_ssl_get_servers()) ? count(hosting_ssl_get_servers()) : 0) > 0) {
     $ssl_available = TRUE;
   }
 
@@ -92,7 +92,7 @@ function hosting_ssl_site_form(&$form, &$form_state, $form_id) {
  */
 function hosting_ssl_hosting_site_options_alter(&$return, $node) {
   // Disable the ssl key fields by default.
-  if (!count(hosting_ssl_get_servers())) {
+  if (!(is_countable(hosting_ssl_get_servers()) ? count(hosting_ssl_get_servers()) : 0)) {
     $return['ssl_enabled'] = FALSE;
   }
 
@@ -141,12 +141,7 @@ function hosting_ssl_nodeapi_site_view(&$node, $teaser = FALSE) {
   );
 
   if (isset($node->ssl_enabled) && $node->ssl_enabled == TRUE) {
-    $node->content['info']['ssl_key'] = array(
-      '#type' => 'item',
-      '#title' => t('SSL key'),
-      '#markup' => hosting_ssl_get_key($node->ssl_key) ? t("%path", array('%path' => sprintf("%s", hosting_ssl_output_key($node->ssl_key)))) : t("(key deleted)"),
-      '#weight' => 7,
-    );
+    $node->content['info']['ssl_key'] = ['#type' => 'item', '#title' => t('SSL key'), '#markup' => hosting_ssl_get_key($node->ssl_key) ? t("%path", ['%path' => sprintf("%s", hosting_ssl_output_key($node->ssl_key))]) : t("(key deleted)"), '#weight' => 7];
   }
 }
 
@@ -155,10 +150,10 @@ function hosting_ssl_nodeapi_site_view(&$node, $teaser = FALSE) {
  * @see http://drupal.org/node/1354
  */
 function hosting_ssl_get_key($cid) {
-  static $cache = array();
+  static $cache = [];
 
   if (!isset($cache[$cid])) {
-    $cache[$cid] = db_query("SELECT ssl_key FROM {hosting_ssl_cert} WHERE cid = :cid", array(':cid' => $cid))->fetchField();
+    $cache[$cid] = db_query("SELECT ssl_key FROM {hosting_ssl_cert} WHERE cid = :cid", [':cid' => $cid])->fetchField();
   }
   return $cache[$cid];
 }
@@ -174,8 +169,8 @@ function hosting_ssl_get_ip($cid) {
                   INNER JOIN {hosting_context} h
                           ON h.nid = ips.nid
                        WHERE cid = :cid",
-                      array(':cid' => $cid));
-  $ip_addresses = array();
+                      [':cid' => $cid]);
+  $ip_addresses = [];
   foreach ($result as $record) {
     $ip_addresses[$record->server_name] = $record->ip_address;
   }
@@ -194,11 +189,7 @@ function hosting_ssl_output_key($cid) {
  * Output filter for SSL enabled field.
  */
 function hosting_ssl_status_options($status = NULL) {
-  $options = array(
-    HOSTING_SSL_DISABLED => t('Disabled'),
-    HOSTING_SSL_ENABLED => t('Enabled'),
-    HOSTING_SSL_REQUIRED => t('Required'),
-  );
+  $options = [HOSTING_SSL_DISABLED => t('Disabled'), HOSTING_SSL_ENABLED => t('Enabled'), HOSTING_SSL_REQUIRED => t('Required')];
 
   if (!is_null($status)) {
     return $options[$status];
@@ -215,9 +206,9 @@ function hosting_ssl_status_options($status = NULL) {
  */
 function hosting_ssl_filter_key($key) {
   if (function_exists('idna_convert_encode')) {
-    $key = idna_convert_encode(strtolower(trim($key)));
+    $key = idna_convert_encode(strtolower(trim((string) $key)));
   }
-  return strtolower(preg_replace("/[^\w\.\-]/", "", $key));
+  return strtolower(preg_replace("/[^\w\.\-]/", "", (string) $key));
 }
 
 /**
@@ -229,17 +220,17 @@ function hosting_ssl_nodeapi_site_validate($node, &$form) {
     $valid_options = hosting_site_available_options($node);
 
     if ($node->ssl_key == HOSTING_SSL_CUSTOM_KEY) {
-      if (!strlen($node->ssl_key_new)) {
+      if (!strlen((string) $node->ssl_key_new)) {
         form_set_error('ssl_key_new', t("The encryption key field is required to enable us to generate a new SSL certificate for your site."));
       }
       else {
         $key = hosting_ssl_filter_key($node->ssl_key_new);
 
-        if (($node->ssl_key_new != $key) || !strlen($key)) {
+        if (($node->ssl_key_new != $key) || !strlen((string) $key)) {
           form_set_error('ssl_key_new', t("The encryption key field should only contain lower case alpha-numeric and '_', '-' or '.' characters."));
         }
 
-        if (!ctype_alnum($key[0])) {
+        if (!ctype_alnum((string) $key[0])) {
           form_set_error('ssl_key_new', t("The encryption key field must start with an alpha-numeric character."));
         }
 
@@ -281,12 +272,7 @@ function hosting_ssl_nodeapi_site_presave(&$node) {
  */
 function hosting_ssl_nodeapi_site_insert($node) {
   $id = db_insert('hosting_ssl_site')
-    ->fields(array(
-      'vid' => $node->vid,
-      'nid' => $node->nid,
-      'ssl_enabled' => $node->ssl_enabled,
-      'ssl_key' => $node->ssl_key,
-    ))
+    ->fields(['vid' => $node->vid, 'nid' => $node->nid, 'ssl_enabled' => $node->ssl_enabled, 'ssl_key' => $node->ssl_key])
     ->execute();
 }
 
@@ -295,7 +281,7 @@ function hosting_ssl_nodeapi_site_insert($node) {
  */
 function hosting_ssl_nodeapi_site_update($node) {
   // check if an existing record is there
-  $result = db_query("SELECT ssl_enabled FROM {hosting_ssl_site} WHERE vid = :vid", array(':vid' => $node->vid));
+  $result = db_query("SELECT ssl_enabled FROM {hosting_ssl_site} WHERE vid = :vid", [':vid' => $node->vid]);
   if (!($obj = $result->fetch())) {
     hosting_ssl_nodeapi_site_insert($node);
   }
@@ -305,10 +291,7 @@ function hosting_ssl_nodeapi_site_update($node) {
     }
 
     db_update('hosting_ssl_site')
-      ->fields(array(
-        'ssl_enabled' => $node->ssl_enabled,
-        'ssl_key' => $node->ssl_key,
-      ))
+      ->fields(['ssl_enabled' => $node->ssl_enabled, 'ssl_key' => $node->ssl_key])
       ->condition('vid', $node->vid)
       ->execute();
   }
@@ -320,7 +303,7 @@ function hosting_ssl_nodeapi_site_update($node) {
 function hosting_ssl_node_load($nodes, $types) {
   foreach ($nodes as $k => $node) {
     $result = db_query("SELECT ssl_enabled, ssl_key FROM {hosting_ssl_site} WHERE vid = :vid",
-      array(':vid' => $node->vid)
+      [':vid' => $node->vid]
       )->fetchObject();
     if ($result) {
       $nodes[$k]->ssl_enabled = $result->ssl_enabled;
@@ -361,7 +344,7 @@ function hosting_ssl_save_key($node) {
 
   if ($node->ssl_key == HOSTING_SSL_CUSTOM_KEY && !empty($node->ssl_key_new)) {
     $ssl_key = $node->ssl_key_new;
-    $result = db_query("SELECT * FROM {hosting_ssl_cert} WHERE ssl_key = :ssl_key", array(':ssl_key' => $ssl_key));
+    $result = db_query("SELECT * FROM {hosting_ssl_cert} WHERE ssl_key = :ssl_key", [':ssl_key' => $ssl_key]);
     if ($obj = $result->fetch()) {
       // update
       if ($node->client != NULL) {
@@ -398,13 +381,13 @@ function hosting_ssl_save_key($node) {
  * @return array
  */
 function hosting_ssl_get_keys($client = NULL, $ask_custom = FALSE) {
-  $keys = array();
+  $keys = [];
 
   if ($ask_custom == TRUE) {
     $keys[HOSTING_SSL_CUSTOM_KEY] = t("Generate a new encryption key.");
   }
 
-  $args = array();
+  $args = [];
   $query = "SELECT cid, ssl_key FROM {hosting_ssl_cert}";
 
   if (!is_null($client)) {
@@ -417,7 +400,7 @@ function hosting_ssl_get_keys($client = NULL, $ask_custom = FALSE) {
   $result = db_query($query, $args);
 
   while ($obj = $result->fetchObject()) {
-    if (count($obj->ssl_key)) {
+    if (is_countable($obj->ssl_key) ? count($obj->ssl_key) : 0) {
       $keys[$obj->cid] = $obj->ssl_key;
     }
   }
@@ -442,19 +425,13 @@ function hosting_ssl_clean_keys($node) {
                          siteA.ssl_enabled = :ssl_required
                        )
                        AND siteB.nid = :siteB_nid;",
-                 array(
-                   ':ssl_enabled' => HOSTING_SSL_ENABLED,
-                   ':ssl_required' => HOSTING_SSL_REQUIRED,
-                   ':siteB_nid' => $node->nid,
-                 ))->fetchField()) {
+                 [':ssl_enabled' => HOSTING_SSL_ENABLED, ':ssl_required' => HOSTING_SSL_REQUIRED, ':siteB_nid' => $node->nid])->fetchField()) {
     // We need to fetch the ssl_key field from the DB because the object comes
     // from the node edit, so it's gone.
     $ssl_key = db_query('SELECT ssl_key FROM {hosting_ssl_site} WHERE nid = :nid',
-      array(
-        ':nid' => $node->nid,
-      )
+      [':nid' => $node->nid]
     )->fetchField();
-    drupal_set_message(t("cleaning up unused certificate %cert associated with site %site", array('%cert' => $ssl_key, '%site' => $node->nid)));
+    drupal_set_message(t("cleaning up unused certificate %cert associated with site %site", ['%cert' => $ssl_key, '%site' => $node->nid]));
     db_delete('hosting_ssl_cert')
       ->condition('cid', $ssl_key)
       ->execute();
