@@ -16,7 +16,7 @@ class hosting_server_handler_field_services extends views_handler_field {
    */
   function construct() {
     parent::construct();
-    //$this->additional_fields = array('service', 'type', 'available');
+    //$this->additional_fields = ['service', 'type', 'available'];
   }
 
   /**

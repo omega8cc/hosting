@@ -21,15 +21,15 @@ function hosting_migrate_menu() {
   // TODO: add some security here
   $items['hosting/migrate/compare'] = ['title' => 'Compare packages', 'page callback' => 'hosting_migrate_comparison', 'access arguments' => ['create migrate task'], 'type' => MENU_CALLBACK];
   /*
-   $items['node/%hosting_platform_node/task_migrate'] = array(
+   $items['node/%hosting_platform_node/task_migrate'] = [
    'title' => t('Migrate'),
    'description' => t('Migrate sites to a new platform'),
    'page callback' => 'drupal_get_form',
-   'page arguments' => array('hosting_migrate_platform', 1),
-   'access arguments' => array('create migrate task'),
+   'page arguments' => ['hosting_migrate_platform', 1],
+   'access arguments' => ['create migrate task'],
    'type' => MENU_LOCAL_TASK,
    'weight' => ($info['weight']) ? $info['weight'] : 0,
-   );
+   ];
    */
   return $items;
 }

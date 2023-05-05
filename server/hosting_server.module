@@ -277,13 +277,13 @@ function hosting_server_invoke_services(&$node, $method, &$arg1 = NULL, &$arg2 =
  * Implements hook_form().
  */
 function hosting_server_form($node, &$form_state) {
-  $form['human_name'] = array(
+  $form['human_name'] = [
     '#type' => 'textfield',
     '#title' => t('Human-readable name'),
     '#default_value' => isset($node->human_name) ? $node->human_name : '',
     '#description' => t('<strong>Optional, but recommended.</strong> Internally, Aegir refers to servers by their hostname. The value of this field will be used throughout the UI, and allows for more meaningful names. While not enforced by the system, it is highly recommended that the name assigned to a server be unique.'),
     '#weight' => 1,
-  );
+  ];
   $form = [];
   $form['title'] = ['#type' => 'textfield', '#title' => t('Server hostname'), '#required' => TRUE, '#default_value' => $node->title, '#description' => t('The host name of the server. This is the address that will be used by Hostmaster to connect to the server to issue commands. It is to resolve to the internal network, if you have such a separation.<br /><strong>Be careful when changing the node title, it is used to create the SQL users if the IP address, below, is not set.</strong>'), '#weight' => 0];
 
@@ -316,12 +316,12 @@ function hosting_server_form($node, &$form_state) {
 
   $form['services_tabs'] = ['#type' => 'vertical_tabs'];
   foreach (hosting_server_services() as $name => $service) {
-    $form['services'][$name] = array(
+    $form['services'][$name] = [
       '#type' => 'fieldset',
       '#group' => 'services_tabs',
       '#title' => check_plain($service['title']),
       '#weight' => isset($service['weight']) ? $service['weight'] : 0,
-    );
+    ];
     // Check to ensure at least one service provider for each type exists.
     if (array_key_exists('types', $service)) {
 
@@ -349,10 +349,10 @@ function hosting_server_form($node, &$form_state) {
       drupal_set_message(t('No implementations available for the :type service. Please visit the !features_link page and enable one.', [':type' => $service['title'], '!features_link' => l(t('Hosting Features'), '/admin/hosting')]), 'warning');
     }
   }
-    $form["$extra_attribute"] = array(
+    $form["$extra_attribute"] = [
       '#type' => 'value',
       '#value' => isset($node->$extra_attribute) ? $node->$extra_attribute : NULL,
-    );
+    ];
   foreach (['verified', 'platform_status'] as $extra_attribute) {
   }
 

@@ -22,12 +22,12 @@ class hostingService_http_cluster extends hostingService_http {
       unset($servers[$this->server->nid]);
     }
 
-    $form['web_servers'] = array(
+    $form['web_servers'] = [
       '#title' => t('Servers'),
       '#type' => 'checkboxes',
       '#options' => $servers,
       '#default_value' => isset($this->web_servers) ? $this->web_servers : [],
-    );
+    ];
   }
 
   function load() {

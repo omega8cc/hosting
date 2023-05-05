@@ -10,14 +10,18 @@
 function hosting_site_data_form_alter(&$form, $form_state, $form_id) {
   if ($form_id == 'site_node_form') {
 
-    $form['site_data'] = ['#type' => 'fieldset', '#title' => t('Site data example'), '#description' => t('Example implementation of saving data into the site context.')];
+    $form['site_data'] = [
+      '#type' => 'fieldset',
+      '#title' => t('Site data example'),
+      '#description' => t('Example implementation of saving data into the site context.'),
+    ];
 
-    $form['site_data']['site_data'] = array(
+    $form['site_data']['site_data'] = [
       '#type' => 'textfield',
       '#title' => t('Site data'),
       '#default_value' => isset($form['#node']->site_data) ? $form['#node']->site_data : '',
       '#weight' => 0,
-    );
+    ];
     return $form;
   }
 }

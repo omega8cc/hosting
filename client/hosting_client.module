@@ -146,7 +146,7 @@ function hosting_client_form(&$node, &$form_state) {
   $form = [];
   $type = node_type_get_type('client');
 
-  $form['title'] = array(
+  $form['title'] = [
     '#type' => 'textfield',
     '#title' => check_plain($type->title_label),
     '#required' => TRUE,
@@ -154,26 +154,26 @@ function hosting_client_form(&$node, &$form_state) {
     '#default_value' => isset($node->title) ? $node->title : '',
     '#maxlength' => 100,
     '#description' => t('The name of this client, generally the organization name or the contact name for individuals.'),
-  );
+  ];
 
-  $form['uname'] = array(
+  $form['uname'] = [
     '#type' => 'machine_name',
     '#title' => t('Internal name'),
     '#size' => HOSTING_CLIENT_MAX_GROUP_LENGTH,
     '#maxlength' => HOSTING_CLIENT_MAX_GROUP_LENGTH,
     '#default_value' => isset($node->uname) ? $node->uname : '',
     '#access' => user_access('edit client uname'),
-    '#description' => t('A machine-usable name that can be used internally, for example to map to a UNIX group in the backend. It is unique accross the system. If no value is provided, it is deduced from the client name, by stripping spaces and metacharacters and adding a prefix (%prefix).', array('%prefix' => variable_get('hosting_client_prefix', 'no prefix define'))),
-    '#machine_name' => array(
+    '#description' => t('A machine-usable name that can be used internally, for example to map to a UNIX group in the backend. It is unique accross the system. If no value is provided, it is deduced from the client name, by stripping spaces and metacharacters and adding a prefix (%prefix).', ['%prefix' => variable_get('hosting_client_prefix', 'no prefix define')]),
+    '#machine_name' => [
       'exists' => 'hosting_get_client_by_uname',
-      'source' => array('title'),
+      'source' => ['title'],
       'label' => t('Internal name'),
       'replace_pattern' => '[^a-z0-9_-]+',
       'replace' => '_',
-    ),
-  );
+    ]
+  ];
   if (!isset($node->nid) && variable_get('hosting_client_register_user', FALSE)) {
-    $form['email'] = array(
+    $form['email'] = [
       '#type' => 'textfield',
       '#title' => t('Email address'),
       '#description' => t('Email address of the contact created with this client. Optional - if none is provided, no Aegir control panel user will be created with this client. <strong>NOTE: FTPS and Limited Shell extra user for this client will always be created - but only if this is an Octopus Satellite Instance</strong>.'),
@@ -181,7 +181,7 @@ function hosting_client_form(&$node, &$form_state) {
       '#size' => 40,
       '#default_value' => isset($node->email) ? $node->email : '',
       '#maxlength' => 100,
-    );
+    ];
 
     $form['email_confirm'] = ['#type' => 'textfield', '#title' => t('Confirm Email address'), '#required' => FALSE, '#size' => 40, '#maxlength' => 100];
   }
@@ -206,10 +206,10 @@ function hosting_client_form(&$node, &$form_state) {
   }
   else {
     global $user;
-    $form['new_user'] = array(
+    $form['new_user'] = [
       '#type' => 'value',
       '#value' => isset($user->name) ? $user->name : '',
-    );
+    ];
   }
   return $form;
   // @ignore security_fapi_markup

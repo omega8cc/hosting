@@ -23,14 +23,14 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
 
     if ($show_desc) {
       // The text to display when there are no valid options to select.
-      $form[$item . '_description'] = array(
+      $form[$item . '_description'] [
         '#prefix' => "<div class='hosting-site-field-description' id='hosting-site-field-{$css_id}-description'>",
         '#suffix' => '</div>',
         '#type' => 'item',
         '#title' => $element['#title'],
         '#description' => isset($element['#description']) ? $element['#description'] : NULL,
         '#markup' => "<div class='placeholder'>" . $filter_display($element['#default_value']) . "</div>",
-      );
+      ];
       if (isset($element['#weight'])) {
         $form[$item . '_description']['#weight'] = $element['#weight'];
       }
@@ -318,10 +318,10 @@ function hosting_site_form($node, &$form_state) {
   ), '_hosting_node_link');
 
   foreach (array('verified', 'last_cron', 'site_status') as $extra_attribute) {
-    $form["$extra_attribute"] = array(
+    $form["$extra_attribute"] = [
       '#type' => 'value',
       '#value' => isset($node->$extra_attribute) ? $node->$extra_attribute : NULL,
-    );
+    ];
   }
 
   return $form;

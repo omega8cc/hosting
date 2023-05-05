@@ -40,7 +40,7 @@ class hostingService_http_ssl extends hostingService_http_public {
   function form(&$form) {
     parent::form($form);
 
-    $form['ssl_port'] = array(
+    $form['ssl_port'] = [
       '#type' => 'textfield',
       '#title' => t('SSL Port'),
       '#required' => !empty($this->available),
@@ -49,7 +49,7 @@ class hostingService_http_ssl extends hostingService_http_public {
       '#description' => t("The port that this service will use for encrypted traffic."),
       '#maxlength' => 255,
       '#weight' => -7,
-    );
+    ];
   }
 
   function view(&$render) {

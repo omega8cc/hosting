@@ -10,14 +10,18 @@
 function hosting_server_data_form_alter(&$form, $form_state, $form_id) {
   if ($form_id == 'server_node_form') {
 
-    $form['server_data'] = ['#type' => 'fieldset', '#title' => t('Server data example'), '#description' => t('Example implementation of saving data into the server context.')];
+    $form['server_data'] = [
+      '#type' => 'fieldset',
+      '#title' => t('Server data example'),
+      '#description' => t('Example implementation of saving data into the server context.'),
+    ];
 
-    $form['server_data']['server_data'] = array(
+    $form['server_data']['server_data'] = [
       '#type' => 'textfield',
       '#title' => t('Server data'),
       '#default_value' => isset($form['#node']->server_data) ? $form['#node']->server_data : '',
       '#weight' => 0,
-    );
+    ];
     return $form;
   }
 }

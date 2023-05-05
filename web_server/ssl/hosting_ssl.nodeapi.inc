@@ -102,12 +102,12 @@ function hosting_ssl_hosting_site_options_alter(&$return, $node) {
  * Implements hook_nodeapi_TYPE_OP().
  */
 function hosting_ssl_nodeapi_site_view(&$node, $teaser = FALSE) {
-  $node->content['info']['ssl_enabled'] = array(
+  $node->content['info']['ssl_enabled'] = [
     '#type' => 'item',
     '#title' => t('Encryption'),
     '#markup' => hosting_ssl_status_options((isset($node->ssl_enabled)) ? $node->ssl_enabled : HOSTING_SSL_DISABLED),
     '#weight' => 6,
-  );
+  ];
 
   if (isset($node->ssl_enabled) && $node->ssl_enabled == TRUE) {
     $node->content['info']['ssl_key'] = ['#type' => 'item', '#title' => t('SSL key'), '#markup' => hosting_ssl_get_key($node->ssl_key) ? t("%path", ['%path' => sprintf("%s", hosting_ssl_output_key($node->ssl_key))]) : t("(key deleted)"), '#weight' => 7];

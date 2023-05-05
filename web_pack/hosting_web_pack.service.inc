@@ -23,18 +23,18 @@ class hostingService_http_pack extends hostingService_http {
       unset($servers[$this->server->nid]);
     }
 
-    $form['master_servers'] = array(
+    $form['master_servers'] = [
       '#title' => t('Master servers'),
       '#type' => 'checkboxes',
       '#options' => $servers,
       '#default_value' => isset($this->master_servers) ? $this->master_servers : [],
-    );
-    $form['slave_servers'] = array(
+    ];
+    $form['slave_servers'] = [
       '#title' => t('Slave servers'),
       '#type' => 'checkboxes',
       '#options' => $servers,
       '#default_value' => isset($this->slave_servers) ? $this->slave_servers : [],
-    );
+    ];
   }
 
   function load() {

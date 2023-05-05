@@ -317,48 +317,56 @@ function hosting_platform_form(&$node) {
     $form['publish_path'] = ['#type' => 'hidden', '#value' => hosting_path_normalize($node->publish_path)];
   }
 
-  $form['frommakefile']['makefile'] = array(
+  $form['frommakefile']['makefile'] = [
     '#type' => 'textfield',
     '#title' => t('Platform Makefile'),
     '#description' => t('<b>Wait a moment!</b> Do not confuse this field with Platform Path field - you need to start typing Platform Name above to see the small Edit link and use it to edit otherwise auto-generated Platform Path, which is required when you are adding already created Platform directory (typically on site import). This Makefile field is for the absolute path on the filesystem or public URL of a makefile that will be used to create the Platform in the path auto-generated or specified above in the Platform Path field - note that its parent directory must exist and must be group writable: rwxrwxr-x. If the Platform directory already exists, the makefile will be ignored.'),
     '#size' => 40,
     '#default_value' => isset($node->makefile) ? $node->makefile : NULL,
     '#maxlength' => 255,
-  );
-  $form['frommakefile']['make_working_copy'] = array(
+  ];
+
+  $form['frommakefile']['make_working_copy'] = [
     '#type' => 'radios',
     '#title' => t('Drush make option'),
     '#default_value' => isset($node->make_working_copy) ? $node->make_working_copy : 0,
-    '#options' => array(
+    '#options' => [
       0 => t('Normal - Discards SCM files'),
       1 => t('Working copy - preserves SCM files'),
-    ),
-  );
-  $form['frommakefile'] = ['#type' => 'fieldset', '#tree' => TRUE, '#title' => t('Deploy from makefile'), '#collapsed' => TRUE, '#collapsible' => TRUE, '#description' => t('You may deploy this platform from a makefile.'), '#weight' => -1];
+    ]
+  ];
 
-
+  $form['frommakefile'] = [
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+    '#title' => t('Deploy from makefile'),
+    '#collapsed' => TRUE,
+    '#collapsible' => TRUE,
+    '#description' => t('You may deploy this platform from a makefile.'),
+    '#weight' => -1,
+  ];
 
   $form['#after_build'][] = 'hosting_platform_form_platform_after_build';
 
   $servers = hosting_get_servers('http');
   if (count($servers) > 1) {
-    $form['web_server'] = array(
+    $form['web_server'] = [
       '#type' => 'radios',
       '#title' => t('Web server'),
       '#description' => t('The web server the sites will be hosted on.'),
       '#options' => $servers,
       '#default_value' => isset($node->web_server) ? $node->web_server : HOSTING_DEFAULT_WEB_SERVER,
-    );
+    ];
   }
   else {
     $form['web_server'] = ['#type' => 'hidden', '#value' => array_key_first($servers)];
   }
 
   foreach (array('verified', 'platform_status') as $extra_attribute) {
-    $form["$extra_attribute"] = array(
+    $form["$extra_attribute"] = [
       '#type' => 'value',
       '#value' => isset($node->$extra_attribute) ? $node->$extra_attribute : NULL,
-    );
+    ];
   }
 
   return $form;

@@ -31,7 +31,7 @@ class hostingService_db_mysql extends hostingService_db {
 
   function form(&$form) {
     parent::form($form);
-    $form['db_user'] = array(
+    $form['db_user'] = [
       '#type' => 'textfield',
       '#required' => !empty($this->available),
       '#title' => t('Username'),
@@ -40,7 +40,7 @@ class hostingService_db_mysql extends hostingService_db {
       '#default_value' => isset($this->db_user) ? $this->db_user : NULL,
       '#maxlength' => 64,
       '#weight' => 5,
-    );
+    ];
     $passwd_description = '';
     if (isset($this->db_passwd)) {
       $passwd_description = t('<strong>You have already set a password for this database server.</strong><br />');

@@ -101,10 +101,10 @@ function hosting_alias_form_data(&$form, &$form_state) {
 
   // Add alias textfields.
   for ($delta = 0; $delta <= count($aliases); $delta++) {
-    $form['aliases_wrapper']['aliases'][$delta] = array(
+    $form['aliases_wrapper']['aliases'][$delta] = [
       '#type' => 'textfield',
       '#default_value' => isset($aliases[$delta]) ? $aliases[$delta] : '',
-    );
+    ];
   }
 
   // "Add Alias" button.

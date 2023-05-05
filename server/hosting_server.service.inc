@@ -126,7 +126,7 @@ class hostingService {
 
   public function form(&$form) {
     if ($this->has_restart_cmd) {
-      $form['restart_cmd'] = array(
+      $form['restart_cmd'] [
         '#type' => 'textfield',
         '#title' => t('Restart command'),
         '#required' => !empty($this->available),
@@ -135,7 +135,7 @@ class hostingService {
         '#size' => 40,
         '#maxlength' => 255,
         '#weight' => -7,
-      );
+      ];
     }
     else {
       $form['restart_cmd'] = ['#type' => 'value', '#value' => NULL];
@@ -143,7 +143,7 @@ class hostingService {
 
 
     if ($this->has_port) {
-      $form['port'] = array(
+      $form['port'] = [
         '#type' => 'textfield',
         '#title' => t('Port'),
         '#required' => !empty($this->available),
@@ -152,7 +152,7 @@ class hostingService {
         '#description' => t("The port that this service is listening on."),
         '#maxlength' => 255,
         '#weight' => -8,
-      );
+      ];
     }
     else {
       $form['port'] = ['#type' => 'value', '#value' => '0'];

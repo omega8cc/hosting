@@ -1660,13 +1660,13 @@ function hosting_task_entity_property_info_alter(&$info) {
 
   // TODO: how should we expand these arguments?
   /*
-  $task_properties['task_arguments'] = array(
+  $task_properties['task_arguments'] = [
     'label' => t('Task arguments'),
     'description' => t('The argument for the given task.'),
     // TODO list<text> is insufficient, list<struct> maybe the solution
     // see ie commerce/modules/price/commerce_price.module commerce_price_field_data_property_info
     'type' => 'list<struct>',
     'setter callback' => 'entity_property_verbatim_set',
-  );
+  ];
   */
 }
