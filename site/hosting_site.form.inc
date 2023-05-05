@@ -276,19 +276,23 @@ function hosting_site_form($node, &$form_state) {
     // Default to the first platform, if none was passed in the path.
     $default_platform = current(array_keys($platforms));
   }
-  _hosting_site_field($form, $node, 'platform', ['#type' => 'radios', '#title' => t('Platform'), '#required' => TRUE, '#description' => t('The platform you want the site to be hosted on.<br />
+  _hosting_site_field($form, $node, 'platform', [
+    '#type' => 'radios',
+    '#title' => t('Platform'),
+    '#required' => TRUE,
+    '#description' => t('The platform you want the site to be hosted on.<br />
                           Not seeing a certain platform? Platforms shown are those that support the profile above.
                           If a different profile is selected, this list may change automatically.'),
     '#options' => $platforms,
     '#default_value' => isset($node->platform) ? $node->platform : $default_platform,
-    '#ajax' => array(
+    '#ajax' => [
       'callback' => 'hosting_site_language_callback',
       'wrapper' => 'hosting-site-field-site-language' ,
       'effect' => 'fade',
       'event' => 'change',
       'method' => 'replace',
-    ),
-  ), '_hosting_node_link');
+    ],
+  ], '_hosting_node_link');
 
   // Override the defaults if the profile has been changed.
   if (isset($form_state['values']['platform'])) {
