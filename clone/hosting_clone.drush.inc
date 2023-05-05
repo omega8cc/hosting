@@ -56,7 +56,7 @@ function hosting_clone_post_hosting_clone_task($task, $data) {
     $clone->platform = $target;
     $clone->import = 1; # make sure the site doesn't reinstall...
     $clone->verified = 0; # ... and it does verify
-    $clone->aliases = isset($task->task_args['aliases']) ? $task->task_args['aliases'] : array();
+    $clone->aliases = isset($task->task_args['aliases']) ? $task->task_args['aliases'] : [];
     $clone->redirection = isset($task->task_args['redirection']) ? $task->task_args['redirection'] : FALSE;
 
     if ($clone->db_server != $task->task_args['new_db_server']) {

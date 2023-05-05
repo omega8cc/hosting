@@ -679,7 +679,7 @@ function hosting_client_platform_access_form_submit($form, $form_state) {
   $clients = $form_state['values']['clients'];
   $new_client = isset($form_state['values']['new_client']) ? $form_state['values']['new_client'] : FALSE;
   $platform = $form_state['build_info']['args'][0];
-  $existing = isset($platform->clients) ? $platform->clients : array();
+  $existing = isset($platform->clients) ? $platform->clients : [];
 
   // Remove the selected client(s).
   foreach ($clients as $cid => $remove) {

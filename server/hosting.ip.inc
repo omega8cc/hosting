@@ -8,7 +8,7 @@
  * Display the ip address on the node. IP utility function for hook_view.
  */
 function _hosting_ip_view(&$node) {
-  $ip_list = isset($node->ip_addresses) ? $node->ip_addresses : array();
+  $ip_list = isset($node->ip_addresses) ? $node->ip_addresses : [];
 
   if (is_countable($ip_list) ? count($ip_list) : 0) {
     $node->content['info']['ip_addresses'] = ['#type' => 'item', '#title' => t('IP addresses'), '#markup' => implode('<br />', $ip_list)];
@@ -52,7 +52,7 @@ function _hosting_ip_save($node, $update = FALSE) {
  * Validate that IP list is valid. IP utility function for hook_validate.
  */
 function _hosting_ip_validate($node) {
-  $ips = isset($node->ip_addresses) ? $node->ip_addresses : array();
+  $ips = isset($node->ip_addresses) ? $node->ip_addresses : [];
   foreach ($ips as $id => $ip) {
     $ip = trim((string) $ip);
     if (empty($ip)) {

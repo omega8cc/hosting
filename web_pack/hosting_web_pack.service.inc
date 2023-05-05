@@ -27,13 +27,13 @@ class hostingService_http_pack extends hostingService_http {
       '#title' => t('Master servers'),
       '#type' => 'checkboxes',
       '#options' => $servers,
-      '#default_value' => isset($this->master_servers) ? $this->master_servers : array(),
+      '#default_value' => isset($this->master_servers) ? $this->master_servers : [],
     );
     $form['slave_servers'] = array(
       '#title' => t('Slave servers'),
       '#type' => 'checkboxes',
       '#options' => $servers,
-      '#default_value' => isset($this->slave_servers) ? $this->slave_servers : array(),
+      '#default_value' => isset($this->slave_servers) ? $this->slave_servers : [],
     );
   }
 

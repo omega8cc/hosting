@@ -368,7 +368,7 @@ function hosting_features_enable($features, $rebuild = TRUE, $enable = TRUE) {
       if (isset($all_features[$feature]['enable']) && function_exists($callback = $all_features[$feature]['enable'])) {
         $callback();
       }
-      $role_perms = isset($all_features[$feature]['role_permissions']) ? $all_features[$feature]['role_permissions'] : array();
+      $role_perms = isset($all_features[$feature]['role_permissions']) ? $all_features[$feature]['role_permissions'] : [];
 
       hosting_add_permissions($module, $role_perms);
     }
