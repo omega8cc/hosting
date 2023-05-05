@@ -23,7 +23,7 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
 
     if ($show_desc) {
       // The text to display when there are no valid options to select.
-      $form[$item . '_description'] [
+      $form[$item . '_description'] = [
         '#prefix' => "<div class='hosting-site-field-description' id='hosting-site-field-{$css_id}-description'>",
         '#suffix' => '</div>',
         '#type' => 'item',

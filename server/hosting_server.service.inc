@@ -126,7 +126,7 @@ class hostingService {
 
   public function form(&$form) {
     if ($this->has_restart_cmd) {
-      $form['restart_cmd'] [
+      $form['restart_cmd'] = [
         '#type' => 'textfield',
         '#title' => t('Restart command'),
         '#required' => !empty($this->available),
