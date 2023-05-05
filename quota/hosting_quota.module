@@ -8,26 +8,11 @@
  * Implements hook_permission().
  */
 function hosting_quota_permission() {
-  $permissions = array(
-    'edit all quotas' => array(
-      'title' => t('edit all quotas'),
-    ),
-    'view all quotas' => array(
-      'title' => t('view all quotas'),
-    ),
-    'view own quota' => array(
-      'title' => t('view own quota'),
-    ),
-    'bypass all quotas' => array(
-      'title' => t('bypass all quotas'),
-    ),
-  );
+  $permissions = ['edit all quotas' => ['title' => t('edit all quotas')], 'view all quotas' => ['title' => t('view all quotas')], 'view own quota' => ['title' => t('view own quota')], 'bypass all quotas' => ['title' => t('bypass all quotas')]];
   $all_resources = module_invoke_all('hosting_quota_resource');
   foreach ($all_resources as $resource => $data) {
-    $permissions["bypass resource $resource limit"] = array(
-      'title' => t('bypass resource !resource limit',
-        array('!resource' => $resource)),
-    );
+    $permissions["bypass resource $resource limit"] = ['title' => t('bypass resource !resource limit',
+      ['!resource' => $resource])];
   }
   return $permissions;
 }
@@ -36,34 +21,13 @@ function hosting_quota_permission() {
  * Implements hook_menu().
  */
 function hosting_quota_menu() {
-  $items = array();
+  $items = [];
 
-  $items['admin/hosting/quotas'] = array(
-    'title' => 'Quotas',
-    'description' => 'Aegir client quotas',
-    'page callback' => 'hosting_quota_admin_client_list',
-    'access arguments' => array('view all quotas'),
-    'type' => MENU_LOCAL_TASK,
-    'file' => 'hosting_quota.admin.inc',
-  );
+  $items['admin/hosting/quotas'] = ['title' => 'Quotas', 'description' => 'Aegir client quotas', 'page callback' => 'hosting_quota_admin_client_list', 'access arguments' => ['view all quotas'], 'type' => MENU_LOCAL_TASK, 'file' => 'hosting_quota.admin.inc'];
 
-  $items['admin/hosting/quotas/list'] = array(
-    'title' => 'List Client Quotas',
-    'description' => 'Listing of all client quotas',
-    'access arguments' => array('view all quotas'),
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'file' => 'hosting_quota.admin.inc',
-  );
+  $items['admin/hosting/quotas/list'] = ['title' => 'List Client Quotas', 'description' => 'Listing of all client quotas', 'access arguments' => ['view all quotas'], 'type' => MENU_DEFAULT_LOCAL_TASK, 'file' => 'hosting_quota.admin.inc'];
 
-  $items['admin/hosting/quotas/defaults'] = array(
-    'title' => 'Default Client Quotas',
-    'description' => 'Set defaults for client quotas',
-    'access arguments' => array('edit all quotas'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('hosting_quota_admin_defaults_form'),
-    'type' => MENU_LOCAL_TASK,
-    'file' => 'hosting_quota.admin.inc',
-  );
+  $items['admin/hosting/quotas/defaults'] = ['title' => 'Default Client Quotas', 'description' => 'Set defaults for client quotas', 'access arguments' => ['edit all quotas'], 'page callback' => 'drupal_get_form', 'page arguments' => ['hosting_quota_admin_defaults_form'], 'type' => MENU_LOCAL_TASK, 'file' => 'hosting_quota.admin.inc'];
 
   return $items;
 }
@@ -86,7 +50,7 @@ function hosting_quota_get($resource) {
   }
   else {
     // $resource is not valid, so generate an error
-    watchdog('hosting_quota', 'Invalid resource called', array(), WATCHDOG_ERROR);
+    watchdog('hosting_quota', 'Invalid resource called', [], WATCHDOG_ERROR);
     return FALSE;
   }
 }
@@ -173,22 +137,16 @@ function hosting_quota_resource_render($resource, $usage) {
  *   The new value for the resource.
  */
 function hosting_quota_set_limit($client, $resource, $value) {
-  if (db_query("SELECT COUNT(*) FROM {hosting_client_quota} WHERE client = :client AND resource = :resource", array(':client' => $client, ':resource' => $resource))->fetchField()) {
+  if (db_query("SELECT COUNT(*) FROM {hosting_client_quota} WHERE client = :client AND resource = :resource", [':client' => $client, ':resource' => $resource])->fetchField()) {
     $id = db_update('hosting_client_quota')
-      ->fields(array(
-        'value' => $value,
-      ))
+      ->fields(['value' => $value])
       ->condition('client', $client)
       ->condition('resource', $resource)
       ->execute();
   }
   else {
     $id = db_insert('hosting_client_quota')
-      ->fields(array(
-        'client' => $client,
-        'resource' => $resource,
-        'value' => $value,
-      ))
+      ->fields(['client' => $client, 'resource' => $resource, 'value' => $value])
       ->execute();
   }
 }
@@ -208,6 +166,7 @@ function hosting_quota_set_limit($client, $resource, $value) {
  *   True if the limit is higher than usage, false otherwise, or null if the resource could not be checked
  */
 function hosting_quota_check($client, $resource, $start = NULL, $end = NULL) {
+  $resource_name = null;
   // Set up some default dates for the last month if necessary
   if (!$start || !$end) {
     $end = date('Y-m-d', mktime(0, 0, 0, date("m"), 1,    date("Y")));
@@ -228,7 +187,7 @@ function hosting_quota_check($client, $resource, $start = NULL, $end = NULL) {
       return TRUE;
     }
     $resource_usage = module_invoke($resource['module'], 'hosting_quota_get_usage', $client, $resource_name, $start, $end);
-    $resource_limit = db_query('SELECT value FROM {hosting_client_quota} WHERE client = :client AND resource = :resource', array(':client' => $client, ':resource' => $resource_name))->fetchField();
+    $resource_limit = db_query('SELECT value FROM {hosting_client_quota} WHERE client = :client AND resource = :resource', [':client' => $client, ':resource' => $resource_name])->fetchField();
     // Return the appropriate values
     if ($resource_limit > $resource_usage) {
       return TRUE;
@@ -262,7 +221,7 @@ function hosting_quota_get_all_info($client, $start = NULL, $end = NULL) {
   static $quota_info;
 
   if (!isset($quota_info)) {
-    $quota_info = array();
+    $quota_info = [];
     // Set up some default dates for the last month if necessary
     if (!$start || !$end) {
       $end = date('Y-m-d', mktime(0, 0, 0, date("m"), 1,    date("Y")));
@@ -276,15 +235,13 @@ function hosting_quota_get_all_info($client, $start = NULL, $end = NULL) {
       // First read in the info from the resource
       $quota_info[$resource_name] = $resource_data;
       // We have to format this way to to dependencies in quota imps
-      $resource = array(
-        $resource_name => $resource_data,
-      );
+      $resource = [$resource_name => $resource_data];
 
       // Get usage info
       $quota_info[$resource_name]['usage'] = hosting_quota_get_usage($client, $resource, $start, $end);
 
       // Fetch info about the quota limit directly from the db
-      $quota_info[$resource_name]['limit'] = db_query('SELECT value FROM {hosting_client_quota} WHERE client = :client AND resource = :resource', array(':client' => $client, ':resource' => $resource_name))->fetchField();
+      $quota_info[$resource_name]['limit'] = db_query('SELECT value FROM {hosting_client_quota} WHERE client = :client AND resource = :resource', [':client' => $client, ':resource' => $resource_name])->fetchField();
 
       // Render both limits and usage
       $quota_info[$resource_name]['rendered usage'] = hosting_quota_resource_render($resource, $quota_info[$resource_name]['usage']);
@@ -304,7 +261,7 @@ function hosting_quota_node_update($node) {
     if (user_access('edit all quotas')) {
       foreach ($node as $field => $value) {
         if (substr($field, 0, 6) == 'quota-') {
-          $quota = substr($field, 6);
+          $quota = substr((string) $field, 6);
           // If no value was entered use the default value for this resource
           if (!$value) {
             $value = variable_get("hosting_quota_default_{$quota}", 0);
@@ -344,12 +301,7 @@ function hosting_quota_node_view($node, $view_mode, $langcode) {
   if ($node->type == 'client') {
     $allowed_clients = array_keys(hosting_get_client_from_user($user->uid));
     if (user_access('view all quotas') || (in_array($node->nid, $allowed_clients) && user_access('view own quota'))) {
-      $node->content['info']['quota'] = array(
-        '#type' => 'item',
-        '#title' => 'Quota',
-        '#markup' => theme('hosting_quota_client', array('node' => $node)),
-        '#weight' => 5,
-      );
+      $node->content['info']['quota'] = ['#type' => 'item', '#title' => 'Quota', '#markup' => theme('hosting_quota_client', ['node' => $node]), '#weight' => 5];
     }
   }
 }
@@ -368,24 +320,13 @@ function hosting_quota_form_alter(&$form, &$form_state, $form_id) {
       $quota_info = $node->quota;
     }
 
-    $form['quota'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Client quota settings'),
-      '#access' => user_access('edit all quotas'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
+    $form['quota'] = ['#type' => 'fieldset', '#title' => t('Client quota settings'), '#access' => user_access('edit all quotas'), '#collapsible' => TRUE, '#collapsed' => TRUE];
 
     foreach ($quota_info as $resource => $quota) {
       if (!isset($quota['limit'])) {
         $quota['limit'] = variable_get("hosting_quota_default_$resource", 0);
       }
-      $form['quota']['quota-' . $resource] = array(
-        '#title' => check_plain($quota['title']),
-        '#description' => check_plain($quota['description']),
-        '#type' => 'textfield',
-        '#default_value' => $quota ? $quota['limit'] : 0,
-      );
+      $form['quota']['quota-' . $resource] = ['#title' => check_plain($quota['title']), '#description' => check_plain($quota['description']), '#type' => 'textfield', '#default_value' => $quota ? $quota['limit'] : 0];
 
       // Validate that a number was submitted for the quota
       $form['#validate'][] = 'hosting_quota_numeric_value';
@@ -409,20 +350,7 @@ function hosting_quota_numeric_value($form, $form_state) {
  * Implements hook_theme().
  */
 function hosting_quota_theme($existing, $resource, $theme, $path) {
-  return array(
-    'hosting_quota_client' => array(
-      'variables' => array(
-        'node' => NULL,
-      ),
-    ),
-    'hosting_quota_admin_list' => array(
-      'variables' => array(
-        'client_quotas' => array(),
-        'resources' => array(),
-        'items_per_page' => 25,
-      ),
-    ),
-  );
+  return ['hosting_quota_client' => ['variables' => ['node' => NULL]], 'hosting_quota_admin_list' => ['variables' => ['client_quotas' => [], 'resources' => [], 'items_per_page' => 25]]];
 }
 
 /**
@@ -436,23 +364,20 @@ function theme_hosting_quota_admin_list($variables) {
   $client_quotas = $variables['client_quotas'];
   $resources = $variables['resources'];
   $items_per_page = $variables['items_per_page'];
-  $header = array(t('Client'));
-  $rows = array();
+  $header = [t('Client')];
+  $rows = [];
 
   foreach ($resources as $resource) {
-    $header[] = t('@resource (Used / Limit)', array('@resource' => $resource['title']));
+    $header[] = t('@resource (Used / Limit)', ['@resource' => $resource['title']]);
   }
   foreach ($client_quotas as $client_nid => $quotas) {
-    $row = array();
+    $row = [];
     $row[] = l($quotas['name'], "node/{$client_nid}");
 
     foreach ($resources as $resource => $resource_info) {
       // Provide a visual indication if the usage is over the limit
       if ($quotas[$resource]['usage'] > $quotas[$resource]['limit']) {
-        $row[] = array(
-          'data' => "{$quotas[$resource]['rendered usage']} / {$quotas[$resource]['rendered limit']}",
-          'class' => array('warning'),
-        );
+        $row[] = ['data' => "{$quotas[$resource]['rendered usage']} / {$quotas[$resource]['rendered limit']}", 'class' => ['warning']];
       }
       else {
         $row[] = "{$quotas[$resource]['rendered usage']} / {$quotas[$resource]['rendered limit']}";
@@ -460,7 +385,7 @@ function theme_hosting_quota_admin_list($variables) {
     }
     $rows[] = $row;
   }
-  return '<p>' . t('Usage information for the last month.') . '</p>' . theme('table', array('header' => $header, 'rows' => $rows)) . theme('pager', array('tags' => array()));
+  return '<p>' . t('Usage information for the last month.') . '</p>' . theme('table', ['header' => $header, 'rows' => $rows]) . theme('pager', ['tags' => []]);
 }
 
 /**
@@ -473,15 +398,15 @@ function theme_hosting_quota_admin_list($variables) {
 function theme_hosting_quota_client($variables) {
   $node = $variables['node'];
   if (!empty($node->quota)) {
-    $header = array(t('Resource'), t('Used'), t('Quota'));
+    $header = [t('Resource'), t('Used'), t('Quota')];
     foreach ($node->quota as $resource => $value) {
-      $row = array();
+      $row = [];
       $row[] = $value['title'];
       $row[] = $value['rendered usage'];
       $row[] = $value['rendered limit'];
       $rows[] = $row;
     }
-    return theme('table', array('header' => $header, 'rows' => $rows));
+    return theme('table', ['header' => $header, 'rows' => $rows]);
   }
   return '';
 }

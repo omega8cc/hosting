@@ -15,23 +15,11 @@ declare (ticks = 1);
  * Implements hook_drush_command().
  */
 function hosting_queued_drush_command() {
-  $items = array();
+  $items = [];
 
-  $items['hosting-queued'] = array(
-    'description' => 'Runs the tasks queue',
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-    'drupal dependencies' => array(
-      'hosting_queued',
-    ),
-  );
+  $items['hosting-queued'] = ['description' => 'Runs the tasks queue', 'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL, 'drupal dependencies' => ['hosting_queued']];
 
-  $items['hosting-release-lock'] = array(
-    'description' => 'Releases any stale locks on the tasks queue',
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-    'drupal dependencies' => array(
-      'hosting_queued',
-    ),
-  );
+  $items['hosting-release-lock'] = ['description' => 'Releases any stale locks on the tasks queue', 'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL, 'drupal dependencies' => ['hosting_queued']];
 
   return $items;
 }
@@ -133,9 +121,7 @@ function drush_hosting_queued() {
     // Get some tasks to run.
     if ($tasks = @hosting_get_new_tasks()) {
 
-      drush_log(dt("Found %count tasks in queue. Running...", array(
-        '%count' => count($tasks),
-      )), "notice");
+      drush_log(dt("Found %count tasks in queue. Running...", ['%count' => count($tasks)]), "notice");
 
       if (lock_acquire('hosting_queue_tasks_running', HOSTING_QUEUE_LOCK_TIMEOUT)) {
         drush_log('Acquired lock on task queue.');
@@ -149,12 +135,12 @@ function drush_hosting_queued() {
           sleep(1);
 
           // Execute the task.
-          hosting_task_execute($task, array('interactive' => TRUE));
+          hosting_task_execute($task, ['interactive' => TRUE]);
 
           // Delay for a configurable amount of time.
           $delay = variable_get('hosting_queued_post_task_delay', 0);
           if (!empty($delay)) {
-            drush_log(dt('Going to sleep for @count seconds after completing task.', array('@count' => $delay)));
+            drush_log(dt('Going to sleep for @count seconds after completing task.', ['@count' => $delay]));
             sleep($delay);
           }
 
@@ -220,7 +206,7 @@ function drush_hosting_queued() {
  * before stopping.
  */
 function hosting_queued_stop($signal) {
-  watchdog('hosting_queued', 'Received signal @signal, waiting for children to die.', array('@signal' => $signal));
+  watchdog('hosting_queued', 'Received signal @signal, waiting for children to die.', ['@signal' => $signal]);
   $status = NULL;
   pcntl_wait($status);
   drush_log('Releasing lock on task queue.');
@@ -233,10 +219,12 @@ function hosting_queued_stop($signal) {
  * Restart the dispatcher to work around memory leaks
  */
 function hosting_queued_restart($signal = NULL) {
+  $drush = null;
+  $args = null;
   try {
     // If we received a singal, process it.
     if (!is_null($signal)) {
-      watchdog('hosting_queued', 'Received signal @signal, waiting for children to die.', array('@signal' => $signal));
+      watchdog('hosting_queued', 'Received signal @signal, waiting for children to die.', ['@signal' => $signal]);
       $status = NULL;
       pcntl_wait($status);
     }
@@ -249,14 +237,14 @@ function hosting_queued_restart($signal = NULL) {
       // Strip sub-array to avoid warning "Array to string conversion"
       unset($_ENV['argv']);
 
-      watchdog('hosting_queued', 'Restarting queue daemon with @drush @args.', array('@drush' => $drush, '@args' => implode(" ", $args)));
+      watchdog('hosting_queued', 'Restarting queue daemon with @drush @args.', ['@drush' => $drush, '@args' => implode(" ", $args)]);
       drush_log('Releasing lock on task queue.');
       lock_release('hosting_queue_tasks_running');
       // close all open database file descriptors
       hosting_queued_db_close_all();
     }
     else {
-      watchdog('hosting_queued', 'PCNTL not installed, unable to auto-restart.', array(), WATCHDOG_WARNING);
+      watchdog('hosting_queued', 'PCNTL not installed, unable to auto-restart.', [], WATCHDOG_WARNING);
     }
   }
   catch (Exception $e) {
@@ -305,11 +293,11 @@ function hosting_queued_db_close_all() {
 function hosting_queued_drush_find_drush() {
   $php = drush_get_option('php');
   if (isset($php)) {
-    $php = trim($php, "'");
-    $drush = array($php, realpath($_SERVER['argv'][0]), "--php='$php'");
+    $php = trim((string) $php, "'");
+    $drush = [$php, realpath($_SERVER['argv'][0]), "--php='$php'"];
   }
   else {
-    $drush = array(realpath($_SERVER['argv']['0']));
+    $drush = [realpath($_SERVER['argv']['0'])];
   }
   return $drush;
 }

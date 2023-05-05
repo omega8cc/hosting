@@ -8,7 +8,7 @@
  * Implements hook_views_default_views().
  */
 function hosting_server_views_default_views() {
-  $views = array();
+  $views = [];
 
   // Exported view: hosting_server_list
   $view = new view();
@@ -34,49 +34,9 @@ function hosting_server_views_default_views() {
   $handler->display->display_options['pager']['options']['items_per_page'] = '10';
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['row_class'] = '[status]';
-  $handler->display->display_options['style_options']['columns'] = array(
-    'status' => 'status',
-    'nid' => 'nid',
-    'title' => 'title',
-    'human_name' => 'human_name',
-    'services' => 'services',
-  );
+  $handler->display->display_options['style_options']['columns'] = ['status' => 'status', 'nid' => 'nid', 'title' => 'title', 'human_name' => 'human_name', 'services' => 'services'];
   $handler->display->display_options['style_options']['default'] = '-1';
-  $handler->display->display_options['style_options']['info'] = array(
-    'status' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'nid' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'human_name' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'services' => array(
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-  );
+  $handler->display->display_options['style_options']['info'] = ['status' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'nid' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'human_name' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'services' => ['align' => '', 'separator' => '', 'empty_column' => 0]];
   /* Field: Hosting Server: Status */
   $handler->display->display_options['fields']['status']['id'] = 'status';
   $handler->display->display_options['fields']['status']['table'] = 'hosting_server';
@@ -128,9 +88,7 @@ function hosting_server_views_default_views() {
   $handler->display->display_options['filters']['type']['id'] = 'type';
   $handler->display->display_options['filters']['type']['table'] = 'node';
   $handler->display->display_options['filters']['type']['field'] = 'type';
-  $handler->display->display_options['filters']['type']['value'] = array(
-    'server' => 'server',
-  );
+  $handler->display->display_options['filters']['type']['value'] = ['server' => 'server'];
   /* Filter criterion: Hosting Server: Status */
   $handler->display->display_options['filters']['status_1']['id'] = 'status_1';
   $handler->display->display_options['filters']['status_1']['table'] = 'hosting_server';

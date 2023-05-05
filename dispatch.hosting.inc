@@ -27,17 +27,17 @@ function drush_hosting_dispatch() {
       $lock_wait = drush_get_option('lock-wait', HOSTING_QUEUE_DEFAULT_LOCK_WAIT);
       if (!lock_wait($semaphore, $lock_wait) || drush_get_option('force', FALSE)) {
         if (lock_acquire($semaphore, HOSTING_QUEUE_LOCK_TIMEOUT)) {
-          drush_log(dt('Acquired lock on @queue queue.', array('@queue' => $queue)));
+          drush_log(dt('Acquired lock on @queue queue.', ['@queue' => $queue]));
         }
         elseif (drush_get_option('force', FALSE)) {
-          drush_log(dt('Bypassing lock on @queue queue.', array('@queue' => $queue)), 'warning');
+          drush_log(dt('Bypassing lock on @queue queue.', ['@queue' => $queue]), 'warning');
         }
         else {
-          drush_die(dt('Cannot acquire lock on @queue queue.', array('@queue' => $queue)));
+          drush_die(dt('Cannot acquire lock on @queue queue.', ['@queue' => $queue]));
         }
       }
       else {
-        drush_die(dt("Cannot acquire lock on @queue queue after waiting @wait seconds. A longer wait time can be set with the --lock-wait option.", array('@queue' => $queue, '@wait' => $lock_wait)));
+        drush_die(dt("Cannot acquire lock on @queue queue after waiting @wait seconds. A longer wait time can be set with the --lock-wait option.", ['@queue' => $queue, '@wait' => $lock_wait]));
       }
 
       if ($info['enabled']) {
@@ -47,28 +47,25 @@ function drush_hosting_dispatch() {
         if (($now - $info["last"]) >= $info["calc_frequency"] || drush_get_option('force', FALSE)) {
           $count = $info['calc_items'] - $info['running_items'];
           if ($count <= 0) {
-            drush_log(dt("Maximum number of tasks (@count) already running.", array('@count' => $info['running_items'])));
+            drush_log(dt("Maximum number of tasks (@count) already running.", ['@count' => $info['running_items']]));
           }
           else {
             drush_log(dt("Found @running running tasks, starting @count out of @max items.",
-                    array(
-                      '@running' => $info['running_items'],
-                      '@count' => $count,
-                      '@max' => $info['calc_items'])
+                    ['@running' => $info['running_items'], '@count' => $count, '@max' => $info['calc_items']]
                       )
                     );
-            drush_invoke_process('@self', "hosting-" . $queue, array(), array('items' => $count, 'strict' => FALSE), array('fork' => TRUE));
+            drush_invoke_process('@self', "hosting-" . $queue, [], ['items' => $count, 'strict' => FALSE], ['fork' => TRUE]);
           }
         }
         else {
-          drush_log(dt("Too early for queue @queue.", array('@queue' => $queue)));
+          drush_log(dt("Too early for queue @queue.", ['@queue' => $queue]));
         }
       }
       else {
-        drush_log(dt("Queue @queue disabled.", array('@queue' => $queue)));
+        drush_log(dt("Queue @queue disabled.", ['@queue' => $queue]));
       }
 
-      drush_log(dt('Releasing @queue lock.', array('@queue' => $queue)));
+      drush_log(dt('Releasing @queue lock.', ['@queue' => $queue]));
       lock_release($semaphore);
     }
   }

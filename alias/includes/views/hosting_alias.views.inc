@@ -8,6 +8,7 @@
  * Implements hook_views_data().
  */
 function hosting_alias_views_data() {
+  $data = [];
   // Views data for 'hosting_site_alias' table.
   $data['hosting_site_alias']['table'] = [
     'group' => 'Hosting Site Aliases',

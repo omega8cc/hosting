@@ -1,5 +1,6 @@
 <?php
 
+use Drush\Log\Logger;
 /**
  * @file
  * Drush include for the Hosting module's hosting task command.
@@ -30,7 +31,7 @@ function _hosting_task_log_print($entry) {
     return _drush_print_log($entry);
   }
   else {
-    $logger = new Drush\Log\Logger();
+    $logger = new Logger();
     return $logger->log($entry['type'], $entry['message'], $entry);
   }
 }
@@ -45,6 +46,7 @@ function _hosting_task_log_print($entry) {
  * @see drush_hosting_task()
  */
 function drush_hosting_task_validate($id, $type = NULL) {
+  $task = null;
   drush_set_option('user', 1);
   drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_LOGIN);
   if (is_numeric($id)) {
@@ -55,13 +57,13 @@ function drush_hosting_task_validate($id, $type = NULL) {
     if ($ref->nid) {
 
       // Get additional arguments to the drush command and convert them to "task_args" as expected by the task node.
-      $task_args = array();
+      $task_args = [];
 
       // Parse task_arguments passed to drush in the format "name=value"
       $arguments = func_get_args();
       $drush_args = array_splice($arguments, 2);
       foreach ($drush_args as $i => $arg) {
-        list($name, $value) = explode('=', $arg);
+        [$name, $value] = explode('=', (string) $arg);
         $task_args[$name] = $value;
       }
       $task = hosting_add_task($ref->nid, $type, $task_args);
@@ -70,14 +72,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
 
   if ($task->type == 'task') {
     $task->ref = node_load($task->rid);
-    $task->options = array();
-    $task->context_options = array(
-      'context_type' => $task->ref->type,
-      'master_url' => url('', array('absolute' => TRUE)),
-      'root' => NULL,
-      'uri' => NULL,
-    );
-    $task->args = array();
+    $task->options = [];
+    $task->context_options = ['context_type' => $task->ref->type, 'master_url' => url('', ['absolute' => TRUE]), 'root' => NULL, 'uri' => NULL];
+    $task->args = [];
     $task->changed = REQUEST_TIME;
     $task->executed = REQUEST_TIME;
     /* if not already running, remove the task from the queue
@@ -105,10 +102,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
     }
   }
   else {
-    drush_set_error('HOSTING_INVALID_TASK', t("Could not find or create a '!type' task for hosting context '!context'.", array(
-      '!type' => $type,
-      '!context' => $id,
-    )));
+    drush_set_error('HOSTING_INVALID_TASK', t("Could not find or create a '!type' task for hosting context '!context'.", ['!type' => $type, '!context' => $id]));
   }
 
 }
@@ -125,7 +119,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
  */
 function drush_hosting_task() {
   $task = &drush_get_context('HOSTING_TASK');
-  $output = array();
+  $output = [];
   $mode = drush_get_option('debug', FALSE) ? 'GET' : 'POST';
 
   // Make sure argument order is correct.
@@ -139,10 +133,10 @@ function drush_hosting_task() {
     $hook = 'hosting_' . $task->ref->type . '_context_options';
     foreach (module_implements($hook) as $module) {
       $function = $module . '_' . $hook;
-      call_user_func_array($function, array(&$task));
+      call_user_func_array($function, [&$task]);
     }
 
-    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
+    drush_invoke_process('@none', 'provision-save', ['@' . $task->ref->hosting_name], $task->context_options, ['method' => $mode, 'integrate' => TRUE]);
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
@@ -167,7 +161,7 @@ function drush_hosting_task() {
 
   // On succesful delete, remove the named context.
   if ($task->task_type === 'delete' && !drush_get_error()) {
-    drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), array('delete' => TRUE), array('method' => $mode, 'integrate' => TRUE));
+    drush_invoke_process('@none', 'provision-save', ['@' . $task->ref->hosting_name], ['delete' => TRUE], ['method' => $mode, 'integrate' => TRUE]);
   }
 
   // New revision is created at the beginning of function.
@@ -183,8 +177,8 @@ function drush_hosting_task() {
  */
 function drush_hosting_task_rollback() {
   $task = &drush_get_context('HOSTING_TASK');
-  $hook = sprintf("hosting_%s_task_rollback", str_replace('-', '_', $task->task_type));
-  drush_log(dt('Invoking :hook hooks.', array(':hook' => $hook)));
+  $hook = sprintf("hosting_%s_task_rollback", str_replace('-', '_', (string) $task->task_type));
+  drush_log(dt('Invoking :hook hooks.', [':hook' => $hook]));
   module_invoke_all($hook, $task, drush_get_context('HOSTING_DRUSH_OUTPUT'));
 }
 
@@ -196,7 +190,7 @@ function drush_hosting_task_rollback() {
 function drush_hosting_post_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');
 
-  $hook = sprintf("post_hosting_%s_task", str_replace('-', '_', $task->task_type));
-  drush_log(dt('Invoking :hook hooks.', array(':hook' => $hook)));
+  $hook = sprintf("post_hosting_%s_task", str_replace('-', '_', (string) $task->task_type));
+  drush_log(dt('Invoking :hook hooks.', [':hook' => $hook]));
   module_invoke_all($hook, $task, drush_get_context('HOSTING_DRUSH_OUTPUT'));
 }

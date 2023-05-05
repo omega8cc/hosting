@@ -10,11 +10,7 @@
 function hosting_site_data_form_alter(&$form, $form_state, $form_id) {
   if ($form_id == 'site_node_form') {
 
-    $form['site_data'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Site data example'),
-      '#description' => t('Example implementation of saving data into the site context.'),
-    );
+    $form['site_data'] = ['#type' => 'fieldset', '#title' => t('Site data example'), '#description' => t('Example implementation of saving data into the site context.')];
 
     $form['site_data']['site_data'] = array(
       '#type' => 'textfield',
@@ -31,11 +27,7 @@ function hosting_site_data_form_alter(&$form, $form_state, $form_id) {
  */
 function hosting_site_data_node_insert($node) {
   if ($node->type == 'site' && !empty($node->site_data)) {
-    $id = db_insert('hosting_site_data')->fields(array(
-      'vid' => $node->vid,
-      'nid' => $node->nid,
-      'site_data' => $node->site_data,
-    ))
+    $id = db_insert('hosting_site_data')->fields(['vid' => $node->vid, 'nid' => $node->nid, 'site_data' => $node->site_data])
     ->execute();
   }
 }
@@ -44,14 +36,12 @@ function hosting_site_data_node_insert($node) {
  * Implements hook_node_update().
  */
 function hosting_site_data_node_update($node) {
-  if (FALSE === db_query("SELECT site_data FROM {hosting_site_data} WHERE vid = :vid", array(':vid' => $node->vid))->fetchField()) {
+  if (FALSE === db_query("SELECT site_data FROM {hosting_site_data} WHERE vid = :vid", [':vid' => $node->vid])->fetchField()) {
     hosting_site_data_node_insert($node);
   }
   else {
     db_update('hosting_site_data')
-      ->fields(array(
-        'site_data' => $node->site_data,
-      ))
+      ->fields(['site_data' => $node->site_data])
       ->condition('vid', $node->vid)
       ->execute();
   }
@@ -64,7 +54,7 @@ function hosting_site_data_node_load($nodes, $types) {
   foreach ($nodes as $nid => &$node) {
     if ($node->type == 'site') {
       // array instead
-      $nodes[$nid]->site_data = db_query("SELECT site_data FROM {hosting_site_data} WHERE vid = :vid", array(':vid' => $node->vid))->fetchField();;
+      $nodes[$nid]->site_data = db_query("SELECT site_data FROM {hosting_site_data} WHERE vid = :vid", [':vid' => $node->vid])->fetchField();;
     }
   }
 }

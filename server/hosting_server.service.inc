@@ -56,14 +56,11 @@ class hostingService {
                       FROM {hosting_service}
                       WHERE vid = :vid
                       AND type = :type",
-                      array(
-                        ':vid' => $this->server->vid,
-                        ':type' => $this->type
-                      )
+                      [':vid' => $this->server->vid, ':type' => $this->type]
                     );
   }
 
-  protected function mergeData($query, $args = array()) {
+  protected function mergeData($query, $args = []) {
     $result = db_query($query, $args)->fetchAssoc();
     $this->setValues($result);
   }
@@ -141,10 +138,7 @@ class hostingService {
       );
     }
     else {
-      $form['restart_cmd'] = array(
-        '#type' => 'value',
-        '#value' => NULL,
-      );
+      $form['restart_cmd'] = ['#type' => 'value', '#value' => NULL];
     }
 
 
@@ -161,30 +155,19 @@ class hostingService {
       );
     }
     else {
-      $form['port'] = array(
-        '#type' => 'value',
-        '#value' => '0',
-      );
+      $form['port'] = ['#type' => 'value', '#value' => '0'];
     }
 
   }
 
   public function view(&$render) {
     if ($this->has_restart_cmd) {
-      $render['restart_cmd'] = array(
-        '#type' => 'item',
-        '#title' => t('Restart command'),
-        '#markup' => filter_xss($this->restart_cmd),
-      );
+      $render['restart_cmd'] = ['#type' => 'item', '#title' => t('Restart command'), '#markup' => filter_xss($this->restart_cmd)];
 
     }
 
     if ($this->has_port) {
-      $render['port'] = array(
-        '#type' => 'item',
-        '#title' => t('Port'),
-        '#markup' => filter_xss($this->port),
-      );
+      $render['port'] = ['#type' => 'item', '#title' => t('Port'), '#markup' => filter_xss($this->port)];
     }
   }
 

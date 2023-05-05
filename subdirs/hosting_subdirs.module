@@ -70,19 +70,19 @@ function hosting_subdirs_alter_alias_validation($form, $form_state) {
 function hosting_subdirs_validate_alias($site, $alias, $key) {
   $alias = hosting_site_clean_domain($alias);
   // If we're adding a subdirectory alias, it can't begin with '/'.
-  if (@strpos($alias, '/', 1)) {
-    $subdir = explode('/', $alias, 2);
+  if (@strpos((string) $alias, '/', 1)) {
+    $subdir = explode('/', (string) $alias, 2);
   }
   else {
     // No subdirectory in use, so validate normally.
     return hosting_alias_validate_alias($site, $alias, $key);
   }
 
-  if (!hosting_alias_allow_domain($alias, array('nid' => $site->nid)) || $alias == $site->title) {
-    form_set_error("aliases][$key", t('The domain name @alias is already in use', array('@alias' => $alias)));
+  if (!hosting_alias_allow_domain($alias, ['nid' => $site->nid]) || $alias == $site->title) {
+    form_set_error("aliases][$key", t('The domain name @alias is already in use', ['@alias' => $alias]));
   }
   if (!hosting_subdirs_valid_fqdn_subdir($alias)) {
-    form_set_error("aliases][$key", t('The domain name @alias is not a valid subdir url', array('@alias' => $alias)));
+    form_set_error("aliases][$key", t('The domain name @alias is not a valid subdir url', ['@alias' => $alias]));
   }
 }
 
@@ -92,7 +92,7 @@ function hosting_subdirs_validate_alias($site, $alias, $key) {
 function hosting_subdirs_hosting_site_domain_alter(&$domain) {
   if (hosting_subdirs_is_a_subdir($domain)) {
     // Rewrite the subdirectory as a subdomain.
-    $domain = implode('.', array_reverse(explode('/', $domain)));
+    $domain = implode('.', array_reverse(explode('/', (string) $domain)));
   }
 }
 
@@ -138,7 +138,7 @@ function hosting_subdirs_site_form_validate($form, &$form_state) {
  * Determine whether a URL is a subdirectory site.
  */
 function hosting_subdirs_is_a_subdir($url) {
-  if (@strpos($url, '/') === FALSE) return FALSE;
+  if (@strpos((string) $url, '/') === FALSE) return FALSE;
   return TRUE;
 }
 

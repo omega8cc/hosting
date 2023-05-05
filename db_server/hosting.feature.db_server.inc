@@ -8,12 +8,7 @@
  * Implements hook_hosting_feature().
  */
 function hosting_db_server_hosting_feature() {
-  $features['db_server'] = array(
-    'title' => t('Database servers'),
-    'description' => t('API to provide support for database servers.'),
-    'status' => HOSTING_FEATURE_REQUIRED,
-    'module' => 'hosting_db_server',
-    'group' => 'required',
-  );
+  $features = [];
+  $features['db_server'] = ['title' => t('Database servers'), 'description' => t('API to provide support for database servers.'), 'status' => HOSTING_FEATURE_REQUIRED, 'module' => 'hosting_db_server', 'group' => 'required'];
   return $features;
 }

@@ -45,24 +45,13 @@ class hostingService_db_mysql extends hostingService_db {
     if (isset($this->db_passwd)) {
       $passwd_description = t('<strong>You have already set a password for this database server.</strong><br />');
     }
-    $form['db_passwd'] = array(
-      '#type' => 'password_confirm',
-      '#required' => FALSE,
-      '#description' => $passwd_description . t('The password for the user that will be used to create new mysql users and databases for new sites'),
-      '#size' => 30,
-      '#weight' => 10,
-    );
+    $form['db_passwd'] = ['#type' => 'password_confirm', '#required' => FALSE, '#description' => $passwd_description . t('The password for the user that will be used to create new mysql users and databases for new sites'), '#size' => 30, '#weight' => 10];
   }
 
   function insert() {
     parent::insert();
     $id = db_insert('hosting_db_server')
-      ->fields(array(
-        'vid' => $this->server->vid,
-        'nid' => $this->server->nid,
-        'db_user' => $this->db_user,
-        'db_passwd' => $this->db_passwd,
-      ))
+      ->fields(['vid' => $this->server->vid, 'nid' => $this->server->nid, 'db_user' => $this->db_user, 'db_passwd' => $this->db_passwd])
       ->execute();
   }
 
@@ -94,18 +83,13 @@ class hostingService_db_mysql extends hostingService_db {
 
   function load() {
     parent::load();
-    $this->mergeData('SELECT db_user, db_passwd FROM {hosting_db_server} WHERE vid = :vid', array(':vid' => $this->server->vid));
+    $this->mergeData('SELECT db_user, db_passwd FROM {hosting_db_server} WHERE vid = :vid', [':vid' => $this->server->vid]);
   }
 
   function view(&$render) {
     parent::view($render);
 
-    $render['db_user'] = array(
-      '#type' => 'item',
-      '#title' => t('Database user'),
-      '#markup' => filter_xss($this->db_user),
-      '#weight' => 1,
-    );
+    $render['db_user'] = ['#type' => 'item', '#title' => t('Database user'), '#markup' => filter_xss($this->db_user), '#weight' => 1];
 
     if (empty($this->db_passwd)) {
       $markup = t('None');
@@ -113,26 +97,21 @@ class hostingService_db_mysql extends hostingService_db {
     else {
       $markup = t('Saved');
     }
-    $render['db_passwd'] = array(
-        '#type' => 'item',
-        '#title' => t('Database password'),
-        '#markup' => $markup,
-        '#weight' => 2,
-    );
+    $render['db_passwd'] = ['#type' => 'item', '#title' => t('Database password'), '#markup' => $markup, '#weight' => 2];
   }
 
   public function context_options($task_type, $ref_type, &$task) {
     parent::context_options($task_type, $ref_type, $task);
 
     // Provide context_options for verification and writing out to an alias
-    $task->context_options['master_db'] = 'mysql' . '://' . urlencode($this->db_user) . ':' . urlencode($this->db_passwd) . '@' . $this->server->title;
+    $task->context_options['master_db'] = 'mysql' . '://' . urlencode((string) $this->db_user) . ':' . urlencode((string) $this->db_passwd) . '@' . $this->server->title;
   }
 
   public function context_import($context) {
     parent::context_import($context);
 
-    $matches = array();
-    preg_match("+^mysql://(.*):(.*)@.*$+", stripslashes($context->master_db), $matches);
+    $matches = [];
+    preg_match("+^mysql://(.*):(.*)@.*$+", stripslashes((string) $context->master_db), $matches);
     $this->db_user = urldecode($matches[1]);
     $this->db_passwd = urldecode($matches[2]);
   }

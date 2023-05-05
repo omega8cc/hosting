@@ -46,27 +46,21 @@ function hosting_site_drush_context_import($context, &$node) {
     $node->platform = hosting_context_nid($context->platform->name);
 
     // TODO: abstract this to remove duplication with import post hooks.
-    $profile = hosting_package_instance_load(array(
-      'i.rid' => $node->platform,
-      'p.short_name' => $context->profile,
-    ));
+    $profile = hosting_package_instance_load(['i.rid' => $node->platform, 'p.short_name' => $context->profile]);
 
     if (!$profile) {
       // For D6 to D7 upgrades, try changing default to standard.
       if (!empty($context->profile) && $context->profile == 'default') {
-        $profile = hosting_package_instance_load(array(
-          'i.rid' => $node->platform,
-          'p.short_name' => 'standard',
-        ));
+        $profile = hosting_package_instance_load(['i.rid' => $node->platform, 'p.short_name' => 'standard']);
         if ($profile) {
-           drush_log(dt("Could not find the Profile !profile for Platfrom ID !platform, substituted standard", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
+           drush_log(dt("Could not find the Profile !profile for Platfrom ID !platform, substituted standard", ['!profile' => $context->profile, '!platform' => $node->platform]), 'warning');
         }
       }
     }
 
     // Log an error if there is still no profile.
     if (!$profile) {
-      drush_set_error("HOSTING_SITE_IMPORT_ERROR", dt("Could not find the Profile !profile for Platfrom ID !platform", array('!profile' => $context->profile, '!platform' => $node->platform)));
+      drush_set_error("HOSTING_SITE_IMPORT_ERROR", dt("Could not find the Profile !profile for Platfrom ID !platform", ['!profile' => $context->profile, '!platform' => $node->platform]));
     }
     $node->profile = $profile->package_id;
 
@@ -83,6 +77,7 @@ function hosting_site_drush_context_import($context, &$node) {
  * Map values of site node into command line arguments
  */
 function drush_hosting_site_pre_hosting_task($task) {
+  $backups = [];
   $task = &drush_get_context('HOSTING_TASK');
 
   if ($task->task_type == 'restore') {
@@ -124,10 +119,7 @@ function hosting_site_post_hosting_install_task($task, $data) {
       drush_log($context['login_link']);
       // we need to store the timestamp too because expire only means it can be deleted
       // after an amount of time, not will be deleted.
-      $cache = array(
-        'expire' => strtotime("+24 hours"),
-        'link' => $context['login_link'],
-      );
+      $cache = ['expire' => strtotime("+24 hours"), 'link' => $context['login_link']];
       cache_set('hosting:site:' . $task->ref->nid . ':login_link', $cache, 'cache', $cache['expire'] );
     }
   }
@@ -218,7 +210,7 @@ function hosting_site_post_hosting_backup_task($task, $data) {
     $platform = node_load($task->ref->platform);
 
     $desc = $task->task_args['description'];
-    $desc = ($desc) ? $desc : t('Generated on request');
+    $desc = $desc ?: t('Generated on request');
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], $desc, $data['context']['backup_file_size']);
   }
 }
@@ -295,10 +287,7 @@ function hosting_site_post_hosting_login_reset_task($task, $data) {
     if ($context['login_link']) {
       // we need to store the timestamp too because expire only means it can be deleted
       // after an amount of time, not will be deleted.
-      $cache = array(
-        'expire' => strtotime("+24 hours"),
-        'link' => $context['login_link'],
-      );
+      $cache = ['expire' => strtotime("+24 hours"), 'link' => $context['login_link']];
       cache_set('hosting:site:' . $task->ref->nid . ':login_link', $cache, 'cache', $cache['expire'] );
     }
   }

@@ -8,7 +8,7 @@
  * Implements hook_views_default_views().
  */
 function hosting_task_views_default_views() {
-  $views = array();
+  $views = [];
 
   // Exported view: hosting_task_list
   $view = new view();
@@ -38,51 +38,9 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['pager']['options']['offset'] = '0';
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['row_class'] = '[task_status]';
-  $handler->display->display_options['style_options']['columns'] = array(
-    'task_status' => 'task_status',
-    'title' => 'title',
-    'task_type' => 'task_type',
-    'nid' => 'nid',
-    'executed' => 'executed',
-  );
+  $handler->display->display_options['style_options']['columns'] = ['task_status' => 'task_status', 'title' => 'title', 'task_type' => 'task_type', 'nid' => 'nid', 'executed' => 'executed'];
   $handler->display->display_options['style_options']['default'] = '-1';
-  $handler->display->display_options['style_options']['info'] = array(
-    'task_status' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'task_type' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'nid' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'executed' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-  );
+  $handler->display->display_options['style_options']['info'] = ['task_status' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'task_type' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'nid' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'executed' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0]];
   /* Relationship: Hosting Task: Reference ID */
   $handler->display->display_options['relationships']['rid']['id'] = 'rid';
   $handler->display->display_options['relationships']['rid']['table'] = 'hosting_task';
@@ -165,9 +123,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['filters']['type']['id'] = 'type';
   $handler->display->display_options['filters']['type']['table'] = 'node';
   $handler->display->display_options['filters']['type']['field'] = 'type';
-  $handler->display->display_options['filters']['type']['value'] = array(
-    'task' => 'task',
-  );
+  $handler->display->display_options['filters']['type']['value'] = ['task' => 'task'];
   $handler->display->display_options['filters']['type']['expose']['operator'] = FALSE;
   /* Filter criterion: Content: Published */
   $handler->display->display_options['filters']['status']['id'] = 'status';
@@ -192,67 +148,9 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['row_class'] = '[task_status]';
-  $handler->display->display_options['style_options']['columns'] = array(
-    'task_status' => 'task_status',
-    'title' => 'title',
-    'task_type' => 'task_type',
-    'created' => 'created',
-    'executed' => 'executed',
-    'delta' => 'delta',
-    'nid' => 'nid',
-  );
+  $handler->display->display_options['style_options']['columns'] = ['task_status' => 'task_status', 'title' => 'title', 'task_type' => 'task_type', 'created' => 'created', 'executed' => 'executed', 'delta' => 'delta', 'nid' => 'nid'];
   $handler->display->display_options['style_options']['default'] = '-1';
-  $handler->display->display_options['style_options']['info'] = array(
-    'task_status' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'task_type' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'created' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'executed' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'delta' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'nid' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-  );
+  $handler->display->display_options['style_options']['info'] = ['task_status' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'task_type' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'created' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'executed' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'delta' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'nid' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0]];
   $handler->display->display_options['defaults']['style_options'] = FALSE;
   $handler->display->display_options['defaults']['row_plugin'] = FALSE;
   $handler->display->display_options['defaults']['row_options'] = FALSE;
@@ -341,67 +239,9 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['row_class'] = '[task_status]';
-  $handler->display->display_options['style_options']['columns'] = array(
-    'task_status' => 'task_status',
-    'title' => 'title',
-    'task_type' => 'task_type',
-    'created' => 'created',
-    'executed' => 'executed',
-    'delta' => 'delta',
-    'nid' => 'nid',
-  );
+  $handler->display->display_options['style_options']['columns'] = ['task_status' => 'task_status', 'title' => 'title', 'task_type' => 'task_type', 'created' => 'created', 'executed' => 'executed', 'delta' => 'delta', 'nid' => 'nid'];
   $handler->display->display_options['style_options']['default'] = '-1';
-  $handler->display->display_options['style_options']['info'] = array(
-    'task_status' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'task_type' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'created' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'executed' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'delta' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'nid' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-  );
+  $handler->display->display_options['style_options']['info'] = ['task_status' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'task_type' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'created' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'executed' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'delta' => ['sortable' => 1, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'nid' => ['sortable' => 0, 'default_sort_order' => 'desc', 'align' => '', 'separator' => '', 'empty_column' => 0]];
   $handler->display->display_options['defaults']['style_options'] = FALSE;
   $handler->display->display_options['defaults']['row_plugin'] = FALSE;
   $handler->display->display_options['defaults']['row_options'] = FALSE;
@@ -493,11 +333,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['arguments']['nid']['summary_options']['items_per_page'] = '25';
   $handler->display->display_options['arguments']['nid']['specify_validation'] = TRUE;
   $handler->display->display_options['arguments']['nid']['validate']['type'] = 'node';
-  $handler->display->display_options['arguments']['nid']['validate_options']['types'] = array(
-    'platform' => 'platform',
-    'server' => 'server',
-    'site' => 'site',
-  );
+  $handler->display->display_options['arguments']['nid']['validate_options']['types'] = ['platform' => 'platform', 'server' => 'server', 'site' => 'site'];
   $handler->display->display_options['path'] = 'node/%/tasks';
   $handler->display->display_options['menu']['type'] = 'tab';
   $handler->display->display_options['menu']['title'] = 'Tasks';

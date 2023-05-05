@@ -4,7 +4,7 @@
  * Allow clients to be created and granted permissions over sites, tasks etc.
  */
 
-include dirname(__FILE__) . '/hosting_client.access.inc';
+include __DIR__ . '/hosting_client.access.inc';
 
 /**
  * Implements hook_init().
@@ -28,16 +28,8 @@ define('HOSTING_CLIENT_MAX_GROUP_LENGTH', 16);
  * Implements hook_node_info().
  */
 function hosting_client_node_info() {
-  $types["client"] = array(
-    "name" => t('Client'),
-    'base' => 'hosting_client',
-    "has_title" => TRUE,
-    "title_label" => 'Client name',
-    "description" => hosting_node_help("client"),
-    "has_body" => 0,
-    "body_label" => '',
-    "min_word_count" => 0,
-  );
+  $types = [];
+  $types["client"] = ["name" => t('Client'), 'base' => 'hosting_client', "has_title" => TRUE, "title_label" => 'Client name', "description" => hosting_node_help("client"), "has_body" => 0, "body_label" => '', "min_word_count" => 0];
 
   return $types;
 }
@@ -46,49 +38,14 @@ function hosting_client_node_info() {
  * Implements hook_theme().
  */
 function hosting_client_theme($existing, $type, $theme, $path) {
-  return array(
-    'hosting_client_user_form' => array(
-      'file' => 'hosting_client.access.inc',
-      'render element' => 'form',
-    ),
-    'hosting_client_form' => array(
-      'file' => 'hosting_client.module',
-      'render element' => 'form',
-    ),
-    'hosting_client_platform_access_form' => array(
-      'file' => 'hosting_client.module',
-      'render element' => 'form',
-    ),
-  );
+  return ['hosting_client_user_form' => ['file' => 'hosting_client.access.inc', 'render element' => 'form'], 'hosting_client_form' => ['file' => 'hosting_client.module', 'render element' => 'form'], 'hosting_client_platform_access_form' => ['file' => 'hosting_client.module', 'render element' => 'form']];
 }
 
 /**
  * Implements hook_permission().
  */
 function hosting_client_permission() {
-  return array(
-    'create client' => array(
-      'title' => t('create client'),
-    ),
-    'view client' => array(
-      'title' => t('view client'),
-    ),
-    'edit own client' => array(
-      'title' => t('edit own client'),
-    ),
-    'delete own client' => array(
-      'title' => t('delete own client'),
-    ),
-    'administer clients' => array(
-      'title' => t('administer clients'),
-    ),
-    'edit client users' => array(
-      'title' => t('edit client users'),
-    ),
-    'edit client uname' => array(
-      'title' => t('edit client uname'),
-    ),
-  );
+  return ['create client' => ['title' => t('create client')], 'view client' => ['title' => t('view client')], 'edit own client' => ['title' => t('edit own client')], 'delete own client' => ['title' => t('delete own client')], 'administer clients' => ['title' => t('administer clients')], 'edit client users' => ['title' => t('edit client users')], 'edit client uname' => ['title' => t('edit client uname')]];
 }
 
 /**
@@ -117,7 +74,7 @@ function hosting_client_node_access($node, $op, $account) {
 
       case 'view':
         // TODO shoudn't this SQL query be covered by node_grants?
-        return user_access('view client', $account) && db_query("SELECT user FROM {hosting_client_user} WHERE user = :user and client = :client", array(':user' => $account->uid, ':client' => $node->nid))->fetchAssoc();
+        return user_access('view client', $account) && db_query("SELECT user FROM {hosting_client_user} WHERE user = :user and client = :client", [':user' => $account->uid, ':client' => $node->nid])->fetchAssoc();
 
       case 'update':
         if (user_access('edit own client', $account) && $account->uid == $node->uid) {
@@ -152,7 +109,7 @@ function hosting_get_client($client) {
     return node_load($client);
   }
   else {
-    if ($nodes = entity_load('node', FALSE, array('type' => 'client', 'title' => $client))) {
+    if ($nodes = entity_load('node', FALSE, ['type' => 'client', 'title' => $client])) {
       return array_shift($nodes);
     }
     else {
@@ -173,7 +130,7 @@ function hosting_get_client($client) {
  *   The client node object of FALSE.
  */
 function hosting_get_client_by_uname($uname) {
-  $result = db_query("SELECT c.nid FROM {hosting_client} c JOIN {node} n ON c.nid = n.nid WHERE c.uname = :uname AND n.type = :type", array(':uname' => $uname, ':type' => 'client'))->fetchField();
+  $result = db_query("SELECT c.nid FROM {hosting_client} c JOIN {node} n ON c.nid = n.nid WHERE c.uname = :uname AND n.type = :type", [':uname' => $uname, ':type' => 'client'])->fetchField();
   if ($result) {
     return node_load($result);
   }
@@ -186,6 +143,7 @@ function hosting_get_client_by_uname($uname) {
  * Implements hook_form().
  */
 function hosting_client_form(&$node, &$form_state) {
+  $form = [];
   $type = node_type_get_type('client');
 
   $form['title'] = array(
@@ -225,45 +183,24 @@ function hosting_client_form(&$node, &$form_state) {
       '#maxlength' => 100,
     );
 
-    $form['email_confirm'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Confirm Email address'),
-      '#required' => FALSE,
-      '#size' => 40,
-      '#maxlength' => 100,
-    );
+    $form['email_confirm'] = ['#type' => 'textfield', '#title' => t('Confirm Email address'), '#required' => FALSE, '#size' => 40, '#maxlength' => 100];
   }
 
   if (isset($node->nid)) {
     $users = hosting_client_users($node);
-    $user_list = array();
+    $user_list = [];
     foreach ($users as $uid => $uname) {
-      $form['user_edit']['name'][$uid] = array(
-        '#type' => 'markup',
-        '#value' => l($uname, 'user/' . $uid),
-      );
+      $form['user_edit']['name'][$uid] = ['#type' => 'markup', '#value' => l($uname, 'user/' . $uid)];
       $user_list[$uid] = '';
     }
     if (user_access('edit client users')) {
-      $form['user_edit']['users'] = array(
-        '#type' => 'checkboxes',
-        '#options' => $user_list,
-      );
+      $form['user_edit']['users'] = ['#type' => 'checkboxes', '#options' => $user_list];
     }
-    $form['user_edit']['header'] = array(
-      '#type' => 'value',
-      '#value' => array(array('data' => t('Allowed users')), array('data' => t('Remove'))),
-    );
+    $form['user_edit']['header'] = ['#type' => 'value', '#value' => [['data' => t('Allowed users')], ['data' => t('Remove')]]];
     if (user_access('edit client users')) {
-      $form['user_edit']['new_user'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Associate a user to this Client'),
-        '#weight' => 2,
-        '#autocomplete_path' => 'user/autocomplete',
-        '#description' => t('This field allows you to associate an existing system user to this Client.
+      $form['user_edit']['new_user'] = ['#type' => 'textfield', '#title' => t('Associate a user to this Client'), '#weight' => 2, '#autocomplete_path' => 'user/autocomplete', '#description' => t('This field allows you to associate an existing system user to this Client.
                              It does not create a new system user, but allows an existing user
-                             to manage sites belonging to the Client.'),
-      );
+                             to manage sites belonging to the Client.')];
     }
     $form['user_edit']['#theme'] = 'hosting_client_form';
   }
@@ -285,7 +222,7 @@ function hosting_client_form(&$node, &$form_state) {
 function theme_hosting_client_form($variables) {
   $form = $variables['form'];
   foreach (element_children($form['name'], FALSE) as $user) {
-    $row = array();
+    $row = [];
     // @todo: Figure out why drupal_render isn't working here.
     //$row['data'][] = drupal_render($form['name'][$user]);
     $row['data'][] = $form['name'][$user]['#value'];
@@ -294,7 +231,7 @@ function theme_hosting_client_form($variables) {
     }
     $rows[] = $row;
   }
-  $output = theme('table', array('header' => $form['header']['#value'], 'rows' => $rows));
+  $output = theme('table', ['header' => $form['header']['#value'], 'rows' => $rows]);
   $output .= drupal_render_children($form);
   return $output;
 }
@@ -305,10 +242,10 @@ function theme_hosting_client_form($variables) {
 function hosting_client_validate($node, $form, &$form_state) {
   // We don't allow duplicate client names.
   $title = $node->form_id == 'hosting_signup_form' ? 'client_name' : 'title';
-  $node_nid = db_query("SELECT nid FROM {node} WHERE type = :type AND title = :title", array(':type' => 'client', ':title' => $node->title))->fetchField();
+  $node_nid = db_query("SELECT nid FROM {node} WHERE type = :type AND title = :title", [':type' => 'client', ':title' => $node->title])->fetchField();
   if ($node_nid && $node->nid != $node_nid) {
     form_set_error($title, t("Client name already in use, try %suggestion.",
-                              array('%suggestion' => hosting_client_validate_suggest($node->title))));
+                              ['%suggestion' => hosting_client_validate_suggest($node->title)]));
   }
 
   // We don't allow duplicate internal client names.
@@ -319,10 +256,10 @@ function hosting_client_validate($node, $form, &$form_state) {
     $node->uname = hosting_client_sanitize($node->title);
   }
   // @todo convert this statement to DBTNG syntax.
-  $nid = db_query("SELECT nid FROM {hosting_client} WHERE uname = :uname", array(':uname' => $node->uname))->fetchField();
+  $nid = db_query("SELECT nid FROM {hosting_client} WHERE uname = :uname", [':uname' => $node->uname])->fetchField();
   if ($nid && $node->nid != $nid) {
     form_set_error('uname', t("Client internal name already in use, try %suggestion.",
-                              array('%suggestion' => hosting_client_validate_suggest($node->uname, TRUE))));
+                              ['%suggestion' => hosting_client_validate_suggest($node->uname, TRUE)]));
   }
 
   if (!empty($node->nid) && !empty($node->email)) {
@@ -364,11 +301,7 @@ function hosting_client_validate_suggest($name, $internal = FALSE) {
                      FROM {:table}
                      WHERE uname
                      LIKE '%:name%'
-                    ", array(
-                      ':table' => $table,
-                      ':field' => $field,
-                      ':name' => $name . $i,
-                    )
+                    ", [':table' => $table, ':field' => $field, ':name' => $name . $i]
                    )->fetchField();
     if (!$nid) {
       return $name . $i;
@@ -393,16 +326,9 @@ function hosting_client_form_site_node_form_alter(&$form, &$form_state, $form_id
   $editable = ((!isset($node->client) || !isset($node->nid)) || user_access('administer sites')) && hosting_feature('client');
   $add_client_text = '';
   if (user_access('administer clients') || user_access('create client')) {
-    $add_client_text = t('Click !here to add a new client.', array('!here' => l(t('here'), 'node/add/client', array('attributes' => array('target' => '_blank')))));
+    $add_client_text = t('Click !here to add a new client.', ['!here' => l(t('here'), 'node/add/client', ['attributes' => ['target' => '_blank']])]);
   }
-  _hosting_site_field($form, $node, 'client', array(
-    '#type' => 'textfield',
-    '#required' => TRUE,
-    '#title' => t('Client'),
-    '#default_value' => _hosting_client_site_default($node),
-    '#description' => t('The client to whom this site belongs.') . ' ' . $add_client_text,
-    '#autocomplete_path' => 'hosting_client/autocomplete/client',
-  ), 'filter_xss', $editable);
+  _hosting_site_field($form, $node, 'client', ['#type' => 'textfield', '#required' => TRUE, '#title' => t('Client'), '#default_value' => _hosting_client_site_default($node), '#description' => t('The client to whom this site belongs.') . ' ' . $add_client_text, '#autocomplete_path' => 'hosting_client/autocomplete/client'], 'filter_xss', $editable);
 
 }
 
@@ -417,40 +343,28 @@ function hosting_client_insert($node) {
     $node->uname = hosting_client_sanitize($node->title);
   }
   $id = db_insert('hosting_client')
-    ->fields(array(
-      'vid' => $node->vid,
-      'nid' => $node->nid,
-      'uname' => $node->uname,
-    ))
+    ->fields(['vid' => $node->vid, 'nid' => $node->nid, 'uname' => $node->uname])
     ->execute();
 
   if (variable_get('hosting_client_register_user', FALSE)
-     && user_load_multiple(array(), array('mail' => $node->email)) == FALSE) {
+     && user_load_multiple([], ['mail' => $node->email]) == FALSE) {
     $user = hosting_client_register_user($node);
     $node->uid = $user->uid;
     db_update('node')
-      ->fields(array(
-        'uid' => $user->uid,
-      ))
+      ->fields(['uid' => $user->uid])
       ->condition('nid', $node->nid)
       ->execute();
     db_update('node_revision')
-      ->fields(array(
-        'uid' => $user->uid,
-      ))
+      ->fields(['uid' => $user->uid])
       ->condition('vid', $node->vid)
       ->execute();
   }
   if (isset($node->new_user)) {
-    $user = user_load_multiple(array(), array('name' => $node->new_user));
+    $user = user_load_multiple([], ['name' => $node->new_user]);
     $user = array_shift($user);
     if ($user) {
       $id = db_insert('hosting_client_user')
-        ->fields(array(
-          'client' => $node->nid,
-          'user' => $user->uid,
-          'contact_type' => '',
-        ))
+        ->fields(['client' => $node->nid, 'user' => $user->uid, 'contact_type' => ''])
         ->execute();
     }
   }
@@ -466,7 +380,7 @@ function hosting_client_insert($node) {
  * @deprecated remove this function once the above setting is implemented
  */
 function _hosting_client_get_role() {
-  return db_query("SELECT rid FROM {role} WHERE name = :name", array(':name' => 'aegir client'))->fetchField();
+  return db_query("SELECT rid FROM {role} WHERE name = :name", [':name' => 'aegir client'])->fetchField();
 }
 
 /**
@@ -479,6 +393,8 @@ function _hosting_client_get_role() {
  * @see hosting_client_insert()
  */
 function hosting_client_register_user($node) {
+  $edit = [];
+  $base_url = null;
   $pass = user_password();
   $user = new stdClass();
   $edit['name'] = $node->uname;
@@ -499,17 +415,7 @@ function hosting_client_register_user($node) {
 
     $from = variable_get('site_mail', ini_get('sendmail_from'));
 
-    $params = array(
-      '!username' => $user->name,
-      '!site' => variable_get('site_name', 'Drupal'),
-      '!password' => $pass,
-      '!uri' => $GLOBALS['base_url'],
-      '!uri_brief' => substr($base_url, strlen('http://')),
-      '!date' => format_date(REQUEST_TIME),
-      '!login_uri' => url('user', array('absolute' => TRUE)),
-      '!edit_uri' => url('user/' . $user->uid . '/edit', array('absolute' => TRUE)),
-      '!login_url' => user_pass_reset_url($user),
-    );
+    $params = ['!username' => $user->name, '!site' => variable_get('site_name', 'Drupal'), '!password' => $pass, '!uri' => $GLOBALS['base_url'], '!uri_brief' => substr((string) $base_url, strlen('http://')), '!date' => format_date(REQUEST_TIME), '!login_uri' => url('user', ['absolute' => TRUE]), '!edit_uri' => url('user/' . $user->uid . '/edit', ['absolute' => TRUE]), '!login_url' => user_pass_reset_url($user)];
     // No e-mail verification is required.
     // Create new user account, and login user immediately.
     $language = user_preferred_language($user);
@@ -549,9 +455,7 @@ function hosting_client_update($node) {
       $node->uname = hosting_client_sanitize($node->title);
     }
     db_update('hosting_client')
-      ->fields(array(
-        'uname' => $node->uname,
-      ))
+      ->fields(['uname' => $node->uname])
       ->condition('nid', $node->nid)
       ->execute();
   }
@@ -564,14 +468,10 @@ function hosting_client_update($node) {
     }
   }
   if ($node->new_user) {
-    $user = user_load_multiple(array(), array('name' => $node->new_user));
+    $user = user_load_multiple([], ['name' => $node->new_user]);
     $user = array_shift($user);
     $id = db_insert('hosting_client_user')
-      ->fields(array(
-        'client' => $node->nid,
-        'user' => $user->uid,
-        'contact_type' => '',
-      ))
+      ->fields(['client' => $node->nid, 'user' => $user->uid, 'contact_type' => ''])
       ->execute();
   }
 }
@@ -604,7 +504,7 @@ function hosting_client_delete($node) {
  */
 function hosting_client_load($nodes) {
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query('SELECT uname FROM {hosting_client} WHERE vid = :vid', array(':vid' => $node->vid))->fetch();
+    $additions = db_query('SELECT uname FROM {hosting_client} WHERE vid = :vid', [':vid' => $node->vid])->fetch();
     foreach ($additions as $property => &$value) {
       $node->$property = $value;
     }
@@ -625,7 +525,7 @@ function hosting_client_users($node) {
     $node = $node->nid;
   }
   elseif (!is_numeric($node)) {
-    return array();
+    return [];
   }
   // @todo: Figure out why variable substitution doesn't work here.
   return db_query("SELECT u.uid, u.name, h.client FROM {hosting_client_user} h INNER JOIN {users} u ON u.uid = h.user WHERE h.client = $node")->fetchAllKeyed();
@@ -638,40 +538,24 @@ function hosting_client_view($node, $view_mode, $langcode = NULL) {
   $type = node_type_get_type($node);
 
   $node->content['info']['#prefix'] = '<div id="hosting-client-info">';
-  $node->content['info']['title'] = array(
-    '#type' => 'item',
-    '#title' => $type->title_label,
-    '#markup' => filter_xss($node->title),
-  );
-  $node->content['info']['uname'] = array(
-    '#type' => 'item',
-    '#title' => t('Internal name'),
-    '#weight' => 1,
-    '#markup' => filter_xss($node->uname),
-  );
+  $node->content['info']['title'] = ['#type' => 'item', '#title' => $type->title_label, '#markup' => filter_xss($node->title)];
+  $node->content['info']['uname'] = ['#type' => 'item', '#title' => t('Internal name'), '#weight' => 1, '#markup' => filter_xss($node->uname)];
 
   $node->content['info']['#suffix'] = '</div>';
   if ($view_mode = 'full') {
-    $rows = array();
+    $rows = [];
     $users = hosting_client_users($node);
     foreach ($users as $uid => $uname) {
       if (user_access('access user profiles') || ($uid == $GLOBALS['user']->uid)) {
-        $rows[] = array(l($uname, 'user/' . $uid));
+        $rows[] = [l($uname, 'user/' . $uid)];
       }
       else {
-        $rows[] = array($uname);
+        $rows[] = [$uname];
       }
     }
 
-    $header = array(t('Allowed users'));
-    $node->content['users_view'] = array(
-      '#type' => 'item',
-      '#markup' => theme('table', array('header' => $header, 'rows' => $rows)),
-      '#class' => 'client',
-      '#prefix' => '<div id="hosting-site-list">',
-      '#suffix' => '</div>',
-      '#weight' => 11,
-    );
+    $header = [t('Allowed users')];
+    $node->content['users_view'] = ['#type' => 'item', '#markup' => theme('table', ['header' => $header, 'rows' => $rows]), '#class' => 'client', '#prefix' => '<div id="hosting-site-list">', '#suffix' => '</div>', '#weight' => 11];
   }
   return $node;
 }
@@ -680,7 +564,7 @@ function hosting_client_view($node, $view_mode, $langcode = NULL) {
  * Implements hook_hosting_site_site_list_filters().
  */
 function hosting_client_hosting_site_site_list_filters() {
-  return array('client');
+  return ['client'];
 }
 
 /**
@@ -711,55 +595,18 @@ function hosting_import_client($name) {
  * Implements hook_menu().
  */
 function hosting_client_menu() {
-  $items['node/%node/site/add'] = array(
-    'title' => 'Add site',
-    'description' => 'Add a site to the current client',
-    'page callback' => 'hosting_client_site_form',
-    'page arguments' => array('site_node_form', 1),
-    'access callback' => 'hosting_client_menu_access',
-    'access arguments' => array('create site', 1),
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 5,
-  );
+  $items = [];
+  $items['node/%node/site/add'] = ['title' => 'Add site', 'description' => 'Add a site to the current client', 'page callback' => 'hosting_client_site_form', 'page arguments' => ['site_node_form', 1], 'access callback' => 'hosting_client_menu_access', 'access arguments' => ['create site', 1], 'type' => MENU_LOCAL_TASK, 'weight' => 5];
 
-  $items['hosting_client/autocomplete'] = array(
-    'title' => 'hosting client get client autocomplete',
-    'page callback' => 'hosting_client_autocomplete',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
+  $items['hosting_client/autocomplete'] = ['title' => 'hosting client get client autocomplete', 'page callback' => 'hosting_client_autocomplete', 'access arguments' => ['access content'], 'type' => MENU_CALLBACK];
 
-  $items['admin/hosting/client'] = array(
-    'title' => 'Clients',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('hosting_client_configure'),
-    'access callback' => '_hosting_client_configure_access',
-    'type' => MENU_LOCAL_TASK,
-  );
+  $items['admin/hosting/client'] = ['title' => 'Clients', 'page callback' => 'drupal_get_form', 'page arguments' => ['hosting_client_configure'], 'access callback' => '_hosting_client_configure_access', 'type' => MENU_LOCAL_TASK];
 
-  $items['hosting/clients/list'] = array(
-    'title' => 'List',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -10,
-  );
+  $items['hosting/clients/list'] = ['title' => 'List', 'type' => MENU_DEFAULT_LOCAL_TASK, 'weight' => -10];
 
-  $items['hosting/clients/add'] = array(
-    'title' => 'Add client',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'drupal_goto',
-    'page arguments' => array('node/add/client'),
-    'access callback' => 'node_access',
-    'access arguments' => array('create', 'client'),
-  );
+  $items['hosting/clients/add'] = ['title' => 'Add client', 'type' => MENU_LOCAL_TASK, 'page callback' => 'drupal_goto', 'page arguments' => ['node/add/client'], 'access callback' => 'node_access', 'access arguments' => ['create', 'client']];
 
-  $items['node/%node/clients'] = array(
-    'title' => 'Clients',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('hosting_client_platform_access_form', 1),
-    'access callback' => '_hosting_client_platform_access',
-    'access arguments' => array(1),
-  );
+  $items['node/%node/clients'] = ['title' => 'Clients', 'type' => MENU_LOCAL_TASK, 'page callback' => 'drupal_get_form', 'page arguments' => ['hosting_client_platform_access_form', 1], 'access callback' => '_hosting_client_platform_access', 'access arguments' => [1]];
 
   return $items;
 }
@@ -778,53 +625,26 @@ function _hosting_client_platform_access($node) {
  * Page callback for the client platform access form.
  */
 function hosting_client_platform_access_form($form, $form_state, $node) {
-  $form = array();
-  $clients = isset($node->clients) ? $node->clients : array();
-  if (count($clients)) {
+  $clients = isset($node->clients) ? $node->clients : [];
+  $form = [];
+  if (is_countable($clients) ? count($clients) : 0) {
     foreach ($clients as $client) {
       $client_node = hosting_get_client($client);
-      $form['names'][$client] = array(
-        '#type' => 'markup',
-        '#value' => l($client_node->title, 'node/' . $client),
-      );
+      $form['names'][$client] = ['#type' => 'markup', '#value' => l($client_node->title, 'node/' . $client)];
       // Remove the label for the checkbox.
       $clients[$client] = '';
     }
   }
   else {
     // No access control on this platform.
-    $form['names']['_all'] = array(
-      '#type' => 'markup',
-      '#value' => 'All clients have access to this platform.',
-    );
+    $form['names']['_all'] = ['#type' => 'markup', '#value' => 'All clients have access to this platform.'];
   }
-  $form['clients'] = array(
-    '#type' => 'checkboxes',
-    '#options' => $clients,
-  );
-  $form['header'] = array(
-    '#type' => 'value',
-    '#value' => array(
-      array('data' => t('Allowed clients')),
-      array('data' => t('Remove')),
-    ),
-  );
-  $form['new_client'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Grant a client access to this platform'),
-    '#weight' => 2,
-    '#autocomplete_path' => 'hosting_client/autocomplete/client',
-    '#description' => t('This field allows you to grant a client access to this platform.
-                         Remove all clients from this list to grant all clients access to this platform'),
-  );
+  $form['clients'] = ['#type' => 'checkboxes', '#options' => $clients];
+  $form['header'] = ['#type' => 'value', '#value' => [['data' => t('Allowed clients')], ['data' => t('Remove')]]];
+  $form['new_client'] = ['#type' => 'textfield', '#title' => t('Grant a client access to this platform'), '#weight' => 2, '#autocomplete_path' => 'hosting_client/autocomplete/client', '#description' => t('This field allows you to grant a client access to this platform.
+                         Remove all clients from this list to grant all clients access to this platform')];
   $form['#theme'] = 'hosting_client_platform_access_form';
-  $form['apply'] = array(
-    '#type' => 'submit',
-    '#value' => t('Apply'),
-    '#access' => user_access('administer clients'),
-    '#submit' => array('hosting_client_platform_access_form_submit'),
-    '#weight' => 10,
-  );
+  $form['apply'] = ['#type' => 'submit', '#value' => t('Apply'), '#access' => user_access('administer clients'), '#submit' => ['hosting_client_platform_access_form_submit'], '#weight' => 10];
 
   return $form;
 }
@@ -835,7 +655,7 @@ function hosting_client_platform_access_form($form, $form_state, $node) {
 function theme_hosting_client_platform_access_form($variables) {
   $form = $variables['form'];
   foreach (element_children($form['names'], FALSE) as $client) {
-    $row = array();
+    $row = [];
 
     $row['data'][] = $form['names'][$client]['#value'];
     if ($client != '_all' && user_access('administer clients')) {
@@ -847,7 +667,7 @@ function theme_hosting_client_platform_access_form($variables) {
     }
     $rows[] = $row;
   }
-  $output = theme('table', array('header' => $form['header']['#value'], 'rows' => $rows));
+  $output = theme('table', ['header' => $form['header']['#value'], 'rows' => $rows]);
   $output .= drupal_render_children($form);
   return $output;
 }
@@ -876,10 +696,7 @@ function hosting_client_platform_access_form_submit($form, $form_state) {
     $client = hosting_get_client($new_client);
     if ($client) {
       db_insert('hosting_platform_client_access')
-        ->fields(array(
-          'pid' => $platform->nid,
-          'cid' => $client->nid,
-        ))
+        ->fields(['pid' => $platform->nid, 'cid' => $client->nid])
         ->execute();
     }
     else {
@@ -887,7 +704,7 @@ function hosting_client_platform_access_form_submit($form, $form_state) {
       if (user_access('create client') || user_access('administer clients')) {
         $add_client = ' ' . t('or') . '' . l(t('add a new client'), 'node/add/client');
       }
-      form_set_error('new_client', t('The client name (%client) was not recognized. Please try again', array('%client' => $new_client)) . $add_client . '.');
+      form_set_error('new_client', t('The client name (%client) was not recognized. Please try again', ['%client' => $new_client]) . $add_client . '.');
     }
   }
 }
@@ -909,9 +726,9 @@ function _hosting_client_site_default($node) {
 
   if ($user->uid) {
     $client_ids = hosting_get_client_from_user($user->uid);
-    $clients = array();
+    $clients = [];
     foreach ($client_ids as $client_id => $client_permissions) {
-      $client_id = $client_id ? $client_id : HOSTING_DEFAULT_CLIENT;
+      $client_id = $client_id ?: HOSTING_DEFAULT_CLIENT;
       $client = node_load($client_id);
       $clients[$client->title] = $client->title;
       if ((isset($node->client) && $node->client == $client_id) || !$current_client_id) {
@@ -984,7 +801,7 @@ function _hosting_client_configure_access() {
  * hosting_client_mail_welcome_subject and
  * hosting_client_mail_welcome_body variables.
  */
-function _hosting_client_mail_text($messageid, $variables = array()) {
+function _hosting_client_mail_text($messageid, $variables = []) {
   // Check if an admin setting overrides the default string.
   if ($admin_setting = variable_get('hosting_client_mail_' . $messageid, FALSE)) {
     return strtr($admin_setting, $variables);
@@ -1006,53 +823,16 @@ function _hosting_client_mail_text($messageid, $variables = array()) {
  * @see hosting_client_menu()
  */
 function hosting_client_configure($form, &$form_state) {
-  $form['hosting_client_prefix'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Client internal name prefix'),
-    '#description' => t('Client nodes have an internal name that can be mapped to a UNIX group. This is the prefix assigned to that internal name to make sure it is in a separate namespace. Note that UNIX groups are generally limited to 16 characters so this prefix should be kept short. It can also be empty, in which case no prefix will be added.'),
-    '#default_value' => variable_get('hosting_client_prefix', ''),
-    '#size' => 5,
-    '#maxlength' => 16,
-  );
-  $form['hosting_client_register_user'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Automatically create user accounts for new clients.'),
-    '#description' => t('If this setting is on, any new client nodes will automatically have a system user account generated for them, and associated with the new client node. Users going through the signup form module have a user created regardless of this setting.'),
-    '#default_value' => variable_get('hosting_client_register_user', FALSE),
-  );
-  $form['hosting_client_require_client_to_create_site'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Require users to have a client to create a site.'),
-    '#description' => t('If this setting is on, users will not be able to create sites unless they are associated with a client.'),
-    '#default_value' => variable_get('hosting_client_require_client_to_create_site', FALSE),
-  );
+  $form['hosting_client_prefix'] = ['#type' => 'textfield', '#title' => t('Client internal name prefix'), '#description' => t('Client nodes have an internal name that can be mapped to a UNIX group. This is the prefix assigned to that internal name to make sure it is in a separate namespace. Note that UNIX groups are generally limited to 16 characters so this prefix should be kept short. It can also be empty, in which case no prefix will be added.'), '#default_value' => variable_get('hosting_client_prefix', ''), '#size' => 5, '#maxlength' => 16];
+  $form['hosting_client_register_user'] = ['#type' => 'checkbox', '#title' => t('Automatically create user accounts for new clients.'), '#description' => t('If this setting is on, any new client nodes will automatically have a system user account generated for them, and associated with the new client node. Users going through the signup form module have a user created regardless of this setting.'), '#default_value' => variable_get('hosting_client_register_user', FALSE)];
+  $form['hosting_client_require_client_to_create_site'] = ['#type' => 'checkbox', '#title' => t('Require users to have a client to create a site.'), '#description' => t('If this setting is on, users will not be able to create sites unless they are associated with a client.'), '#default_value' => variable_get('hosting_client_require_client_to_create_site', FALSE)];
   // User e-mail settings.
-  $form['email'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('User e-mail settings'),
-  );
-  $form['email']['hosting_client_send_welcome'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Send welcome mail to new clients.'),
-    '#description' => t('If this setting is on, new clients will receive a welcome email containing their login details.'),
-    '#default_value' => variable_get('hosting_client_send_welcome', FALSE),
-  );
-  $form['email']['hosting_client_mail_welcome_subject'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Subject of welcome e-mail'),
-    '#default_value' => _hosting_client_mail_text('welcome_subject'),
-    '#maxlength' => 180,
-    '#description' => t('Customize the subject of your welcome e-mail, which is sent to new members upon registering.')
-    . ' ' . t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !date, !login_uri, !edit_uri, !login_url.',
-  );
-  $form['email']['hosting_client_mail_welcome_body'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Body of welcome e-mail'),
-    '#default_value' => _hosting_client_mail_text('welcome_body'),
-    '#rows' => 15,
-    '#description' => t('Customize the body of the welcome e-mail, which is sent to new members upon registering.')
-    . ' ' . t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !login_uri, !edit_uri, !login_url.',
-  );
+  $form['email'] = ['#type' => 'fieldset', '#title' => t('User e-mail settings')];
+  $form['email']['hosting_client_send_welcome'] = ['#type' => 'checkbox', '#title' => t('Send welcome mail to new clients.'), '#description' => t('If this setting is on, new clients will receive a welcome email containing their login details.'), '#default_value' => variable_get('hosting_client_send_welcome', FALSE)];
+  $form['email']['hosting_client_mail_welcome_subject'] = ['#type' => 'textfield', '#title' => t('Subject of welcome e-mail'), '#default_value' => _hosting_client_mail_text('welcome_subject'), '#maxlength' => 180, '#description' => t('Customize the subject of your welcome e-mail, which is sent to new members upon registering.')
+  . ' ' . t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !date, !login_uri, !edit_uri, !login_url.'];
+  $form['email']['hosting_client_mail_welcome_body'] = ['#type' => 'textarea', '#title' => t('Body of welcome e-mail'), '#default_value' => _hosting_client_mail_text('welcome_body'), '#rows' => 15, '#description' => t('Customize the body of the welcome e-mail, which is sent to new members upon registering.')
+  . ' ' . t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !login_uri, !edit_uri, !login_url.'];
 
   return system_settings_form($form);
 }
@@ -1063,10 +843,10 @@ function hosting_client_configure($form, &$form_state) {
  * DEPRECATED, moved to the hosting_client_list view.
  */
 function _hosting_get_clients() {
-  $return = array();
+  $return = [];
   $query = db_select('node', 'n')->extend('PagerDefault');
   $result = $query
-    ->fields('n', array('nid', 'title'))
+    ->fields('n', ['nid', 'title'])
     ->condition('type', 'client')
     ->limit(25)
     ->addTag('node_access')
@@ -1081,7 +861,7 @@ function _hosting_get_clients() {
  * Retrieve autocomplete suggestions.
  */
 function hosting_client_autocomplete($type, $keyword) {
-  $matches = array();
+  $matches = [];
 
   if ($type == 'client') {
     // @todo Confirm that these are equivalent, especially the db_rewrite_sql -> addTag('node_access')
@@ -1131,10 +911,10 @@ function hosting_client_node_delete($node) {
  * http://drupal.org/node/725952
  */
 function _hosting_get_allowed_platforms($uid = NULL, $reset = FALSE) {
-  static $platforms = array();
+  static $platforms = [];
 
   if ($reset) {
-    $platforms = array();
+    $platforms = [];
   }
 
   if (is_null($uid)) {
@@ -1143,7 +923,7 @@ function _hosting_get_allowed_platforms($uid = NULL, $reset = FALSE) {
   }
 
   if (!isset($platforms[$uid])) {
-    $platforms[$uid] = array();
+    $platforms[$uid] = [];
 
     $result = db_query("SELECT n.nid, n.title
                         FROM {node} n
@@ -1157,12 +937,7 @@ function _hosting_get_allowed_platforms($uid = NULL, $reset = FALSE) {
                         AND n.status = :nstatus
                         AND h.status > :hstatus
                         AND (c.user = :cuser OR p.pid IS NULL)",
-                        array(
-                          ':type' => 'platform',
-                          ':nstatus' => 1,
-                          ':hstatus' => HOSTING_PLATFORM_LOCKED,
-                          ':cuser' => $uid,
-                        )
+                        [':type' => 'platform', ':nstatus' => 1, ':hstatus' => HOSTING_PLATFORM_LOCKED, ':cuser' => $uid]
                       );
     foreach ($result as $server) {
       $platforms[$uid][$server->nid] = $server->title;
@@ -1192,20 +967,17 @@ function hosting_client_sanitize($title) {
   $prefix = variable_get('hosting_client_prefix', '');
 
   // Remove anything but "word characters", dots and dashes.
-  $title = preg_replace("/^$prefix/", "", $title);
+  $title = preg_replace("/^$prefix/", "", (string) $title);
 
   // Remove the prefix in case we are validating an existing uname.
   $title = preg_replace("/[!\W\.\-]/", "", $title);
 
-  return substr(strtolower($prefix . $title), 0, HOSTING_CLIENT_MAX_GROUP_LENGTH);
+  return substr(strtolower((string) ($prefix . $title)), 0, HOSTING_CLIENT_MAX_GROUP_LENGTH);
 }
 
 /**
  * Implements hook_views_api().
  */
 function hosting_client_views_api() {
-  return array(
-    'api' => 3,
-    'path' => drupal_get_path('module', 'hosting_client') . '/includes/views',
-  );
+  return ['api' => 3, 'path' => drupal_get_path('module', 'hosting_client') . '/includes/views'];
 }

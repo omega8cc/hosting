@@ -37,53 +37,20 @@ if (module_exists('hosting_quota')) {
  * Implements hook_menu().
  */
 function hosting_site_menu() {
-  $items = array();
+  $items = [];
 
-  $items['hosting/sites/list'] = array(
-    'title' => 'List',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -10,
-  );
+  $items['hosting/sites/list'] = ['title' => 'List', 'type' => MENU_DEFAULT_LOCAL_TASK, 'weight' => -10];
 
-  $items['hosting/sites/add'] = array(
-    'title' => 'Add site',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'drupal_goto',
-    'page arguments' => array('node/add/site'),
-    'access callback' => 'node_access',
-    'access arguments' => array('create', 'site'),
-  );
+  $items['hosting/sites/add'] = ['title' => 'Add site', 'type' => MENU_LOCAL_TASK, 'page callback' => 'drupal_goto', 'page arguments' => ['node/add/site'], 'access callback' => 'node_access', 'access arguments' => ['create', 'site']];
 
-  $items['node/%node/platform-add-site'] = array(
-    'title' => 'Add site',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'hosting_site_add_by_platform',
-    'page arguments' => array(1),
-    'access callback' => 'hosting_site_add_by_platform_access',
-    'access arguments' => array(1),
-  );
+  $items['node/%node/platform-add-site'] = ['title' => 'Add site', 'type' => MENU_LOCAL_TASK, 'page callback' => 'hosting_site_add_by_platform', 'page arguments' => [1], 'access callback' => 'hosting_site_add_by_platform_access', 'access arguments' => [1]];
 
-  $items['hosting/hosting_site_form_check'] = array(
-    'page callback' => '_hosting_site_form_check',
-    'type' => MENU_CALLBACK,
-    'access arguments' => array('access content'),
-  );
+  $items['hosting/hosting_site_form_check'] = ['page callback' => '_hosting_site_form_check', 'type' => MENU_CALLBACK, 'access arguments' => ['access content']];
 
   // Provide autocomplete functionality.
-  $items['hosting/sites/autocomplete'] = array(
-    'title' => 'Autocomplete for sites',
-    'page callback' => 'hosting_site_autocomplete_sites',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
+  $items['hosting/sites/autocomplete'] = ['title' => 'Autocomplete for sites', 'page callback' => 'hosting_site_autocomplete_sites', 'access arguments' => ['access content'], 'type' => MENU_CALLBACK];
 
-  $items['node/%node/goto_site'] = array(
-    'page callback' => 'hosting_site_goto',
-    'page arguments' => array(1),
-    'access callback' => 'node_access',
-    'access arguments' => array('view', 1),
-    'type' => MENU_CALLBACK,
-  );
+  $items['node/%node/goto_site'] = ['page callback' => 'hosting_site_goto', 'page arguments' => [1], 'access callback' => 'node_access', 'access arguments' => ['view', 1], 'type' => MENU_CALLBACK];
 
   return $items;
 }
@@ -92,20 +59,10 @@ function hosting_site_menu() {
  * Implements hook_theme().
  */
 function hosting_site_theme($existing, $type, $theme, $path) {
-  $items = array();
+  $items = [];
 
-  $items['hosting_site_profile'] = array(
-    'arguments' => array(
-      'profile' => NULL,
-      'html' => FALSE,
-    ),
-  );
-  $items['hosting_site_goto_link'] = array(
-    'arguments' => array(
-      'title' => NULL,
-      'url' => NULL,
-    ),
-  );
+  $items['hosting_site_profile'] = ['arguments' => ['profile' => NULL, 'html' => FALSE]];
+  $items['hosting_site_goto_link'] = ['arguments' => ['title' => NULL, 'url' => NULL]];
 
   return $items;
 }
@@ -137,14 +94,14 @@ function hosting_site_autocomplete_sites($string) {
   // is much faster as we can get away with only one DB query overall.
   $query = db_select('node', 'n');
   $query->join('hosting_site', 's', 's.nid = n.nid');
-  $results = $query->fields('n', array('nid', 'title'))
+  $results = $query->fields('n', ['nid', 'title'])
     ->condition('n.type', 'site')
     ->condition('n.title', '%' . db_like($string) . '%', 'LIKE')
     ->condition('s.status', HOSTING_SITE_DELETED, '!=')
     ->execute();
 
   // Save each result to the list.
-  $matches = array();
+  $matches = [];
   foreach ($results as $row) {
     $matches[$row->title] = check_plain($row->title);
   }
@@ -183,19 +140,20 @@ function hosting_site_wildcard_load($arg) {
 function _hosting_site_goto_link($node) {
   $cache = cache_get("hosting:site:" . $node->nid . ":login_link");
   if (user_access('create login-reset task') && $cache && (REQUEST_TIME < $cache->data['expire'])) {
-    $title = t("Log in to !url", array('!url' => hosting_site_canonical_url($node)));
+    $title = t("Log in to !url", ['!url' => hosting_site_canonical_url($node)]);
   }
   else {
-    $title = t("Go to !url", array('!url' => hosting_site_canonical_url($node)));
+    $title = t("Go to !url", ['!url' => hosting_site_canonical_url($node)]);
   }
   $url = "node/" . $node->nid . "/goto_site";
-  return theme('hosting_site_goto_link', array('title' => $title, 'url' => $url));
+  return theme('hosting_site_goto_link', ['title' => $title, 'url' => $url]);
 }
 
 /**
  * Theme function for site link.
  */
 function theme_hosting_site_goto_link($variables) {
+  $options = [];
   $options['attributes']['class'] = 'hosting-goto-site-link';
   $options['attributes']['target'] = '_blank';
   return l($variables['title'], $variables['url'], $options);
@@ -291,68 +249,29 @@ function hosting_site_canonical_url($node) {
  * Implements hook_hosting_tasks().
  */
 function hosting_site_hosting_tasks() {
-  $tasks = array();
+  $tasks = [];
 
-  $tasks['site']['backup'] = array(
-    'title' => t('Backup'),
-    'description' => t('Generate a backup of this site that can be restored to at any time'),
-    'dialog' => TRUE,
-  );
+  $tasks['site']['backup'] = ['title' => t('Backup'), 'description' => t('Generate a backup of this site that can be restored to at any time'), 'dialog' => TRUE];
 
-  $tasks['site']['restore'] = array(
-    'title' => t('Restore'),
-    'description' => t('Restore this site to a previous backup. A new backup will be created before this is attempted.'),
-    'dialog' => TRUE,
-  );
+  $tasks['site']['restore'] = ['title' => t('Restore'), 'description' => t('Restore this site to a previous backup. A new backup will be created before this is attempted.'), 'dialog' => TRUE];
 
-  $tasks['site']['verify'] = array(
-    'title' => t('Verify Site'),
-    'description' => t('Confirm that the site has been correctly installed and regenerate all configuration files to match the hosting front end.'),
-    'provision_save' => TRUE,
-  );
+  $tasks['site']['verify'] = ['title' => t('Verify Site'), 'description' => t('Confirm that the site has been correctly installed and regenerate all configuration files to match the hosting front end.'), 'provision_save' => TRUE];
 
-  $tasks['site']['disable'] = array(
-    'title' => t('Disable'),
-    'description' => t('Disabling this site will stop it from being accessible.
-         It can be enabled again later.'),
-    'dialog' => TRUE,
-  );
-  $tasks['site']['enable'] = array(
-    'title' => t('Enable'),
-    'description' => t('Enabling this site will allow it to be accesible again.
-         It may be disabled again if needed.'),
-  );
-  $tasks['site']['delete'] = array(
-    'title' => t('Delete Site'),
-    'description' => t('Deleting this site will completely remove it from the hosting system,
+  $tasks['site']['disable'] = ['title' => t('Disable'), 'description' => t('Disabling this site will stop it from being accessible.
+         It can be enabled again later.'), 'dialog' => TRUE];
+  $tasks['site']['enable'] = ['title' => t('Enable'), 'description' => t('Enabling this site will allow it to be accesible again.
+         It may be disabled again if needed.')];
+  $tasks['site']['delete'] = ['title' => t('Delete Site'), 'description' => t('Deleting this site will completely remove it from the hosting system,
         but will keep the last backup available. This process can not be undone.
-        Are you really sure you want to delete this site?'),
-    'dialog' => TRUE,
-  );
+        Are you really sure you want to delete this site?'), 'dialog' => TRUE];
 
-  $tasks['site']['login-reset'] = array(
-    'title' => t('Reset password'),
-    'description' => t('Generate a one-time login reset url for this site.'),
-  );
+  $tasks['site']['login-reset'] = ['title' => t('Reset password'), 'description' => t('Generate a one-time login reset url for this site.')];
 
-  $tasks['site']['backup-delete'] = array(
-    'title' => t('Delete backups'),
-    'description' => t('Delete one or more backup files of a site.'),
-    'dialog' => TRUE,
-  );
+  $tasks['site']['backup-delete'] = ['title' => t('Delete backups'), 'description' => t('Delete one or more backup files of a site.'), 'dialog' => TRUE];
 
-  $tasks['site']['install'] = array(
-    'title' => t('Install'),
-    'description' => t('Install a site'),
-    'hidden' => TRUE,
-    'provision_save' => TRUE,
-  );
+  $tasks['site']['install'] = ['title' => t('Install'), 'description' => t('Install a site'), 'hidden' => TRUE, 'provision_save' => TRUE];
 
-  $tasks['site']['import'] = array(
-    'title' => t('Import'),
-    'description' => t('Import an existing site into Aegir'),
-    'hidden' => TRUE,
-  );
+  $tasks['site']['import'] = ['title' => t('Import'), 'description' => t('Import an existing site into Aegir'), 'hidden' => TRUE];
 
   return $tasks;
 }
@@ -361,23 +280,7 @@ function hosting_site_hosting_tasks() {
  * Implements hook_permission().
  */
 function hosting_site_permission() {
-  return array(
-    'create site' => array(
-      'title' => t('create site'),
-    ),
-    'view site' => array(
-      'title' => t('view site'),
-    ),
-    'edit site' => array(
-      'title' => t('edit site'),
-    ),
-    'delete site' => array(
-      'title' => t('delete site'),
-    ),
-    'administer sites' => array(
-      'title' => t('administer sites'),
-    ),
-  );
+  return ['create site' => ['title' => t('create site')], 'view site' => ['title' => t('view site')], 'edit site' => ['title' => t('edit site')], 'delete site' => ['title' => t('delete site')], 'administer sites' => ['title' => t('administer sites')]];
 }
 
 /**
@@ -472,7 +375,7 @@ function hosting_site_add_by_platform_access($node) {
  * Page callback for Site add by platform.
  */
 function hosting_site_add_by_platform($node) {
-  drupal_goto('node/add/site', array('query' => array('platform' => $node->nid)));
+  drupal_goto('node/add/site', ['query' => ['platform' => $node->nid]]);
 }
 
 /**
@@ -498,14 +401,14 @@ function hosting_site_add_by_platform($node) {
  */
 function hosting_site_count($platform = NULL, $statuses = NULL) {
   if (is_null($statuses)) {
-    $statuses = array(HOSTING_SITE_ENABLED);
+    $statuses = [HOSTING_SITE_ENABLED];
   }
 
   $query = db_select('hosting_site')
     ->addTag('hosting_site_count')
-    ->fields('hosting_site', array('nid'));
+    ->fields('hosting_site', ['nid']);
 
-  if (count($statuses)) {
+  if (is_countable($statuses) ? count($statuses) : 0) {
     $query->condition('status', $statuses);
   }
 
@@ -520,8 +423,8 @@ function hosting_site_count($platform = NULL, $statuses = NULL) {
  * Retrieve sites on a specific platform, with a specific status
  */
 function hosting_get_sites_by_status($platform, $status) {
-  $nodes = array();
-  $result = db_query("SELECT nid FROM {hosting_site} WHERE platform = :platform AND status = :status", array(':platform' => $platform, ':status' => $status));
+  $nodes = [];
+  $result = db_query("SELECT nid FROM {hosting_site} WHERE platform = :platform AND status = :status", [':platform' => $platform, ':status' => $status]);
   while ($nid = $result->fetch()) {
     $nodes[$nid->nid] = node_load($nid->nid);
   }
@@ -560,12 +463,7 @@ function hosting_get_site_by_url($url, $loaded_object = TRUE) {
                       WHERE (n.title = :title OR ha.alias = :alias)
                         AND n.type = :type
                         AND NOT (h.status = :status)",
-                    array(
-                      ':title' => $url,
-                      ':alias' => $url,
-                      ':type' => 'site',
-                      ':status' => HOSTING_SITE_DELETED,
-                    ))->fetchField();
+                    [':title' => $url, ':alias' => $url, ':type' => 'site', ':status' => HOSTING_SITE_DELETED])->fetchField();
   }
   else {
     // Get the list of node IDs whose title matches the name.
@@ -632,27 +530,10 @@ function hosting_site_status_codes_labels() {
  * @return array
  */
 function hosting_site_status_codes($type = NULL) {
-  static $codes = array(
-    HOSTING_SITE_QUEUED => array(
-      'label' => 'Queued',
-      'class' => 'hosting-queue',
-    ),
-    HOSTING_SITE_ENABLED => array(
-      'label' => 'Enabled',
-      'class' => 'hosting-success',
-    ),
-    HOSTING_SITE_DELETED => array(
-      'label' => 'Deleted',
-      'class' => 'hosting-error',
-    ),
-    HOSTING_SITE_DISABLED => array(
-      'label' => 'Disabled',
-      'class' => 'hosting-disable',
-    ),
-  );
+  static $codes = [HOSTING_SITE_QUEUED => ['label' => 'Queued', 'class' => 'hosting-queue'], HOSTING_SITE_ENABLED => ['label' => 'Enabled', 'class' => 'hosting-success'], HOSTING_SITE_DELETED => ['label' => 'Deleted', 'class' => 'hosting-error'], HOSTING_SITE_DISABLED => ['label' => 'Disabled', 'class' => 'hosting-disable']];
   if (!is_null($type)) {
     // Return just the $type
-    $return = array();
+    $return = [];
     foreach ($codes as $code => $types) {
       $return[$code] = $types[$type];
     }
@@ -672,7 +553,8 @@ function hosting_site_status_codes($type = NULL) {
  *
  * @see hosting_domain_allowed()
  */
-function hosting_site_allow_domain($url, $params = array()) {
+function hosting_site_allow_domain($url, $params = []) {
+  $args = [];
   $query = "SELECT COUNT(n.nid) FROM {node} n
     JOIN {hosting_site} h ON n.nid = h.nid
     WHERE type = 'site' AND n.title = :title AND h.status <> :status";
@@ -713,10 +595,7 @@ function _hosting_site_list_class($node, $verified = NULL) {
  * Views integration.
  */
 function hosting_site_views_api() {
-  return array(
-    'api' => 3,
-    'path' => drupal_get_path('module', 'hosting_site') . '/includes/views',
-  );
+  return ['api' => 3, 'path' => drupal_get_path('module', 'hosting_site') . '/includes/views'];
 }
 
 /**
@@ -808,9 +687,7 @@ function hosting_site_action_info_alter(&$actions) {
  * Implements hook_hosting_task_guarded_nodes().
  */
 function hosting_site_hosting_task_guarded_nodes() {
-  return array(
-    hosting_get_hostmaster_site_nid()
-  );
+  return [hosting_get_hostmaster_site_nid()];
 }
 
 /**
@@ -835,10 +712,10 @@ function hosting_site_hosting_site_domain_alter(&$domain) {
 function hosting_site_clean_domain($domain) {
   // Domain names are case-insensitive.
   if (function_exists('idna_convert_encode')) {
-    return idna_convert_encode(strtolower(trim($domain)));
+    return idna_convert_encode(strtolower(trim((string) $domain)));
   }
   else {
-    return strtolower(trim($domain));
+    return strtolower(trim((string) $domain));
   }
 }
 

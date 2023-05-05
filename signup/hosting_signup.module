@@ -8,19 +8,10 @@
  * Implements hook_menu().
  */
 function hosting_signup_menu() {
-  $items['hosting/signup'] = array(
-    'title' => 'Sign up for a site',
-    'description' => 'Create your own hosted site',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('hosting_signup_form'),
-    'access arguments' => array('access hosting signup form'),
-  );
+  $items = [];
+  $items['hosting/signup'] = ['title' => 'Sign up for a site', 'description' => 'Create your own hosted site', 'page callback' => 'drupal_get_form', 'page arguments' => ['hosting_signup_form'], 'access arguments' => ['access hosting signup form']];
 
-  $items['hosting/signup/thanks'] = array(
-    'page callback' => 'hosting_signup_thanks',
-    'type' => MENU_CALLBACK,
-    'access arguments' => array('access hosting signup form'),
-  );
+  $items['hosting/signup/thanks'] = ['page callback' => 'hosting_signup_thanks', 'type' => MENU_CALLBACK, 'access arguments' => ['access hosting signup form']];
   return $items;
 }
 
@@ -28,11 +19,7 @@ function hosting_signup_menu() {
  * Implements hook_permission().
  */
 function hosting_signup_permission() {
-  return array(
-    'access hosting signup form' => array(
-      'title' => t('access hosting signup form'),
-    ),
-  );
+  return ['access hosting signup form' => ['title' => t('access hosting signup form')]];
 }
 
 /**
@@ -41,7 +28,7 @@ function hosting_signup_permission() {
 function hosting_signup_thanks($url = '', $email = '', $name = '') {
   return t("<h3>Thank you @name</h3>
     Your site (@url) has been requested, and the moment it is ready you will receive a mail at @email
- with instructions on how to log into it.", array("@name" => $name, "@url" => $url, "@email" => $email));
+ with instructions on how to log into it.", ["@name" => $name, "@url" => $url, "@email" => $email]);
 }
 
 /**
@@ -59,7 +46,7 @@ function hosting_signup_form($form, &$form_state) {
   $node = new stdClass();
   $form['site'] = hosting_site_form($node, $form_state);
   unset($form['site']['client']);
-  $state = array();
+  $state = [];
   foreach (module_implements('form_alter') as $module) {
     $function = $module . '_form_alter';
     $function($form['site'], $state, 'site_node_form');
@@ -81,15 +68,9 @@ function hosting_signup_form($form, &$form_state) {
 
   unset($form['client']['title']);
 
-  $form['new_client'] = array(
-    '#type' => 'value',
-    '#value' => TRUE,
-  );
+  $form['new_client'] = ['#type' => 'value', '#value' => TRUE];
 
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t("Sign up"),
-  );
+  $form['submit'] = ['#type' => 'submit', '#value' => t("Sign up")];
   return $form;
 }
 

@@ -14,13 +14,9 @@
  * Definition of hook_hosting_quota_resource
  */
 function hook_hosting_quota_resource() {
-  $resources = array();
+  $resources = [];
 
-  $resources['foo'] = array(
-    'title' => t('Foo'),
-    'description' => t('Limit for foo. Enter in 23rds of foo units.'),
-    'module' => 'hook',
-  );
+  $resources['foo'] = ['title' => t('Foo'), 'description' => t('Limit for foo. Enter in 23rds of foo units.'), 'module' => 'hook'];
 
   return $resources;
 }
@@ -41,6 +37,7 @@ function hook_hosting_quota_resource() {
  */
 function hook_hosting_quota_get_usage($client, $resource, $start, $end) {
 
+  $usage = null;
   if (hosting_get_client($client)) {
     switch ($resource) {
       case 'foo':

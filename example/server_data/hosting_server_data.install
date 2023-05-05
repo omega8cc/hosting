@@ -9,29 +9,8 @@
  * Implements hook_schema().
  */
 function hosting_server_data_schema() {
-  $schema['hosting_server_data'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'server_data' => array(
-        'type' => 'varchar',
-        'length' => 128,
-        'not null' => TRUE,
-      ),
-    ),
-    'indexes' => array(
-      'vid' => array('vid'),
-    ),
-  );
+  $schema = [];
+  $schema['hosting_server_data'] = ['fields' => ['vid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'server_data' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE]], 'indexes' => ['vid' => ['vid']]];
 
   return $schema;
 }

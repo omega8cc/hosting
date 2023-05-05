@@ -23,9 +23,7 @@
  */
 function hosting_package_instance_sync($rid, $type) {
   db_update('hosting_package_instance')
-    ->fields(array(
-      'status' => -1, // @todo remove magic number?
-    ))
+    ->fields(['status' => -1])
     ->condition('rid', $rid)
     ->execute();
 
@@ -48,14 +46,14 @@ function hosting_package_instance_sync($rid, $type) {
     $sql = 'SELECT rid
             FROM {hosting_package_instance}
             WHERE iid = :rid';
-    $platform = db_query($sql, array(':rid' => $rid))->fetchField();
+    $platform = db_query($sql, [':rid' => $rid])->fetchField();
   }
   else {
-    watchdog('hosting_package', 'Unrecognized entity type (' . $type . ') passed to hosting_package_instance_sync().', array(), WATCHDOG_WARNING);
+    watchdog('hosting_package', 'Unrecognized entity type (' . $type . ') passed to hosting_package_instance_sync().', [], WATCHDOG_WARNING);
   }
 
   foreach ($map as $plural => $key) {
-    $merged = array();
+    $merged = [];
     foreach ($args as $index => $arg) {
       if (array_key_exists($plural, $args[$index])) {
         $merged = array_merge($merged, $args[$index][$plural]);
@@ -63,10 +61,7 @@ function hosting_package_instance_sync($rid, $type) {
     }
 
     foreach ($merged as $name => $package) {
-      $instance = hosting_package_instance_load(array(
-        'i.rid' => $rid,
-        'i.package_id' => $package['package_id'],
-      ));
+      $instance = hosting_package_instance_load(['i.rid' => $rid, 'i.package_id' => $package['package_id']]);
       if (!$instance) {
         $instance = new stdClass();
         $instance->rid = $rid;
@@ -90,16 +85,13 @@ function hosting_package_instance_sync($rid, $type) {
 }
 
 function _hosting_package_instance_languages($instance) {
-  if (isset($instance->languages) && count($instance->languages)) {
+  if (isset($instance->languages) && (is_countable($instance->languages) ? count($instance->languages) : 0)) {
     db_delete('hosting_package_languages')
       ->condition('iid', $instance->iid)
       ->execute();
     foreach ($instance->languages as $language) {
       $id = db_insert('hosting_package_languages')
-        ->fields(array(
-          'iid' => $instance->iid,
-          'language' => $language,
-        ))
+        ->fields(['iid' => $instance->iid, 'language' => $language])
         ->execute();
     }
   }
@@ -114,16 +106,7 @@ function _hosting_package_instance_languages($instance) {
  */
 function hosting_package_instance_update(&$instance) {
   $id = db_update('hosting_package_instance')
-    ->fields(array(
-      'rid' => $instance->rid,
-      'package_id' => $instance->package_id,
-      'filename' => $instance->filename,
-      'schema_version' => $instance->schema_version,
-      'version' => $instance->version,
-      'version_code' => $instance->version_code,
-      'status' => $instance->status,
-      'platform' => $instance->platform
-    ))
+    ->fields(['rid' => $instance->rid, 'package_id' => $instance->package_id, 'filename' => $instance->filename, 'schema_version' => $instance->schema_version, 'version' => $instance->version, 'version_code' => $instance->version_code, 'status' => $instance->status, 'platform' => $instance->platform])
     ->condition('iid', $instance->iid)
     ->execute();
 
@@ -136,16 +119,7 @@ function hosting_package_instance_update(&$instance) {
  */
 function hosting_package_instance_create(&$instance) {
   $id = db_insert('hosting_package_instance')
-    ->fields(array(
-      'rid' => $instance->rid,
-      'package_id' => $instance->package_id,
-      'filename' => $instance->filename,
-      'schema_version' => $instance->schema_version,
-      'version' => $instance->version,
-      'version_code' => $instance->version_code,
-      'status' => $instance->status,
-      'platform' => $instance->platform
-    ))
+    ->fields(['rid' => $instance->rid, 'package_id' => $instance->package_id, 'filename' => $instance->filename, 'schema_version' => $instance->schema_version, 'version' => $instance->version, 'version_code' => $instance->version_code, 'status' => $instance->status, 'platform' => $instance->platform])
     ->execute();
   $instance->iid = $id;
   _hosting_package_instance_languages($instance);
@@ -182,17 +156,17 @@ function hosting_package_instances_load($param) {
  * Internal function for hosting_package_instance(s)_load.
  */
 function _hosting_package_instances_load($param, $multiple = FALSE) {
-  $instances = array();
+  $instances = [];
 
   $query = db_select('hosting_package_instance', 'i')
     ->addTag('hosting_package_instances_load')
-    ->fields('i', array('iid', 'version', 'version_code', 'schema_version', 'status', 'rid', 'package_id'));
+    ->fields('i', ['iid', 'version', 'version_code', 'schema_version', 'status', 'rid', 'package_id']);
   $package_alias = $query->leftJoin('hosting_package', 'p', 'i.package_id = %alias.nid');
-  $query->fields($package_alias, array('package_type', 'nid', 'description', 'short_name', 'old_short_name'));
+  $query->fields($package_alias, ['package_type', 'nid', 'description', 'short_name', 'old_short_name']);
   $node_package_alias = $query->leftJoin('node', 'n', $package_alias . '.nid = %alias.nid');
-  $query->fields($node_package_alias, array('title'));
+  $query->fields($node_package_alias, ['title']);
   $node_instance_alias = $query->leftJoin('node', 'r', 'i.rid = %alias.nid');
-  $query->fields($node_instance_alias, array('type'));
+  $query->fields($node_instance_alias, ['type']);
   $platform_alias = $query->leftJoin('hosting_platform', 'h', $node_instance_alias . '.nid = %alias.nid');
 
   if (is_numeric($param)) {
@@ -224,17 +198,17 @@ function _hosting_package_instances_load($param, $multiple = FALSE) {
  * Get the languages associated with an instance of a package.
  */
 function _hosting_package_instances_load_languages($instance_id = NULL, $reset = FALSE) {
-  static $instances = array();
+  static $instances = [];
   if (!empty($reset)) {
-    $instances = array();
+    $instances = [];
   }
 
   // Build the array of languages if requested and we need to.
   if (!is_null($instance_id) && !isset($instances[$instance_id])) {
-    $languages = array('en' => 'en');
+    $languages = ['en' => 'en'];
 
     // load language options: if argument is null, load all language options
-    $lang_result = db_query("SELECT DISTINCT(language) FROM {hosting_package_languages} WHERE iid = :iid", array(':iid' => $instance_id));
+    $lang_result = db_query("SELECT DISTINCT(language) FROM {hosting_package_languages} WHERE iid = :iid", [':iid' => $instance_id]);
     while ($language = $lang_result->fetch()) {
       $languages[$language->language] = _hosting_language_name($language->language);
     }
@@ -282,35 +256,17 @@ function hosting_package_instance_delete($instance) {
  */
 function hosting_package_instance_version_code($version) {
 
-  $defaults = array(
-    'platform_major' => 0,
-    'platform_minor' => 0,
-    'package_major' => 0,
-    'package_minor' => 0,
-    'package_version_type' => 'release',
-    'package_patch_level' => 0,
-  );
+  $defaults = ['platform_major' => 0, 'platform_minor' => 0, 'package_major' => 0, 'package_minor' => 0, 'package_version_type' => 'release', 'package_patch_level' => 0];
 
-  $release_types = array(
-    '' => 0,
-    'dev' => 0,
-    'unstable' => 1,
-    'alpha' => 2,
-    'beta' => 3,
-    'rc' => 4,
-    'release' => 5,
-  );
+  $release_types = ['' => 0, 'dev' => 0, 'unstable' => 1, 'alpha' => 2, 'beta' => 3, 'rc' => 4, 'release' => 5];
 
-  $regex = array(
-    'core' => '/^(?P<platform_major>\d?)\.(?P<platform_minor>[x\d]*)?(-(?P<package_version_type>dev|unstable|alpha|beta|rc)?(?P<package_patch_level>\d)*)?$/',
-    'contrib' => "/(?P<platform_major>\d?)\.(?P<platform_minor>[x\d]*)?(-(?P<package_major>\d*)?\.(?P<package_minor>[x\d]*)?(-(?P<package_version_type>alpha|unstable|beta|rc|dev)?(?P<package_patch_level>[\d]*)?)?)?/",
-  );
+  $regex = ['core' => '/^(?P<platform_major>\d?)\.(?P<platform_minor>[x\d]*)?(-(?P<package_version_type>dev|unstable|alpha|beta|rc)?(?P<package_patch_level>\d)*)?$/', 'contrib' => "/(?P<platform_major>\d?)\.(?P<platform_minor>[x\d]*)?(-(?P<package_major>\d*)?\.(?P<package_minor>[x\d]*)?(-(?P<package_version_type>alpha|unstable|beta|rc|dev)?(?P<package_patch_level>[\d]*)?)?)?/"];
 
-  $matches = array();
-  if (preg_match($regex['core'], $version, $matches)) {
+  $matches = [];
+  if (preg_match($regex['core'], (string) $version, $matches)) {
     $matches = array_merge($defaults, $matches);
   }
-  elseif (preg_match($regex['contrib'], $version, $matches)) {
+  elseif (preg_match($regex['contrib'], (string) $version, $matches)) {
     $matches = array_merge($defaults, $matches);
   }
   else {
@@ -334,16 +290,14 @@ function hosting_package_comparison($current, $target) {
   $current_table = _hosting_package_temporary_table($current);
   $target_table = _hosting_package_temporary_table($target);
 
-  $status = array();
+  $status = [];
   $result = db_query("SELECT count(c.nid) AS error
                       FROM $current_table c
                       LEFT JOIN $target_table t
                       ON c.nid=t.nid
                       WHERE (t.schema_version > 0) && (c.schema_version > t.schema_version)
                       AND c.status = :cstatus",
-                      array(
-                        ':cstatus' => 1,
-                        )
+                      [':cstatus' => 1]
                       );
 
   foreach ($result as $obj) {
@@ -356,9 +310,7 @@ function hosting_package_comparison($current, $target) {
                       ON c.nid=t.nid
                       WHERE t.nid IS NULL
                       AND c.status = :c_status",
-                      array(
-                        ':c_status' => 1,
-                        )
+                      [':c_status' => 1]
                       );
   foreach ($result as $obj) {
     $status['missing'] = $obj->missing;
@@ -370,9 +322,7 @@ function hosting_package_comparison($current, $target) {
                       ON c.nid=t.nid
                       WHERE (c.version_code < t.version_code) OR (c.schema_version < t.schema_version)
                       AND c.status = :c_status",
-                      array(
-                        ':c_status' => 1,
-                        )
+                      [':c_status' => 1]
                       );
 
   foreach ($result as $obj) {
@@ -394,7 +344,7 @@ function hosting_package_comparison($current, $target) {
 
 
 function _hosting_package_temporary_table($ref) {
-  static $names = array();
+  static $names = [];
 
   if (!isset($names[$ref])) {
     // Generate a unique table name for this $ref.
@@ -403,7 +353,7 @@ function _hosting_package_temporary_table($ref) {
               LEFT JOIN {hosting_package_instance} i
               ON p.nid = i.package_id
               WHERE i.rid = :rid and i.platform != :platform",
-              array( ':rid' => $ref, ':platform' => HOSTING_PACKAGE_INSTANCE_EXCLUDE));
+              [':rid' => $ref, ':platform' => HOSTING_PACKAGE_INSTANCE_EXCLUDE]);
 
   }
 
@@ -414,7 +364,7 @@ function _hosting_package_temporary_table($ref) {
  * Helper to determine if a particular site has a module installed.
  */
 function _hosting_package_site_has_module($node, $module) {
-  $package = hosting_package_instance_load(array('rid' => $node->nid, 'p.short_name' => $module));
+  $package = hosting_package_instance_load(['rid' => $node->nid, 'p.short_name' => $module]);
   if (!is_object($package)) {
     return FALSE;
   }

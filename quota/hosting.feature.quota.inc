@@ -9,26 +9,7 @@
  * Implements hook_hosting_feature().
  */
 function hosting_quota_hosting_feature() {
-  $features['quota'] = array(
-    'title' => t('Quotas'),
-    'description' => t('Provides the ability to define and allocate quotas for various resources to clients.'),
-    'status' => HOSTING_FEATURE_DISABLED,
-    'module' => 'hosting_quota',
-    'group' => 'experimental',
-    'role_permissions' => array(
-      'aegir administrator' => array(
-        'bypass all quotas',
-      ),
-      'aegir account manager' => array(
-        'edit all quotas',
-        'view all quotas',
-        'view own quota',
-      ),
-      'aegir client' => array(
-        'view own quota',
-      ),
-    ),
-
-  );
+  $features = [];
+  $features['quota'] = ['title' => t('Quotas'), 'description' => t('Provides the ability to define and allocate quotas for various resources to clients.'), 'status' => HOSTING_FEATURE_DISABLED, 'module' => 'hosting_quota', 'group' => 'experimental', 'role_permissions' => ['aegir administrator' => ['bypass all quotas'], 'aegir account manager' => ['edit all quotas', 'view all quotas', 'view own quota'], 'aegir client' => ['view own quota']]];
   return $features;
 }

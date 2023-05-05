@@ -108,24 +108,25 @@ function hook_drush_context_import($context, &$node) {
  * @see hosting_get_features()
  */
 function hook_hosting_feature() {
+  $features = [];
   // From hosting_example_hosting_feature().
-  $features['example'] = array(
-    // Title to display in form.
-    'title' => t('Example feature'),
-    // Description.
-    'description' => t('Example feature documenting how to create your own extensions.'),
-    // Initial status ( HOSTING_FEATURE_DISABLED, HOSTING_FEATURE_ENABLED, HOSTING_FEATURE_REQUIRED )
-    'status' => HOSTING_FEATURE_DISABLED,
-    // Module to enable/disable alongside feature.
-    'module' => 'hosting_example',
-    // Callback functions to execute on enabling or disabling this feature.
-    'enable' => 'hosting_example_feature_enable_callback',
-    'disable' => 'hosting_example_feature_disable_callback',
-    // Associate with a specific node type.
-    // 'node' => 'nodetype',
-    // Which group to display in ( null , experimental , required )
-    'group' => 'experimental',
-  );
+  $features['example'] = [
+      // Title to display in form.
+      'title' => t('Example feature'),
+      // Description.
+      'description' => t('Example feature documenting how to create your own extensions.'),
+      // Initial status ( HOSTING_FEATURE_DISABLED, HOSTING_FEATURE_ENABLED, HOSTING_FEATURE_REQUIRED )
+      'status' => HOSTING_FEATURE_DISABLED,
+      // Module to enable/disable alongside feature.
+      'module' => 'hosting_example',
+      // Callback functions to execute on enabling or disabling this feature.
+      'enable' => 'hosting_example_feature_enable_callback',
+      'disable' => 'hosting_example_feature_disable_callback',
+      // Associate with a specific node type.
+      // 'node' => 'nodetype',
+      // Which group to display in ( null , experimental , required )
+      'group' => 'experimental',
+  ];
   return $features;
 }
 
@@ -328,7 +329,7 @@ function hook_post_hosting_TASK_TYPE_task($task, $data) {
     $platform = node_load($task->ref->platform);
 
     $desc = $task->task_args['description'];
-    $desc = ($desc) ? $desc : t('Generated on request');
+    $desc = $desc ?: t('Generated on request');
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], $desc, $data['context']['backup_file_size']);
   }
 }
@@ -359,7 +360,7 @@ function hosting_QUEUE_TYPE_queue($count = 5) {
   drush_log(dt("Running tasks queue"));
   $tasks = hosting_get_new_tasks($count);
   foreach ($tasks as $task) {
-    drush_invoke_process('@self', "hosting-task", array($task->nid), array(), array('fork' => TRUE));
+    drush_invoke_process('@self', "hosting-task", [$task->nid], [], ['fork' => TRUE]);
   }
 }
 
@@ -396,18 +397,11 @@ function hook_hosting_task_update_status($task, $status) {
 
   // On error, output a new message.
   if ($status == HOSTING_TASK_ERROR) {
-    drush_log(dt("!title: !task task ended in an Error", array(
-      '!task' => $task->task_type,
-      '!title' => $node->title,
-    )), 'error');
+    drush_log(dt("!title: !task task ended in an Error", ['!task' => $task->task_type, '!title' => $node->title]), 'error');
   }
   else {
     drush_log(" Task completed successfully: " . $task->task_type, 'ok');
-    drush_log(dt("!title: !task task ended with !status", array(
-      '!task' => $task->task_type,
-      '!title' => $node->title,
-      '!status' => _hosting_parse_error_code($status),
-    )), 'ok');
+    drush_log(dt("!title: !task task ended with !status", ['!task' => $task->task_type, '!title' => $node->title, '!status' => _hosting_parse_error_code($status)]), 'ok');
   }
 }
 
@@ -421,10 +415,7 @@ function hook_hosting_task_guarded_nodes() {
   // Guard against destructive or insecure tasks run on the hostmaster site or platform.
   $hostmaster_site_nid = hosting_get_hostmaster_site_nid();
   $hostmaster_platform_nid = hosting_get_hostmaster_platform_nid();
-  $guarded_nids = array(
-    $hostmaster_site_nid,
-    $hostmaster_platform_nid,
-  );
+  $guarded_nids = [$hostmaster_site_nid, $hostmaster_platform_nid];
   return $guarded_nids;
 }
 
@@ -444,14 +435,7 @@ function hook_hosting_task_guarded_nodes_alter(&$nids) {}
  * @see: hook_hosting_task_dangerous_tasks_alter().
  */
 function hook_hosting_task_dangerous_tasks() {
-  $dangerous_tasks = array(
-    'backup-delete',
-    'backup',
-    'delete',
-    'disable',
-    'login-reset',
-    'restore',
-  );
+  $dangerous_tasks = ['backup-delete', 'backup', 'delete', 'disable', 'login-reset', 'restore'];
   return $dangerous_tasks;
 }
 

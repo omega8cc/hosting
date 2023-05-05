@@ -8,7 +8,7 @@ class hosting_task_handler_filter_status extends views_handler_filter_in_operato
     if (!isset($this->value_options)) {
       $this->value_title = t('Task Status');
 
-      $options = array();
+      $options = [];
 
       $error_codes = _hosting_task_error_codes();
 

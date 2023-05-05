@@ -9,10 +9,10 @@ function drush_hosting_alias_pre_hosting_task() {
     $task = &drush_get_context('HOSTING_TASK');
     if ($task->ref->type == 'site') {
       $aliases = implode(',', hosting_alias_get_aliases($task->ref));
-      $task->context_options['aliases'] = ($aliases) ? $aliases : 'null';
+      $task->context_options['aliases'] = $aliases ?: 'null';
 
-      $redirection = db_query("SELECT redirection FROM {hosting_site_alias} WHERE vid = :vid", array(':vid' => $task->ref->vid))->fetchField();
-      $task->context_options['redirection'] = ($redirection) ? $redirection : 'null';
+      $redirection = db_query("SELECT redirection FROM {hosting_site_alias} WHERE vid = :vid", [':vid' => $task->ref->vid])->fetchField();
+      $task->context_options['redirection'] = $redirection ?: 'null';
     }
   }
 }

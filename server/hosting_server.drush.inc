@@ -43,7 +43,7 @@ function hosting_hosting_server_context_options(&$task) {
 function hosting_server_drush_context_import($context, &$node) {
   if ($context->type == 'server') {
     if (!isset($node->title)) {
-      $node->title = strtolower($context->remote_host);
+      $node->title = strtolower((string) $context->remote_host);
     }
     $node->new_ip_addresses = implode("\n", $context->ip_addresses);
     foreach (hosting_server_services() as $type => $info) {
@@ -86,7 +86,7 @@ function hosting_server_post_hosting_verify_task($task, $data) {
 function hosting_server_post_hosting_delete_task($task, $data) {
   $task->ref->server_status = HOSTING_SERVER_DELETED;
   $task->ref->no_verify = TRUE;
-  $task->ref->services = array();
+  $task->ref->services = [];
   node_save($task->ref);
   hosting_context_delete($task->ref->nid);
 }

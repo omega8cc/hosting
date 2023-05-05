@@ -8,18 +8,17 @@
  * Batch migration of sites between platforms.
  */
 function hosting_migrate_platform($form, $form_state, $node) {
+  $options = [];
   drupal_add_js(drupal_get_path('module', 'hosting_migrate') . '/hosting_migrate.js');
 
   $step = isset($form_state['storage']['step']) ? $form_state['storage']['step'] : 1;
 
   // Step 1 - choose target platform
   if ($step == 1) {
-    $result = db_query("SELECT count(nid) as site_count FROM {hosting_site} WHERE status = :status AND verified > :verified AND platform = :platform", array(':status' => HOSTING_SITE_ENABLED, ':verified' => 0, ':platform' => $node->nid))->fetch();
+    $result = db_query("SELECT count(nid) as site_count FROM {hosting_site} WHERE status = :status AND verified > :verified AND platform = :platform", [':status' => HOSTING_SITE_ENABLED, ':verified' => 0, ':platform' => $node->nid])->fetch();
 
     if ($result->site_count == 0) {
-      $form['no_sites'] = array(
-        '#markup' => t('This platform does not have any sites that can be migrated.'),
-      );
+      $form['no_sites'] = ['#markup' => t('This platform does not have any sites that can be migrated.')];
       return $form;
     }
 
@@ -35,52 +34,29 @@ function hosting_migrate_platform($form, $form_state, $node) {
     if (count($platforms) > 1) {
       unset($platforms[$node->nid]);
       $form['#current_platform'] = $node;
-      $form['description'] = array(
-        '#type' => 'item',
-        '#description' => 'You may want to read our <a href="https://learn.omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can perform a batch migration of sites from this source platform to a different target platform using this form, but if you wish to do that securely, always <i>Clone</i> one of them in its <strong>current</strong> platform, then test <i>Migrate</i> of the cloned copy first and check if the cloned copy works fine, before you will try that with your live sites. This seems tedious, but it is much easier and faster than recovering from some disaster.',
-      );
-      $form['target_platform'] = array(
-        '#type' => 'radios',
-        '#required' => TRUE,
-        '#title' => t('Platform'),
-        '#description' => t('Choose where you want to migrate the sites on this platform to'),
-        '#options' => $platforms,
-      );
-      $form['submit'] = array(
-        '#type' => 'submit',
-        '#value' => t('Submit'),
-      );
+      $form['description'] = ['#type' => 'item', '#description' => 'You may want to read our <a href="https://learn.omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can perform a batch migration of sites from this source platform to a different target platform using this form, but if you wish to do that securely, always <i>Clone</i> one of them in its <strong>current</strong> platform, then test <i>Migrate</i> of the cloned copy first and check if the cloned copy works fine, before you will try that with your live sites. This seems tedious, but it is much easier and faster than recovering from some disaster.'];
+      $form['target_platform'] = ['#type' => 'radios', '#required' => TRUE, '#title' => t('Platform'), '#description' => t('Choose where you want to migrate the sites on this platform to'), '#options' => $platforms];
+      $form['submit'] = ['#type' => 'submit', '#value' => t('Submit')];
     }
     else {
-      $form['no_platforms'] = array(
-        '#markup' => t('There are no alternate platforms to migrate to.'),
-      );
+      $form['no_platforms'] = ['#markup' => t('There are no alternate platforms to migrate to.')];
     }
   }
 
   // Step 2 - review sites that pass or fail the requirements to be migrated
   if ($step == 2) {
-    $title = array(
-      'passed' => t("The following sites will be migrated"),
-      'failed' => t("The following sites will not be migrated"),
-    );
-    $header = array(t('Site'), t('Upgrades'), t('Warnings'), t('Errors'), t('Actions'));
+    $title = ['passed' => t("The following sites will be migrated"), 'failed' => t("The following sites will not be migrated")];
+    $header = [t('Site'), t('Upgrades'), t('Warnings'), t('Errors'), t('Actions')];
     $options['attributes']['class'] = 'hosting-package-comparison-link';
-    foreach (array('passed', 'failed') as $type) {
       if (isset($form_state['storage'][$type]) && count($form_state['storage'][$type])) {
+    foreach (['passed', 'failed'] as $type) {
 
-        $rows = array();
+        $rows = [];
 
         foreach ($form_state['storage'][$type] as $site_id => $url) {
-          $form['output'][$type]['title'] = array(
-            '#type' => 'markup',
-            '#markup' => '<h2>' . $title[$type] . '</h2>',
-          );
+          $form['output'][$type]['title'] = ['#type' => 'markup', '#markup' => '<h2>' . $title[$type] . '</h2>'];
           $status = $form_state['storage']['status'][$site_id];
-          $row = array(array(
-              'data' => $url,
-              'class' => array('hosting-status'),
-            ), $status['upgrade'], $status['missing'], $status['error']);
+          $row = [['data' => $url, 'class' => ['hosting-status']], $status['upgrade'], $status['missing'], $status['error']];
           if (isset($form_state['storage']['instance'][$site_id])) {
             $link = l(t('Compare'), 'hosting/migrate/compare/' . $node->nid . '/' . $form_state['storage']['instance'][$site_id], $options);
           }
@@ -88,23 +64,14 @@ function hosting_migrate_platform($form, $form_state, $node) {
             $link = t('Profile not found');
           }
           $row[] = $link;
-          $rows[] = array(
-            'data' => $row,
-            'class' => array('hosting-' . _hosting_migrate_site_list_class($status)),
-          );
+          $rows[] = ['data' => $row, 'class' => ['hosting-' . _hosting_migrate_site_list_class($status)]];
         }
-        $form['output'][$type]['table'] = array(
-          '#type' => 'markup',
-          '#markup' => theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('hosting-table')))),
-        );
+        $form['output'][$type]['table'] = ['#type' => 'markup', '#markup' => theme('table', ['header' => $header, 'rows' => $rows, 'attributes' => ['class' => ['hosting-table']]])];
 
       }
     }
     if (count($form_state['storage']['passed'])) {
-      $form['submit'] = array(
-        '#type' => 'submit',
-        '#value' => t('Submit'),
-      );
+      $form['submit'] = ['#type' => 'submit', '#value' => t('Submit')];
     }
 
   }
@@ -143,24 +110,13 @@ function hosting_migrate_platform_submit($form, &$form_state) {
       $form_state['storage']['current_platform'] = $form['#current_platform']->nid;
       $form_state['storage']['target_platform'] = $form_state['values']['target_platform'];
       $max_per_batch = 5;
-      $result = db_query("SELECT n.nid, n.title FROM  {hosting_site} s LEFT JOIN {node} n ON n.nid=s.nid WHERE platform = :platform AND s.status = :status and s.verified > :verified ORDER BY n.title", array(':platform' => $form['#current_platform']->nid, ':status' => HOSTING_SITE_ENABLED, ':verified' => 0));
-      $operations = array();
+      $result = db_query("SELECT n.nid, n.title FROM  {hosting_site} s LEFT JOIN {node} n ON n.nid=s.nid WHERE platform = :platform AND s.status = :status and s.verified > :verified ORDER BY n.title", [':platform' => $form['#current_platform']->nid, ':status' => HOSTING_SITE_ENABLED, ':verified' => 0]);
+      $operations = [];
       while ($site = $result->fetch()) {
-        $operations[] = array(
-          'hosting_migrate_platform_batch',
-          array($site->nid, $form_state['values']['target_platform'], $form_state),
-        );
+        $operations[] = ['hosting_migrate_platform_batch', [$site->nid, $form_state['values']['target_platform'], $form_state]];
       }
       if (count($operations)) {
-        $batch = array(
-          'operations' => $operations,
-          'finished' => 'hosting_migrate_platform_finished',
-          'title' => t('Checking for sites that can be migrated.'),
-          'init_message' => t('Retrieving list of sites.'),
-          'progress_message' => t('Evaluated @current out of @total sites.'),
-          'error_message' => t('Bulk migration has encountered an error.'),
-          'file' => drupal_get_path('module', 'hosting_migrate') . '/hosting_migrate.batch.inc',
-        );
+        $batch = ['operations' => $operations, 'finished' => 'hosting_migrate_platform_finished', 'title' => t('Checking for sites that can be migrated.'), 'init_message' => t('Retrieving list of sites.'), 'progress_message' => t('Evaluated @current out of @total sites.'), 'error_message' => t('Bulk migration has encountered an error.'), 'file' => drupal_get_path('module', 'hosting_migrate') . '/hosting_migrate.batch.inc'];
         batch_set($batch);
 
         if (!empty($GLOBALS['modalframe_page_template'])) {
@@ -175,26 +131,15 @@ function hosting_migrate_platform_submit($form, &$form_state) {
       $current = $form_state['storage']['current_platform'];
       $target = $form_state['storage']['target_platform'];
 
-      $task = hosting_add_task($current, 'migrate', array('target_platform' => $target), HOSTING_TASK_SUCCESS);
+      $task = hosting_add_task($current, 'migrate', ['target_platform' => $target], HOSTING_TASK_SUCCESS);
 
-      $operations = array();
+      $operations = [];
       foreach ($form_state['storage']['passed'] as $nid => $url) {
-        $operations[] = array(
-          'hosting_migrate_platform_submit_batch',
-          array($nid, $form_state['storage']['target_platform'], $url, $task->vid),
-        );
+        $operations[] = ['hosting_migrate_platform_submit_batch', [$nid, $form_state['storage']['target_platform'], $url, $task->vid]];
       }
 
       if (count($operations)) {
-        $batch = array(
-          'operations' => $operations,
-          'finished' => 'hosting_migrate_platform_submit_finished',
-          'title' => t('Submitting sites for migration.'),
-          'init_message' => t('Retrieving list of sites.'),
-          'progress_message' => t('Submitted @current out of @total sites.'),
-          'error_message' => t('Bulk migration has encountered an error.'),
-          'file' => drupal_get_path('module', 'hosting_migrate') . '/hosting_migrate.batch.inc',
-        );
+        $batch = ['operations' => $operations, 'finished' => 'hosting_migrate_platform_submit_finished', 'title' => t('Submitting sites for migration.'), 'init_message' => t('Retrieving list of sites.'), 'progress_message' => t('Submitted @current out of @total sites.'), 'error_message' => t('Bulk migration has encountered an error.'), 'file' => drupal_get_path('module', 'hosting_migrate') . '/hosting_migrate.batch.inc'];
         batch_set($batch);
 
         if (!empty($GLOBALS['modalframe_page_template'])) {
@@ -218,12 +163,8 @@ function hosting_migrate_platform_submit_batch($site_id, $target_platform, $url,
   if (function_exists('idna_convert_encode')) {
     $url = idna_convert_encode($url);
   }
-  hosting_add_task($site_id, 'migrate', array(
-    'target_platform' => $target_platform,
-    'new_uri' => $url,
-    'new_db_server' => $site->db_server,
-  ));
-  hosting_task_log($platform_task_vid, 'success', t("Migrate task for !url created", array('!url' => $url)));
+  hosting_add_task($site_id, 'migrate', ['target_platform' => $target_platform, 'new_uri' => $url, 'new_db_server' => $site->db_server]);
+  hosting_task_log($platform_task_vid, 'success', t("Migrate task for !url created", ['!url' => $url]));
 }
 
 /**
@@ -246,19 +187,11 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
   $batch = &batch_get();
   // Determine whether the install profile is available on the target platform
   $profile_instance = hosting_package_instance_load(
-    array(
-    'i.rid' => $target_platform,
-    'r.type' => 'platform',
-    'n.nid' => $site->profile,
-  ));
+    ['i.rid' => $target_platform, 'r.type' => 'platform', 'n.nid' => $site->profile]);
   if (!$profile_instance) {
     // Check if there is a possibly renamed profile available
     $profile_instance = hosting_package_instance_load(
-      array(
-      'i.rid' => $target_platform,
-      'r.type' => 'platform',
-      'p.old_short_name' => $profile->short_name,
-    ));
+      ['i.rid' => $target_platform, 'r.type' => 'platform', 'p.old_short_name' => $profile->short_name]);
   }
   if ($profile_instance) {
     $status = hosting_package_comparison($site->nid, $profile_instance->iid);
@@ -271,11 +204,7 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
     }
   }
   else {
-    $batch['form_state']['storage']['status'][$site->nid] = array(
-      'error' => 1,
-      'missing' => 0,
-      'upgrade' => 0,
-    );
+    $batch['form_state']['storage']['status'][$site->nid] = ['error' => 1, 'missing' => 0, 'upgrade' => 0];
   }
   $batch['form_state']['storage']['failed'][$site->nid] = hosting_site_get_domain($site->title);
 }

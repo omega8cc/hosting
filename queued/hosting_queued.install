@@ -14,8 +14,8 @@ function hosting_queued_enable() {
   variable_set('hosting_queue_tasks_enabled', FALSE);
 
   // Disable the predecessor of this module from the Aegir 1.x world
-  module_disable(array('hosting_queue_runner'));
-  drupal_uninstall_modules(array('hosting_queue_runner'));
+  module_disable(['hosting_queue_runner']);
+  drupal_uninstall_modules(['hosting_queue_runner']);
 }
 
 /**
@@ -32,7 +32,7 @@ function hosting_queued_disable() {
  * Rename the module variables to hosting_queued
  */
 function hosting_queued_update_6200() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("UPDATE {variable} SET name = REPLACE(name, 'hosting_queue_runner', 'hosting_queued') WHERE name LIKE 'hosting_queue_runner%'");
   return $ret;
 }
@@ -44,7 +44,7 @@ function hosting_queued_update_6200() {
  */
 function hosting_queued_update_6201() {
   // Disable the predecessor of this module from the Aegir 1.x world
-  module_disable(array('hosting_queue_runner'));
+  module_disable(['hosting_queue_runner']);
   drupal_uninstall_module('hosting_queue_runner');
-  return array();
+  return [];
 }

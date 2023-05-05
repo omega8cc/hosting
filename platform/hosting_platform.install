@@ -8,55 +8,8 @@
  * Implements hook_schema().
  */
 function hosting_platform_schema() {
-  $schema['hosting_platform'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'publish_path' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => FALSE,
-      ),
-      'makefile' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => FALSE,
-      ),
-      'web_server' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'verified' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'status' => array(
-        'type' => 'int',
-        'size' => 'tiny',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'make_working_copy' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-    'primary key' => array('vid'),
-  );
+  $schema = [];
+  $schema['hosting_platform'] = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'publish_path' => ['type' => 'text', 'size' => 'big', 'not null' => FALSE], 'makefile' => ['type' => 'text', 'size' => 'big', 'not null' => FALSE], 'web_server' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'verified' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'status' => ['type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0], 'make_working_copy' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0]], 'primary key' => ['vid']];
 
   return $schema;
 }
@@ -70,7 +23,7 @@ function hosting_platform_schema() {
  */
 function hosting_platform_update_1() {
   include_once(drupal_get_path('module', 'hosting_task') . '/hosting_task.module');
-  $ret = array();
+  $ret = [];
   $result = db_query("SELECT nid FROM {node} WHERE type='platform' AND status=1");
   while ($platform = db_fetch_object($result)) {
     hosting_add_task($platform->nid, 'synch');
@@ -85,7 +38,7 @@ function hosting_platform_update_1() {
  */
 function hosting_platform_update_6000() {
   // this update was moved to hosting_update_6002()
-  return array();
+  return [];
 }
 
 /*
@@ -94,7 +47,7 @@ function hosting_platform_update_6000() {
  * Add a status field to platforms so we can Delete tasks on them
  */
 function hosting_platform_update_6001() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_platform} ADD COLUMN status int(11) NOT NULL default '1'");
   return $ret;
 }
@@ -105,9 +58,9 @@ function hosting_platform_update_6001() {
  * Move the new menu item to the primary navigation
  */
 function hosting_platform_update_6002() {
-  $ret = array();
+  $ret = [];
 
-  install_include(array('menu'));
+  install_include(['menu']);
   $menu_name = variable_get('menu_primary_links_source', 'primary-links');
 
   $items = install_menu_get_items('hosting/platforms');
@@ -128,7 +81,7 @@ function hosting_platform_update_6002() {
  * Add the 'makefile' column.
  */
 function hosting_platform_update_6003() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_platform} ADD COLUMN makefile TEXT NOT NULL");
   return $ret;
 }
@@ -139,10 +92,11 @@ function hosting_platform_update_6003() {
  * TODO: Document this update.
  */
 function hosting_platform_update_6004() {
+  $records = [];
   if (!variable_get('hosting_platform_update_6004_run', false)) {
     $result = db_query("SELECT n.nid, n.title FROM {node} n LEFT JOIN {hosting_platform} p ON p.nid=n.nid WHERE p.status <> -2 AND n.type='platform'");
     while ($object = db_fetch_object($result)) {
-      $records[$object->nid] = 'platform_' . preg_replace("/[!\W]/", "", $object->title);
+      $records[$object->nid] = 'platform_' . preg_replace("/[!\W]/", "", (string) $object->title);
     }
 
     foreach ($records as $nid => $name) {
@@ -158,15 +112,8 @@ function hosting_platform_update_6004() {
  * Add the 'make_working_copy' column.
  */
 function hosting_platform_update_6205() {
-  $ret = array();
-  $spec = array(
-    'make_working_copy' => array(
-      'type' => 'int',
-      'unsigned' => TRUE,
-      'not null' => TRUE,
-      'default' => 0,
-    ),
-  );
+  $ret = [];
+  $spec = ['make_working_copy' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0]];
   foreach ($spec as $field => $field_spec) {
     db_add_field($ret, 'hosting_platform', $field, $field_spec);
   }
@@ -177,16 +124,16 @@ function hosting_platform_update_6205() {
  * Add new permission.
  */
 function hosting_platform_update_6206() {
-  $ret = array();
+  $ret = [];
 
   // Temporarily enable Install Profile API module and load includes.
-  module_enable(array('install_profile_api'));
+  module_enable(['install_profile_api']);
   module_load_include('inc', 'install_profile_api', 'core/user');
 
-  install_add_permissions(install_get_rid('aegir administrator'), array('create sites on locked platforms'));
-  install_add_permissions(install_get_rid('aegir platform manager'), array('create sites on locked platforms'));
+  install_add_permissions(install_get_rid('aegir administrator'), ['create sites on locked platforms']);
+  install_add_permissions(install_get_rid('aegir platform manager'), ['create sites on locked platforms']);
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 }
@@ -195,17 +142,17 @@ function hosting_platform_update_6206() {
  * Add new Action permissions.
  */
 function hosting_platform_update_6207() {
-  $ret = array();
+  $ret = [];
 
   // Enable Acstions permissions, and temporarily Install Profile API
   // module to load permission CRUD functions
-  module_enable(array('actions_permissions', 'install_profile_api'));
+  module_enable(['actions_permissions', 'install_profile_api']);
   module_load_include('inc', 'install_profile_api', 'core/user');
 
-  install_add_permissions(install_get_rid('aegir administrator'), array('execute Platform: Delete (hosting_platform_op_delete)', 'execute Platform: Lock (hosting_platform_op_lock)', 'execute Platform: Unlock (hosting_platform_op_unlock)', 'execute Platform: Verify (hosting_platform_op_verify)'));
-  install_add_permissions(install_get_rid('aegir platform manager'), array('execute Platform: Delete (hosting_platform_op_delete)', 'execute Platform: Lock (hosting_platform_op_lock)', 'execute Platform: Unlock (hosting_platform_op_unlock)', 'execute Platform: Verify (hosting_platform_op_verify)'));
+  install_add_permissions(install_get_rid('aegir administrator'), ['execute Platform: Delete (hosting_platform_op_delete)', 'execute Platform: Lock (hosting_platform_op_lock)', 'execute Platform: Unlock (hosting_platform_op_unlock)', 'execute Platform: Verify (hosting_platform_op_verify)']);
+  install_add_permissions(install_get_rid('aegir platform manager'), ['execute Platform: Delete (hosting_platform_op_delete)', 'execute Platform: Lock (hosting_platform_op_lock)', 'execute Platform: Unlock (hosting_platform_op_unlock)', 'execute Platform: Verify (hosting_platform_op_verify)']);
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 }
@@ -214,7 +161,7 @@ function hosting_platform_update_6207() {
  * Drop release_id from hosting_platform.
  */
 function hosting_platform_update_6208() {
-  $ret = array();
+  $ret = [];
   if (db_column_exists('hosting_platform', 'release_id')) {
     db_drop_field($ret, 'hosting_platform', 'release_id');
   }

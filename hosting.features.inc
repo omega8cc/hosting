@@ -30,7 +30,7 @@ define('HOSTING_FEATURE_REQUIRED', 2);
  *   TRUE if the feature is enabled, FALSE if it is disabled.
  */
 function hosting_feature($feature) {
-  static $features = array();
+  static $features = [];
 
   if (!count($features)) {
     $features = hosting_get_features();
@@ -64,46 +64,16 @@ function hosting_feature($feature) {
  * @see hosting_features_form_submit()
  */
 function hosting_features_form($form, &$form_state) {
-  $form = array();
-  $form['settings'] = array(
-    '#type' => 'checkboxes',
-    '#title' => 'Settings',
-    '#options' => array('dependencies' => 'Display dependencies', 'roles' => 'Display roles and permissions'),
-    '#default_value' => variable_get('hosting_features_form_settings', array()),
-    '#weight' => -20,
-  );
+  $form = [];
+  $form['settings'] = ['#type' => 'checkboxes', '#title' => 'Settings', '#options' => ['dependencies' => 'Display dependencies', 'roles' => 'Display roles and permissions'], '#default_value' => variable_get('hosting_features_form_settings', []), '#weight' => -20];
 
-  $optional = array(
-    '#type' => 'fieldset',
-    '#title' => t('Optional system features'),
-    '#description' => t('You may choose any of the additional system features from the list below.'),
-    '#collapsible' => FALSE,
-  );
+  $optional = ['#type' => 'fieldset', '#title' => t('Optional system features'), '#description' => t('You may choose any of the additional system features from the list below.'), '#collapsible' => FALSE];
 
-  $required = array(
-    '#type' => 'fieldset',
-    '#title' => t('Required system features'),
-    '#collapsed' => TRUE,
-    '#collapsible' => TRUE,
-    '#weight' => -10,
-    '#description' => t("These features are central to Aegir's functionality, and thus cannot be disabled."),
-  );
+  $required = ['#type' => 'fieldset', '#title' => t('Required system features'), '#collapsed' => TRUE, '#collapsible' => TRUE, '#weight' => -10, '#description' => t("These features are central to Aegir's functionality, and thus cannot be disabled.")];
 
-  $experimental = array(
-    '#type' => 'fieldset',
-    '#title' => t('Experimental'),
-    '#collapsed' => TRUE,
-    '#collapsible' => TRUE,
-    '#description' => t('Features marked experimental have not been completed to a satisfactory level to be considered production ready, so use at your own risk.'),
-  );
+  $experimental = ['#type' => 'fieldset', '#title' => t('Experimental'), '#collapsed' => TRUE, '#collapsible' => TRUE, '#description' => t('Features marked experimental have not been completed to a satisfactory level to be considered production ready, so use at your own risk.')];
 
-  $advanced = array(
-    '#type' => 'fieldset',
-    '#title' => t('Advanced'),
-    '#collapsed' => TRUE,
-    '#collapsible' => TRUE,
-    '#description' => t('Advanced features require a deep knowledge of Aegir and Drupal to be considered safe, so use at your own risk.'),
-  );
+  $advanced = ['#type' => 'fieldset', '#title' => t('Advanced'), '#collapsed' => TRUE, '#collapsible' => TRUE, '#description' => t('Advanced features require a deep knowledge of Aegir and Drupal to be considered safe, so use at your own risk.')];
 
   $features = hosting_get_features(TRUE);
   foreach ($features as $feature => $info) {
@@ -114,19 +84,13 @@ function hosting_features_form($form, &$form_state) {
         // Gather dependencies and their statuses.
         $depends_on = isset($info['dependencies']['features']) ? $info['dependencies']['features'] : FALSE;
         if (is_array($depends_on)) {
-          $description .= theme('hosting_feature_dependencies', array(
-            'dependencies' => $depends_on,
-            'prefix' => 'Depends on',
-            'features' => $features));
+          $description .= theme('hosting_feature_dependencies', ['dependencies' => $depends_on, 'prefix' => 'Depends on', 'features' => $features]);
         }
 
         // Gather relying features and their statuses.
         $required_by = isset($info['dependencies']['reverse']) ? $info['dependencies']['reverse'] : FALSE;
         if (is_array($required_by)) {
-          $description .= theme('hosting_feature_dependencies', array(
-            'dependencies' => $required_by,
-            'prefix' => 'Required by',
-            'features' => $features));
+          $description .= theme('hosting_feature_dependencies', ['dependencies' => $required_by, 'prefix' => 'Required by', 'features' => $features]);
         }
       }
     }
@@ -153,24 +117,12 @@ function hosting_features_form($form, &$form_state) {
       }
     }
 
-    $element = array(
-      '#type' => 'checkbox',
-      '#title' => check_plain($info['title']),
-      '#description' => $description,
-      '#default_value' => $info['status'] == HOSTING_FEATURE_REQUIRED ? 1 : hosting_feature($feature),
-      '#required' => hosting_feature($feature) == HOSTING_FEATURE_REQUIRED,
-      '#disabled' => $locked,
-    );
+    $element = ['#type' => 'checkbox', '#title' => check_plain($info['title']), '#description' => $description, '#default_value' => $info['status'] == HOSTING_FEATURE_REQUIRED ? 1 : hosting_feature($feature), '#required' => hosting_feature($feature) == HOSTING_FEATURE_REQUIRED, '#disabled' => $locked];
 
     // Add another fieldset based on contrib module package.
     $package = FALSE;
     if ($info['package'] != 'Hosting') {
-      $package = array(
-        '#type' => 'fieldset',
-        '#title' => $info['package'],
-        '#collapsed' => FALSE,
-        '#collapsible' => TRUE,
-      );
+      $package = ['#type' => 'fieldset', '#title' => $info['package'], '#collapsed' => FALSE, '#collapsible' => TRUE];
     }
     if ($package) {
       if ($info['group'] == 'required') {
@@ -273,7 +225,7 @@ function hosting_get_features($refresh = FALSE) {
   if (empty($cache->data) || $refresh) {
     // Include any optional hosting.feature.*.inc files.
     $files = drupal_system_listing("/hosting\.feature\.[a-zA-Z0-9_]*\.inc$/", "modules");
-    if (count($files)) {
+    if (is_countable($files) ? count($files) : 0) {
       foreach ($files as $name => $info) {
         include_once DRUPAL_ROOT . '/' . $info->uri;
       }
@@ -286,14 +238,14 @@ function hosting_get_features($refresh = FALSE) {
         $hooks[] = $function;
       }
     }
-    $features = array();
+    $features = [];
     foreach ($hooks as $func) {
       $features = array_merge($features, $func());
     }
 
     // Add module dependencies, package and enabled status.
     $module_cache = system_rebuild_module_data();
-    $modules = array();
+    $modules = [];
     foreach ($features as $feature => $info) {
       if (isset($module_cache[$info['module']]->info['required']) && $module_cache[$info['module']]->info['required']) {
         $features[$feature]['status'] = HOSTING_FEATURE_REQUIRED;
@@ -369,23 +321,15 @@ function theme_hosting_feature_dependencies($vars) {
  * Helper function to list Hosting feature permissions.
  */
 function hosting_feature_role_perms_table($form, &$form_table, $role_perms) {
-  $form = array();
-  $form['role_perms'] = array(
-    '#type' => 'fieldset',
-    '#title' => 'Roles & permissions',
-    '#description' => 'Upon enabling this feature, the following roles will be assigned the listed permissions.',
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
-  );
+  $form = [];
+  $form['role_perms'] = ['#type' => 'fieldset', '#title' => 'Roles & permissions', '#description' => 'Upon enabling this feature, the following roles will be assigned the listed permissions.', '#collapsible' => TRUE, '#collapsed' => TRUE];
   $table = '<table><thead><tr><th>Role</th><th>Permissions</th></tr></thead><tbody>';
   foreach ($role_perms as $role => $perms) {
     $table .= '<tr><td>' . $role . '</td>';
     $table .= '<td>' . implode(', ', $perms) . '</td></tr>';
   }
   $table .= '</tbody></table>';
-  $form['role_perms']['table'] = array(
-    '#markup' => $table,
-  );
+  $form['role_perms']['table'] = ['#markup' => $table];
   return $form;
 }
 
@@ -399,29 +343,26 @@ function hosting_feature_role_perms_table($form, &$form_table, $role_perms) {
  *   Also enable the Drupal module, default TRUE.
  */
 function hosting_features_enable($features, $rebuild = TRUE, $enable = TRUE) {
-  if (count($features)) {
+  if (is_countable($features) ? count($features) : 0) {
 
     include_once 'includes/install.inc';
 
     $all_features = hosting_get_features();
-    $titles = array();
+    $titles = [];
     foreach ($features as $feature) {
       $titles[] = $all_features[$feature]['title'];
     }
-    drupal_set_message(t("Enabling %feature feature!plural.", array(
-      '%feature' => implode(", ", $titles),
-      '!plural' => count($features) > 1 ? 's' : '',
-    )));
+    drupal_set_message(t("Enabling %feature feature!plural.", ['%feature' => implode(", ", $titles), '!plural' => (is_countable($features) ? count($features) : 0) > 1 ? 's' : '']));
 
     foreach ($features as $module => $feature) {
       variable_set('hosting_feature_' . $feature, HOSTING_FEATURE_ENABLED);
       if ($enable) {
-        $success = module_enable(array($module));
+        $success = module_enable([$module]);
         if (!$success) {
           variable_set('hosting_feature_' . $feature, HOSTING_FEATURE_DISABLED);
           $module_data = system_rebuild_module_data();
           $missing = array_keys(array_diff_key($module_data[$module]->requires, $module_data));
-          drupal_set_message(t("An error occurred enabling the `:feature` feature. Missing dependencies: :missing.", array(':feature' => $feature, ':missing' => implode(', ', $missing))), 'error');
+          drupal_set_message(t("An error occurred enabling the `:feature` feature. Missing dependencies: :missing.", [':feature' => $feature, ':missing' => implode(', ', $missing)]), 'error');
         }
       }
       if (isset($all_features[$feature]['enable']) && function_exists($callback = $all_features[$feature]['enable'])) {
@@ -448,11 +389,8 @@ function hosting_features_enable($features, $rebuild = TRUE, $enable = TRUE) {
  *   Also disable the Drupal module, default TRUE.
  */
 function hosting_features_disable($disable, $rebuild = TRUE, $disable_module = TRUE) {
-  if (count($disable)) {
-    drupal_set_message(t("Disabling %feature feature!plural.", array(
-      '%feature' => implode(", ", $disable),
-      '!plural' => count($disable) > 1 ? 's' : '',
-    )));
+  if (is_countable($disable) ? count($disable) : 0) {
+    drupal_set_message(t("Disabling %feature feature!plural.", ['%feature' => implode(", ", $disable), '!plural' => (is_countable($disable) ? count($disable) : 0) > 1 ? 's' : '']));
     include_once 'includes/install.inc';
     if ($disable_module) {
       module_disable(array_keys($disable));
@@ -480,11 +418,11 @@ function hosting_features_disable($disable, $rebuild = TRUE, $disable_module = T
 function hosting_determine_features_status($values) {
   $features = hosting_get_features();
   // List of features currently enabled.
-  $enabled = array();
+  $enabled = [];
   // List of features to enable.
-  $enable = array();
+  $enable = [];
   // List of features to disable.
-  $disable = array();
+  $disable = [];
 
   foreach ($features as $feature => $info) {
     $value = $values['hosting_feature_' . $feature];
@@ -498,7 +436,7 @@ function hosting_determine_features_status($values) {
     elseif ($value) {
       $enable[$features[$feature]['module']] = $feature;
       // Add dependencies to enable.
-      if (isset($info['dependencies']['features']) && count($info['dependencies']['features'])) {
+      if (isset($info['dependencies']['features']) && (is_countable($info['dependencies']['features']) ? count($info['dependencies']['features']) : 0)) {
         foreach ($info['dependencies']['features'] as $module_dep => $feature_dep) {
           $enable[$module_dep] = $feature_dep;
         }
@@ -511,17 +449,13 @@ function hosting_determine_features_status($values) {
   // Remove any features already enabled from those to enable.
   $enable = array_diff_assoc($enable, $enabled);
 
-  return array(
-    'enabled' => $enabled,
-    'enable' => $enable,
-    'disable' => $disable,
-  );
+  return ['enabled' => $enabled, 'enable' => $enable, 'disable' => $disable];
 }
 
 /**
  * Perform necessary task after enabling or disabling Hosting features.
  */
-function hosting_feature_rebuild_caches($features = array()) {
+function hosting_feature_rebuild_caches($features = []) {
   // Rebuild schema.
   drupal_get_schema(NULL, TRUE);
 
@@ -573,11 +507,7 @@ function hosting_add_permissions($module, $role_perms) {
   foreach (user_roles() as $rid => $name) {
     if (array_key_exists($name, $role_perms)) {
       user_role_grant_permissions($rid, $role_perms[$name]);
-      drupal_set_message(t("The '%role' role was assigned the following permission!plural: '%perms'.", array(
-        '%role' => $name,
-        '%perms' => implode('\', \'', $role_perms[$name]),
-        '!plural' => count($role_perms[$name]) > 1 ? 's' : '',
-      )));
+      drupal_set_message(t("The '%role' role was assigned the following permission!plural: '%perms'.", ['%role' => $name, '%perms' => implode('\', \'', $role_perms[$name]), '!plural' => (is_countable($role_perms[$name]) ? count($role_perms[$name]) : 0) > 1 ? 's' : '']));
     }
   }
 }

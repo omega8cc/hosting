@@ -13,30 +13,7 @@
  * Implements hook_hosting_feature().
  */
 function hosting_client_hosting_feature() {
-  $features['client'] = array(
-    'title' => t('Clients'),
-    'description' => t('Track and manage ownership of hosted sites, and access to platforms.'),
-    'status' => HOSTING_FEATURE_REQUIRED,
-    'module' => 'hosting_client',
-    'node' => 'client',
-    'group' => 'required',
-    'role_permissions' => array(
-      'aegir platform manager' => array(
-        'administer clients',
-      ),
-      'aegir account manager' => array(
-        'administer clients',
-        'create client',
-        'edit client users',
-        'view client',
-        'edit client uname',
-      ),
-      'aegir client' => array(
-        'edit own client',
-        'view client',
-      ),
-    ),
-
-  );
+  $features = [];
+  $features['client'] = ['title' => t('Clients'), 'description' => t('Track and manage ownership of hosted sites, and access to platforms.'), 'status' => HOSTING_FEATURE_REQUIRED, 'module' => 'hosting_client', 'node' => 'client', 'group' => 'required', 'role_permissions' => ['aegir platform manager' => ['administer clients'], 'aegir account manager' => ['administer clients', 'create client', 'edit client users', 'view client', 'edit client uname'], 'aegir client' => ['edit own client', 'view client']]];
   return $features;
 }

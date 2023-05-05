@@ -20,21 +20,18 @@ function drush_hosting_resume() {
   $node = hosting_context_load(d()->name);
 
   // Fix the old platform first.
-  $platform_id = db_query('SELECT nid FROM {hosting_platform} WHERE publish_path = :publish_path AND status = :status', array(
-    ':publish_path' => d($old_platform)->root,
-    ':status' => HOSTING_PLATFORM_ENABLED,
-  ))->fetchField();
+  $platform_id = db_query('SELECT nid FROM {hosting_platform} WHERE publish_path = :publish_path AND status = :status', [':publish_path' => d($old_platform)->root, ':status' => HOSTING_PLATFORM_ENABLED])->fetchField();
   if ($platform_id) {
-    hosting_context_register($platform_id, ltrim($old_platform, '@'));
+    hosting_context_register($platform_id, ltrim((string) $old_platform, '@'));
   }
   else {
-    drush_log(dt('Old platform not found in path %path, not setting context %context', array('%path' => d($old_platform)->root, '%context' => ltrim($old_platform, '@'))), 'warning');
+    drush_log(dt('Old platform not found in path %path, not setting context %context', ['%path' => d($old_platform)->root, '%context' => ltrim((string) $old_platform, '@')]), 'warning');
   }
 
   // If the new platform doesn't exist, create it.
   $platform_root = d()->root;
-  if (!($platform_id = db_query('SELECT nid FROM {hosting_platform} WHERE publish_path = :publish_path', array(':publish_path' => $platform_root))->fetchField())) {
-    drush_log(dt('Platform not found for path %path, adding platform node', array('%path' => $platform_root)));
+  if (!($platform_id = db_query('SELECT nid FROM {hosting_platform} WHERE publish_path = :publish_path', [':publish_path' => $platform_root])->fetchField())) {
+    drush_log(dt('Platform not found for path %path, adding platform node', ['%path' => $platform_root]));
     // Inherit settings from current platform node.
     $platform = node_load($node->platform);
     $platform->type = 'platform';
@@ -42,7 +39,7 @@ function drush_hosting_resume() {
     unset($platform->vid);
     $platform->publish_path = $platform_root;
     $platform->verified = 0;
-    $platform->title = basename(rtrim($platform_root, '/'));
+    $platform->title = basename(rtrim((string) $platform_root, '/'));
     if (preg_match("/^([0-9]+)$/i", $platform->title)) {
       $platform->title = 'Aegir Hostmaster ' . $platform->title;
     }
@@ -53,11 +50,11 @@ function drush_hosting_resume() {
     $platform_id = $platform->nid;
   }
   else {
-    drush_log(dt('Platform found for path %path: #%id', array('%path' => $platform_root, '%id' => $platform_id)));
+    drush_log(dt('Platform found for path %path: #%id', ['%path' => $platform_root, '%id' => $platform_id]));
     $platform = node_load($platform_id);
   }
 
-  hosting_context_register($platform_id, ltrim($new_platform, '@'));
+  hosting_context_register($platform_id, ltrim((string) $new_platform, '@'));
 
   drush_log('fixing platform for site node');
   $node->verified = 0;

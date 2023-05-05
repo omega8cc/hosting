@@ -39,7 +39,7 @@ class hosting_server_handler_field_services extends views_handler_field {
    */
   function render($values) {
     $all_services = hosting_server_services();
-    $types = array();
+    $types = [];
     foreach ($all_services as $type => $service) {
       $types[$type] = 'no';
     }

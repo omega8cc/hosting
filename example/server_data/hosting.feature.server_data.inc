@@ -15,12 +15,7 @@
  *   associative array indexed by feature key.
  */
 function hosting_server_data_hosting_feature() {
-  $features['server_data'] = array(
-    'title' => t('Server data example'),
-    'description' => t('Example implementation of saving data into a server context.'),
-    'status' => HOSTING_FEATURE_DISABLED,
-    'module' => 'hosting_server_data',
-    'group' => 'experimental',
-  );
+  $features = [];
+  $features['server_data'] = ['title' => t('Server data example'), 'description' => t('Example implementation of saving data into a server context.'), 'status' => HOSTING_FEATURE_DISABLED, 'module' => 'hosting_server_data', 'group' => 'experimental'];
   return $features;
 }

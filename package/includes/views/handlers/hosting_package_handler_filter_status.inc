@@ -11,7 +11,7 @@ class hosting_package_handler_filter_status extends views_handler_filter_in_oper
   function get_value_options() {
     if (!isset($this->value_options)) {
       $this->value_title = t('Package Status');
-      $this->value_options = array('1' => 'Enabled', '0' => 'Disabled');
+      $this->value_options = ['1' => 'Enabled', '0' => 'Disabled'];
     }
   }
 }

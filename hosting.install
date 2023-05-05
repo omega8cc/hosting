@@ -5,7 +5,7 @@
  */
 
 // HOSTING_MAX_ALIAS_LENGTH is defined here:
-require_once(dirname(__FILE__) . '/hosting.module');
+require_once(__DIR__ . '/hosting.module');
 
 /**
  * Implements hook_uninstall().
@@ -31,25 +31,8 @@ function hosting_uninstall() {
  * Implements hook_schema().
  */
 function hosting_schema() {
-  $schema['hosting_context'] = array(
-    'fields' => array(
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'name' => array(
-        'type' => 'varchar',
-        'length' => HOSTING_MAX_ALIAS_LENGTH,
-        'not null' => TRUE,
-      ),
-    ),
-    'primary key' => array('nid'),
-    'unique keys' => array(
-      'name' => array('name'),
-    ),
-  );
+  $schema = [];
+  $schema['hosting_context'] = ['fields' => ['nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'name' => ['type' => 'varchar', 'length' => HOSTING_MAX_ALIAS_LENGTH, 'not null' => TRUE]], 'primary key' => ['nid'], 'unique keys' => ['name' => ['name']]];
   return $schema;
 }
 
@@ -68,7 +51,7 @@ function hosting_install() {
  * Set weight for hosting module.
  */
 function hosting_update_1() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("UPDATE {system} SET weight = 10 WHERE type='module' and name='hosting'");
   return $ret;
 }
@@ -79,7 +62,7 @@ function hosting_update_1() {
  * Update function to remove unused table
  */
 function hosting_update_2() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("DROP TABLE {hosting_config_template}");
   return $ret;
 }
@@ -90,7 +73,9 @@ function hosting_update_2() {
  * Hide hostmaster and hostslave profiles.
  */
 function hosting_update_3() {
-  $ret = array();
+  $in = [];
+  $values = null;
+  $ret = [];
   $result = db_query("select n.nid from {node} n left join hosting_package p on n.nid = p.nid where short_name in ('hostslave', 'hostmaster')");
   while ($obj = db_fetch_object($result)) {
     $in[] = (int) $obj->nid;
@@ -106,8 +91,8 @@ function hosting_update_3() {
  * Enable the modalframe and jquery_ui modules.
  */
 function hosting_update_6000() {
-  $ret = array();
-  module_enable(array('modalframe', 'jquery_ui'));
+  $ret = [];
+  module_enable(['modalframe', 'jquery_ui']);
   return $ret;
 }
 
@@ -117,10 +102,10 @@ function hosting_update_6000() {
  * Change the default configured blocks to match eldir.
  */
 function hosting_update_6001() {
-  $ret = array();
-  module_enable(array('install_profile_api'));
+  $ret = [];
+  module_enable(['install_profile_api']);
   drupal_load('module', 'install_profile_api');
-  install_include(array('block'));
+  install_include(['block']);
 
   $theme = 'eldir';
   install_disable_block('hosting', 'hosting_queues_summary', $theme);
@@ -139,7 +124,7 @@ function hosting_update_6001() {
  * major upgrades.
  */
 function hosting_update_6002() {
-  return array();
+  return [];
 }
 
 /**
@@ -148,7 +133,7 @@ function hosting_update_6002() {
  * Lower the default amount of concurrent tasks.
  */
 function hosting_update_6003() {
-  $ret = array();
+  $ret = [];
   variable_set('hosting_queue_tasks_items', 5);
   return $ret;
 }
@@ -159,11 +144,11 @@ function hosting_update_6003() {
  * Stricter initial permissions for the anonymous user.
  */
 function hosting_update_6004() {
-  $ret = array();
-  install_include(array('user'));
+  $ret = [];
+  install_include(['user']);
 
-  install_remove_permissions(install_get_rid('anonymous user'), array('access content', 'access all views'));
-  install_remove_permissions(install_get_rid('authenticated user'), array('access content', 'access all views'));
+  install_remove_permissions(install_get_rid('anonymous user'), ['access content', 'access all views']);
+  install_remove_permissions(install_get_rid('authenticated user'), ['access content', 'access all views']);
 
   return $ret;
 }
@@ -174,10 +159,10 @@ function hosting_update_6004() {
  * Move some menu items to the primary links menu.
  */
 function hosting_update_6005() {
-  drupal_install_modules(array('hosting_server'));
+  drupal_install_modules(['hosting_server']);
   menu_rebuild();
 
-  install_include(array('menu'));
+  install_include(['menu']);
   $menu_name = variable_get('menu_primary_links_source', 'primary-links');
 
   $items = install_menu_get_items('hosting/servers');
@@ -195,7 +180,7 @@ function hosting_update_6005() {
   install_menu_update_menu_item($item);
 
   menu_rebuild();
-  return array();
+  return [];
 }
 
 /**
@@ -204,7 +189,7 @@ function hosting_update_6005() {
  * Move the platforms into primary links.
  */
 function hosting_update_6006() {
-  install_include(array('menu'));
+  install_include(['menu']);
   $menu_name = variable_get('menu_primary_links_source', 'primary-links');
 
   $items = install_menu_get_items('hosting/platforms');
@@ -214,7 +199,7 @@ function hosting_update_6006() {
   $item['options'] = unserialize($item['options']);
   install_menu_update_menu_item($item);
 
-  return array();
+  return [];
 }
 
 /**
@@ -226,7 +211,7 @@ function hosting_update_6006() {
 function hosting_update_6007() {
   variable_set('hosting_default_db_server', variable_get('hosting_default_web_server', 3));
   variable_set('hosting_own_db_server', variable_get('hosting_default_web_server', 3));
-  return array();
+  return [];
 }
 
 /**
@@ -235,33 +220,15 @@ function hosting_update_6007() {
  * Add hosting_context table to map alias names.
  */
 function hosting_update_6008() {
-  $return = array();
+  $return = [];
 
   if (!variable_get('hosting_update_6008_run', FALSE)) {
 
-    db_create_table($return, 'hosting_context', array(
-      'fields' => array(
-        'nid' => array(
-          'type' => 'int',
-          'unsigned' => TRUE,
-          'not null' => TRUE,
-          'default' => 0,
-        ),
-        'name' => array(
-          'type' => 'varchar',
-          'length' => 50,
-          'not null' => TRUE,
-        ),
-      ),
-      'primary key' => array('nid'),
-      'unique keys' => array(
-        'name'     => array('name')
-      ),
-    ));
+    db_create_table($return, 'hosting_context', ['fields' => ['nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'name' => ['type' => 'varchar', 'length' => 50, 'not null' => TRUE]], 'primary key' => ['nid'], 'unique keys' => ['name'     => ['name']]]);
 
     variable_set('hosting_update_6008_run', TRUE);
 
-    $records = array();
+    $records = [];
 
     $result = db_query("SELECT n.nid, title FROM {node} n LEFT JOIN {hosting_site} s ON n.nid=s.nid WHERE s.status <> -2 AND n.type='site'");
     while ($object = db_fetch_object($result)) {
@@ -270,7 +237,7 @@ function hosting_update_6008() {
 
     $result =  db_query("SELECT n.nid, title FROM {node} n LEFT JOIN {hosting_server} s ON n.nid=s.nid WHERE n.status = 1 AND n.type='server'");
     while ($object = db_fetch_object($result)) {
-      $records[$object->nid] = 'server_' . preg_replace("/[!\W\.\-]/", "", $object->title);
+      $records[$object->nid] = 'server_' . preg_replace("/[!\W\.\-]/", "", (string) $object->title);
     }
 
     // We start with the web server because we assume that the main hostmaster site is installed locally.
@@ -291,7 +258,7 @@ function hosting_update_6008() {
  */
 function hosting_update_6009() {
   // This undoes the change we made previously in update_6008, but can be run again.
-  $ret = array();
+  $ret = [];
 
   db_query("UPDATE {hosting_context} SET name='server_master' WHERE name='server_localhost'");
   $nid = db_result(db_query("SELECT nid from {hosting_context} WHERE name='server_master'"));
@@ -314,7 +281,7 @@ function hosting_update_6010() {
   // path UI stuff on nodes.
 
   require_once("./modules/path/path.module");
-  $ret = array();
+  $ret = [];
 
   $result = db_query("SELECT nid, name FROM {hosting_context}");
 
@@ -331,7 +298,7 @@ function hosting_update_6010() {
  * Clients and packages were imported as belonging to the anonymous user. Reassign them to the admin user.
  */
 function hosting_update_6011() {
-  $ret = array();
+  $ret = [];
 
   db_query("UPDATE {node} SET uid=1 WHERE uid=0 AND type IN ('client', 'package')");
 
@@ -344,9 +311,9 @@ function hosting_update_6011() {
  * Remove the hosting summary block.
  */
 function hosting_update_6012() {
-  $ret = array();
+  $ret = [];
   drupal_load('module', 'install_profile_api');
-  install_include(array('block'));
+  install_include(['block']);
 
   $theme = 'eldir';
   install_disable_block('hosting', 'hosting_summary', $theme);
@@ -361,11 +328,11 @@ function hosting_update_6012() {
  * lost when 'access content' permission was revoked a while ago.
  */
 function hosting_update_6013() {
-  $ret = array();
-  install_include(array('user'));
+  $ret = [];
+  install_include(['user']);
 
-  install_add_permissions(install_get_rid('anonymous user'), array('access disabled sites'));
-  install_add_permissions(install_get_rid('authenticated user'), array('access disabled sites'));
+  install_add_permissions(install_get_rid('anonymous user'), ['access disabled sites']);
+  install_add_permissions(install_get_rid('authenticated user'), ['access disabled sites']);
   return $ret;
 }
 
@@ -378,7 +345,7 @@ function hosting_update_6013() {
  * after all others, which gave us constant issues during upgrades.
  */
 function hosting_update_6014() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("UPDATE {system} SET weight = 0 WHERE type='module' and name='hosting'");
   return $ret;
 }
@@ -394,7 +361,7 @@ function hosting_update_6014() {
  * of resources doing so.
  */
 function hosting_update_6015(&$sandbox) {
-  $ret = array();
+  $ret = [];
 
   if (!isset($sandbox['progress'])) {
     $sandbox['progress'] = 0;
@@ -406,7 +373,7 @@ function hosting_update_6015(&$sandbox) {
 
   while ($alias = db_fetch_object($aliases)) {
     // Get the node ID for the alias.
-    $nid = preg_replace('#^node/#', '', $alias->src);
+    $nid = preg_replace('#^node/#', '', (string) $alias->src);
     if (is_numeric($nid)) {
       // Check to see if the corresponding context has been deleted.
       if (!db_result(db_query('SELECT COUNT(nid) FROM {hosting_context} WHERE nid = %d', $nid))) {
@@ -427,22 +394,22 @@ function hosting_update_6015(&$sandbox) {
  * Replace lists with Views.
  */
 function hosting_update_6201() {
-  $ret = array();
+  $ret = [];
 
   // Remove menu links that will be replaced by Views
   menu_link_delete(NULL, 'hosting/platforms');
   menu_link_delete(NULL, 'hosting/sites');
 
   // Enable and install Views and Views Bulk operations.
-  drupal_install_modules(array('views', 'views_bulk_operations'));
+  drupal_install_modules(['views', 'views_bulk_operations']);
 
   // Flush all Drupal caches.
   drupal_flush_all_caches();
 
   // Temporarily enable Install Profile API module and load includes.
-  module_enable(array('install_profile_api'));
+  module_enable(['install_profile_api']);
   drupal_load('module', 'install_profile_api');
-  install_include(array('block'));
+  install_include(['block']);
 
   // Enable blocks.
   $theme = 'eldir';
@@ -452,7 +419,7 @@ function hosting_update_6201() {
   install_set_block('views', 'hosting_site_list-block_profile' , $theme, 'content_bottom', 0, 2, "<?php\n\$node = menu_get_object();\nif (!empty(\$node)) {\n  return \$node->package_type == 'profile';\n}\n?>");
   install_set_block('views', 'hosting_site_list-block_client' , $theme, 'content_bottom', 0, 2, "<?php\n\$node = menu_get_object();\nif (!empty(\$node)) {\n  return \$node->type == 'client';\n}\n?>");
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 }
@@ -461,7 +428,7 @@ function hosting_update_6201() {
  * Provide a welcome message for anonymous users.
  */
 function hosting_update_6202() {
-  $ret = array();
+  $ret = [];
 
   // Flush the menu cache.
   menu_rebuild();
@@ -473,7 +440,7 @@ function hosting_update_6202() {
  * Delete hosting features junk variables.
  */
 function hosting_update_6203() {
-  $ret = array();
+  $ret = [];
 
   $features = hosting_get_features(TRUE);
   foreach ($features as $feature => $info) {
@@ -487,20 +454,20 @@ function hosting_update_6203() {
  * Create new roles.
  */
 function hosting_update_6204() {
-  $ret = array();
+  $ret = [];
 
   // Temporarily enable Install Profile API module and load includes.
-  module_enable(array('install_profile_api'));
+  module_enable(['install_profile_api']);
   module_load_include('inc', 'install_profile_api', 'core/user');
 
-  install_remove_permissions(install_get_rid('aegir client'), array('access all views'));
+  install_remove_permissions(install_get_rid('aegir client'), ['access all views']);
 
   install_add_role('aegir platform manager');
-  install_add_permissions(install_get_rid('aegir platform manager'), array('create clone task', 'create migrate task', 'create platform', 'delete platform', 'edit platform', 'view locked platforms', 'view platform', 'create site', 'delete site', 'edit site', 'view site', 'access task logs', 'create lock task', 'create unlock task', 'view revisions', 'search content', 'use advanced search'));
+  install_add_permissions(install_get_rid('aegir platform manager'), ['create clone task', 'create migrate task', 'create platform', 'delete platform', 'edit platform', 'view locked platforms', 'view platform', 'create site', 'delete site', 'edit site', 'view site', 'access task logs', 'create lock task', 'create unlock task', 'view revisions', 'search content', 'use advanced search']);
   install_add_role('aegir administrator');
-  install_add_permissions(install_get_rid('aegir administrator'), array('access disabled sites', 'access hosting wizard', 'administer hosting', 'administer hosting features', 'administer hosting queues', 'administer hosting settings', 'administer hosting aliases', 'create site aliases', 'administer clients', 'create client', 'delete own client', 'edit client uname', 'edit client users', 'edit own client', 'view client', 'create clone task', 'create migrate task', 'create package', 'delete package', 'edit package', 'view package', 'create platform', 'delete platform', 'edit platform', 'view locked platforms', 'view platform', 'edit all quotas', 'view all quotas', 'view own quota', 'create server', 'delete server', 'edit server', 'view server', 'access hosting signup form', 'administer sites', 'create site', 'delete site', 'edit site', 'view site', 'create ssl certificate', 'access task logs', 'administer tasks', 'cancel own tasks', 'create backup task', 'create backup-delete task', 'create delete task', 'create disable task', 'create enable task', 'create lock task', 'create login-reset task', 'create restore task', 'create unlock task', 'create verify task', 'retry failed tasks', 'view own tasks', 'view task'));
+  install_add_permissions(install_get_rid('aegir administrator'), ['access disabled sites', 'access hosting wizard', 'administer hosting', 'administer hosting features', 'administer hosting queues', 'administer hosting settings', 'administer hosting aliases', 'create site aliases', 'administer clients', 'create client', 'delete own client', 'edit client uname', 'edit client users', 'edit own client', 'view client', 'create clone task', 'create migrate task', 'create package', 'delete package', 'edit package', 'view package', 'create platform', 'delete platform', 'edit platform', 'view locked platforms', 'view platform', 'edit all quotas', 'view all quotas', 'view own quota', 'create server', 'delete server', 'edit server', 'view server', 'access hosting signup form', 'administer sites', 'create site', 'delete site', 'edit site', 'view site', 'create ssl certificate', 'access task logs', 'administer tasks', 'cancel own tasks', 'create backup task', 'create backup-delete task', 'create delete task', 'create disable task', 'create enable task', 'create lock task', 'create login-reset task', 'create restore task', 'create unlock task', 'create verify task', 'retry failed tasks', 'view own tasks', 'view task']);
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 }
@@ -509,18 +476,18 @@ function hosting_update_6204() {
  * Add permissions to roles.
  */
 function hosting_update_6205() {
-  $ret = array();
+  $ret = [];
 
   // Temporarily enable Install Profile API module and load includes.
-  module_enable(array('install_profile_api'));
+  module_enable(['install_profile_api']);
   module_load_include('inc', 'install_profile_api', 'core/user');
 
-  install_add_permissions(install_get_rid('aegir client'), array('view own quota', 'create site aliases', 'create verify task', 'create clone task', 'create migrate task', 'create ssl certificate', 'access task logs', 'view package', 'view platform', 'view revisions', 'edit site'));
-  install_add_permissions(install_get_rid('aegir account manager'), array('administer clients', 'access content', 'access user profiles', 'edit all quotas', 'view all quotas', 'view own quota', 'edit client uname', 'view_site'));
-  install_add_permissions(install_get_rid('aegir platform manager'), array('view package', 'administer platforms', 'cancel own tasks', 'view own tasks', 'access content', 'view task', 'administer sites', 'create verify task', 'retry failed tasks', 'administer clients', 'administer tasks'));
-  install_add_permissions(install_get_rid('aegir administrator'), array('access administration menu', 'administer platforms', 'administer servers', 'access content', 'view revisions', 'administer hosting aliases', 'create site aliases', 'edit all quotas', 'view all quotas', 'view own quota', 'access hosting signup form', 'create ssl certificate', 'access user profiles', 'update status of tasks'));
+  install_add_permissions(install_get_rid('aegir client'), ['view own quota', 'create site aliases', 'create verify task', 'create clone task', 'create migrate task', 'create ssl certificate', 'access task logs', 'view package', 'view platform', 'view revisions', 'edit site']);
+  install_add_permissions(install_get_rid('aegir account manager'), ['administer clients', 'access content', 'access user profiles', 'edit all quotas', 'view all quotas', 'view own quota', 'edit client uname', 'view_site']);
+  install_add_permissions(install_get_rid('aegir platform manager'), ['view package', 'administer platforms', 'cancel own tasks', 'view own tasks', 'access content', 'view task', 'administer sites', 'create verify task', 'retry failed tasks', 'administer clients', 'administer tasks']);
+  install_add_permissions(install_get_rid('aegir administrator'), ['access administration menu', 'administer platforms', 'administer servers', 'access content', 'view revisions', 'administer hosting aliases', 'create site aliases', 'edit all quotas', 'view all quotas', 'view own quota', 'access hosting signup form', 'create ssl certificate', 'access user profiles', 'update status of tasks']);
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 }
@@ -529,8 +496,8 @@ function hosting_update_6205() {
  * Enable the jquery_update module.
  */
 function hosting_update_6206() {
-  $ret = array();
-  module_enable(array('jquery_update'));
+  $ret = [];
+  module_enable(['jquery_update']);
   return $ret;
 }
 
@@ -540,13 +507,13 @@ function hosting_update_6206() {
  * https://drupal.org/node/1971348
  */
 function hosting_update_6207() {
-  $ret = array();
-  $spec = array(
-        'type' => 'varchar',
-        // @see HOSTING_MAX_ALIAS_LENGTH
-        'length' => 235,
-        'not null' => TRUE,
-  );
+  $ret = [];
+  $spec = [
+      'type' => 'varchar',
+      // @see HOSTING_MAX_ALIAS_LENGTH
+      'length' => 235,
+      'not null' => TRUE,
+  ];
   db_change_field($ret, 'hosting_context', 'name', 'name', $spec);
   return $ret;
 }
@@ -555,7 +522,7 @@ function hosting_update_6207() {
  * Remove old BOA menu links.
  */
 function hosting_update_6208() {
-  $ret = array();
+  $ret = [];
   hosting_menu_rebuild();
   menu_link_delete(NULL, 'hosting/clients');
   menu_link_delete(NULL, 'hosting/signup');
@@ -586,13 +553,13 @@ function hosting_update_7000() {
 function hosting_update_7001() {
   if (db_table_exists('comment')) {
     db_update('comment')
-      ->fields(array('language' => 'und'))
+      ->fields(['language' => 'und'])
       ->condition('status', '1')
       ->execute();
   }
   if (db_table_exists('field_data_comment_body')) {
     db_update('field_data_comment_body')
-      ->fields(array('comment_body_format' => 'filtered_html'))
+      ->fields(['comment_body_format' => 'filtered_html'])
       ->condition('comment_body_format', '1')
       ->execute();
   }
@@ -611,7 +578,7 @@ function hosting_update_7002() {
  * mitigation measures for SA 2018-002.
  */
 function hosting_update_7302() {
-  return array(); // never fail
+  return []; // never fail
 }
 
 /**
@@ -619,7 +586,7 @@ function hosting_update_7302() {
  */
 function hosting_update_7303() {
   // node_access_rebuild from the the update hook fails without the following defintion.
-  return array(); // never fail
+  return []; // never fail
 }
 
 /**

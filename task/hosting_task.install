@@ -8,126 +8,12 @@
  * Implements hook_schema().
  */
 function hosting_task_schema() {
-  $schema['hosting_task'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'task_type' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => FALSE,
-      ),
-      'rid' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'task_status' => array(
-        'type' => 'int',
-        'not null' => FALSE,
-      ),
-      'executed' => array(
-        'type' => 'int',
-        'not null' => FALSE,
-      ),
-      'delta' => array(
-        'type' => 'int',
-        'not null' => FALSE,
-      ),
-    ),
-    'indexes' => array(
-      'nid' => array('nid'),
-    ),
-    'primary key' => array('vid'),
-  );
+  $schema = [];
+  $schema['hosting_task'] = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'task_type' => ['type' => 'text', 'size' => 'big', 'not null' => FALSE], 'rid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'task_status' => ['type' => 'int', 'not null' => FALSE], 'executed' => ['type' => 'int', 'not null' => FALSE], 'delta' => ['type' => 'int', 'not null' => FALSE]], 'indexes' => ['nid' => ['nid']], 'primary key' => ['vid']];
 
-  $schema['hosting_task_arguments'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'name' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => FALSE,
-      ),
-      'value' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => FALSE,
-      ),
-    ),
-    'indexes' => array(
-      'vid' => array('vid'),
-      'nid' => array('nid'),
-    ),
-  );
+  $schema['hosting_task_arguments'] = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'name' => ['type' => 'text', 'size' => 'big', 'not null' => FALSE], 'value' => ['type' => 'text', 'size' => 'big', 'not null' => FALSE]], 'indexes' => ['vid' => ['vid'], 'nid' => ['nid']]];
 
-  $schema['hosting_task_log'] = array(
-    'fields' => array(
-      'lid' => array(
-        'type' => 'serial',
-        'not null' => TRUE,
-      ),
-      'vid' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'type' => array(
-        'type' => 'varchar',
-        'length' => 16,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'message' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => TRUE,
-      ),
-      'error' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => TRUE,
-      ),
-      'timestamp' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-    'indexes' => array(
-      'type' => array('type'),
-      'vid_lid' => array('vid', 'lid'),
-      'nid' => array('nid'),
-    ),
-    'primary key' => array('lid'),
-  );
+  $schema['hosting_task_log'] = ['fields' => ['lid' => ['type' => 'serial', 'not null' => TRUE], 'vid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'type' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => ''], 'message' => ['type' => 'text', 'size' => 'big', 'not null' => TRUE], 'error' => ['type' => 'text', 'size' => 'big', 'not null' => TRUE], 'timestamp' => ['type' => 'int', 'not null' => TRUE, 'default' => 0]], 'indexes' => ['type' => ['type'], 'vid_lid' => ['vid', 'lid'], 'nid' => ['nid']], 'primary key' => ['lid']];
 
   return $schema;
 }
@@ -139,7 +25,7 @@ function hosting_task_schema() {
  * specific error codes, not just the messages.
  */
 function hosting_task_update_1() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_task_log} 
     ADD COLUMN error longtext NOT NULL default ''");
   $ret[] = update_sql("ALTER TABLE {hosting_task_log} 
@@ -156,7 +42,7 @@ function hosting_task_update_1() {
  * This will force them to be re-evaluated if the queue status doesn't match the task status
  */
 function hosting_task_update_2() {
-  $ret = array();
+  $ret = [];
   variable_set('hosting_dispatch_enabled', FALSE);
   // Put the queued items separately for a bit.
   db_query("UPDATE {hosting_task_queue} SET status = 100 WHERE status = 0");
@@ -181,7 +67,7 @@ function hosting_task_update_6000() {
 
   // This update needs to be run before tasks can be added, in other update functions.
   if (!variable_get('hosting_task_update_6000_run', FALSE)) {
-    db_add_field($ret, 'hosting_task', 'delta', array('type' => 'int', 'not null' => TRUE, 'default' => 0));
+    db_add_field($ret, 'hosting_task', 'delta', ['type' => 'int', 'not null' => TRUE, 'default' => 0]);
     variable_set('hosting_task_update_6000_run', TRUE);
   }
   return $ret;
@@ -193,7 +79,7 @@ function hosting_task_update_6000() {
  * remove the redundant hosting_queue table
  */
 function hosting_task_update_6001() {
-  $ret = array();
+  $ret = [];
   db_drop_table($ret, 'hosting_task_queue');
   return $ret;
 }
@@ -207,7 +93,7 @@ function hosting_task_update_6001() {
  * lose any history.
  */
 function hosting_task_update_6002() {
-  $ret = array();
+  $ret = [];
 
   $result = db_query("select t.task_type, t.rid, max(t.nid) as max_nid from {hosting_task} t group by t.task_type, t.rid");
 
@@ -232,7 +118,7 @@ function hosting_task_update_6002() {
  * Processing state constant changed to ensure proper sorting
  */
 function hosting_task_update_6003() {
-  $ret = array();
+  $ret = [];
   db_query("UPDATE {hosting_task} SET task_status = -1 WHERE task_status = 4");
   return $ret;
 }
@@ -243,10 +129,10 @@ function hosting_task_update_6003() {
  * Add 'cancel own task' permission to 'aegir client' role
  */
 function hosting_task_update_6004() {
-  $ret = array();
-  install_include(array('user'));
+  $ret = [];
+  install_include(['user']);
 
-  install_add_permissions(install_get_rid('aegir client'), array('cancel own tasks'));
+  install_add_permissions(install_get_rid('aegir client'), ['cancel own tasks']);
   node_access_rebuild();
   return $ret;
 }
@@ -263,9 +149,9 @@ function hosting_task_update_6004() {
  * See #969326
  */
 function hosting_task_update_6005() {
-  $ret = array();
+  $ret = [];
   db_change_field($ret, 'hosting_task_log', 'error', 'error',
-                  array('type' => 'text', 'size' => 'big', 'not null' => TRUE));
+                  ['type' => 'text', 'size' => 'big', 'not null' => TRUE]);
   return $ret;
 }
 
@@ -275,22 +161,12 @@ function hosting_task_update_6005() {
  * Add nid field to hosting_task_log and remove orphaned log entries.
  */
 function hosting_task_update_6006() {
-  $ret = array();
+  $ret = [];
 
   // Add nid field.
-  $field = array(
-    'type' => 'int',
-    'unsigned' => TRUE,
-    'not null' => TRUE,
-    'default' => 0,
-  );
+  $field = ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0];
   // Add some useful indexes.
-  $indexes = array(
-    'indexes' => array(
-      'vid_lid' => array('vid', 'lid'),
-      'nid' => array('nid'),
-    ),
-  );
+  $indexes = ['indexes' => ['vid_lid' => ['vid', 'lid'], 'nid' => ['nid']]];
   db_add_field($ret, 'hosting_task_log', 'nid', $field, $indexes);
 
   // Populate nid field.
@@ -312,15 +188,15 @@ function hosting_task_update_6006() {
  * Add permission.
  */
 function hosting_task_update_6200() {
-  $ret = array();
+  $ret = [];
 
   // Temporarily enable Install Profile API module and load includes.
-  module_enable(array('install_profile_api'));
+  module_enable(['install_profile_api']);
   module_load_include('inc', 'install_profile_api', 'core/user');
 
-  install_add_permissions(install_get_rid('aegir administrator'), array('update status of tasks'));
+  install_add_permissions(install_get_rid('aegir administrator'), ['update status of tasks']);
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 }
@@ -339,7 +215,7 @@ function hosting_task_update_7000() {
 function hosting_task_update_7001() {
   $role = user_role_load_by_name('aegir client');
   if ($role) {
-    user_role_grant_permissions($role->rid, array('create login-reset task'));
+    user_role_grant_permissions($role->rid, ['create login-reset task']);
   }
 }
 
@@ -348,12 +224,12 @@ function hosting_task_update_7001() {
  */
 function hosting_task_update_7301() {
   if (!db_index_exists('hosting_task', 'hosting_task_nid_idx')) {
-    db_add_index('hosting_task', 'hosting_task_nid_idx', array('nid'));
+    db_add_index('hosting_task', 'hosting_task_nid_idx', ['nid']);
   }
   if (!db_index_exists('hosting_task_arguments', 'hosting_task_arguments_nid_idx')) {
-    db_add_index('hosting_task_arguments', 'hosting_task_arguments_nid_idx', array('nid'));
+    db_add_index('hosting_task_arguments', 'hosting_task_arguments_nid_idx', ['nid']);
   }
   if (!db_index_exists('hosting_task_arguments', 'hosting_task_arguments_vid_idx')) {
-    db_add_index('hosting_task_arguments', 'hosting_task_arguments_vid_idx', array('vid'));
+    db_add_index('hosting_task_arguments', 'hosting_task_arguments_vid_idx', ['vid']);
   }
 }

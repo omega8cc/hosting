@@ -8,17 +8,14 @@
  * Helper function to generate form elements for the site form.
  */
 function _hosting_site_field(&$form, $node, $item, $element, $filter_display = 'filter_xss', $editable = FALSE, $show_desc = TRUE) {
-  $css_id = str_replace("_", "-", $item);
+  $css_id = str_replace("_", "-", (string) $item);
 
   $type = $element['#type'];
 
   if (!isset($node->nid) || $editable) {
     // Create it.
-    if (($element['#type'] == 'radios') && !count($element['#options'])) {
-      $form[$item] = array(
-        '#type' => 'value',
-        '#value' => !empty($element['#default_value']) ? $element['#default_value'] : NULL,
-      );
+    if (($element['#type'] == 'radios') && !(is_countable($element['#options']) ? count($element['#options']) : 0)) {
+      $form[$item] = ['#type' => 'value', '#value' => !empty($element['#default_value']) ? $element['#default_value'] : NULL];
     }
     else {
       $form[$item] = $element;
@@ -44,22 +41,14 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
 
     if ($show_desc) {
       // Display it.
-      $form['info'][$item] = array(
-        '#type' => 'item',
-        '#title' => $element['#title'],
-        '#markup' => $filter_display($element['#default_value']),
-        '#required' => FALSE,
-      );
+      $form['info'][$item] = ['#type' => 'item', '#title' => $element['#title'], '#markup' => $filter_display($element['#default_value']), '#required' => FALSE];
 
       if (isset($element['#weight'])) {
         $form['info'][$item]['#weight'] = $element['#weight'];
       }
     }
 
-    $form[$item] = array(
-      '#type' => 'hidden',
-      '#value' => $element['#default_value'],
-    );
+    $form[$item] = ['#type' => 'hidden', '#value' => $element['#default_value']];
   }
 
   $form[$item]['#hosting_site_field'] = $item;
@@ -78,7 +67,7 @@ function _hosting_site_form_pre_render($elements) {
   static $settings_added = FALSE;
   if (!$settings_added) {
     $settings_added = TRUE;
-    $setting = array();
+    $setting = [];
     $setting['hosting']['site']['form_check_url'] = url('hosting/hosting_site_form_check');
     drupal_add_js($setting, 'setting');
   }
@@ -98,11 +87,11 @@ function hosting_site_available_options($node, $platform = NULL) {
   // Cast to object if it's an array.
   $node = (is_array($node)) ? (object) $node : clone $node;
 
-  $return = array();
+  $return = [];
 
-  $return['profile'] = array();
-  $return['platform'] = array();
-  $return['site_language'] = array();
+  $return['profile'] = [];
+  $return['platform'] = [];
+  $return['site_language'] = [];
 
   if (!hosting_feature('client')) {
     // Setting the return value of a text field to null,
@@ -116,7 +105,7 @@ function hosting_site_available_options($node, $platform = NULL) {
 
   // Install profiles.
   $profiles = hosting_get_profiles();
-  $platform_profiles = array();
+  $platform_profiles = [];
   foreach ($profiles as $id => $name) {
 
     // Trim down the list of profiles to those that are available and the user has access to
@@ -131,17 +120,13 @@ function hosting_site_available_options($node, $platform = NULL) {
                         WHERE i.package_id = :package_id
                         AND p.package_type = :package_type
                         AND l.status = :status;",
-                        array(
-                          ':package_id' => $id,
-                          ':package_type' => 'profile',
-                          ':status' => HOSTING_PLATFORM_ENABLED,
-                        )
+                        [':package_id' => $id, ':package_type' => 'profile', ':status' => HOSTING_PLATFORM_ENABLED]
                       );
     if (is_null($platform)) {
       $allowed_plats = _hosting_get_allowed_platforms($user->uid);
     }
     else {
-      $allowed_plats = array($platform => $platform);
+      $allowed_plats = [$platform => $platform];
     }
     $access_check = FALSE;
 
@@ -158,7 +143,7 @@ function hosting_site_available_options($node, $platform = NULL) {
       elseif (!$unrestricted = db_query("SELECT cid
                                          FROM {hosting_platform_client_access}
                                          WHERE pid = :pid LIMIT 1",
-                                         array(':pid' => $row->nid)
+                                         [':pid' => $row->nid]
                                        )->fetchField()) {
         $access_check = TRUE;
       }
@@ -180,12 +165,12 @@ function hosting_site_available_options($node, $platform = NULL) {
   // Filter the available platforms based on which clients the user has access to.
   if (!is_null($platform)) {
     $node->profile = $return['profile'][0];
-    $return['platform'] = array($platform);
+    $return['platform'] = [$platform];
   }
   else {
-    $options = array();
     $platforms = hosting_get_profile_platforms($node->profile, isset($node->check_profile_migrations) ? $node->check_profile_migrations : FALSE);
-    if (count($platforms)) {
+    $options = [];
+    if (is_countable($platforms) ? count($platforms) : 0) {
       foreach ($platforms as $nid => $title) {
         $platform = node_load($nid);
 
@@ -216,33 +201,23 @@ function hosting_site_available_options($node, $platform = NULL) {
  * Implements hook_form().
  */
 function hosting_site_form($node, &$form_state) {
+  $form = [];
   $form['#pre_render'][] = '_hosting_site_form_pre_render';
   $form['#node'] = $node;
 
   if (isset($node->nid)) {
-    $form['info'] = array(
-      '#prefix' => '<div class="clear-block" id="hosting-site-edit-info">',
-      '#suffix' => '<br /></div>',
-      '#weight' => -10,
-    );
+    $form['info'] = ['#prefix' => '<div class="clear-block" id="hosting-site-edit-info">', '#suffix' => '<br /></div>', '#weight' => -10];
   }
 
-  _hosting_site_field($form, $node, 'title', array(
-    '#type' => 'textfield',
-    '#title' => t('Domain name'),
-    '#required' => TRUE,
-    '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '',
-    '#weight' => -10,
-  ));
+  _hosting_site_field($form, $node, 'title', ['#type' => 'textfield', '#title' => t('Domain name'), '#required' => TRUE, '#default_value' => isset($node->title) ? hosting_site_get_domain($node->title) : '', '#weight' => -10]);
 
   // Install profiles.
   $profiles = hosting_get_profiles();
   foreach ($profiles as $id => $name) {
-    $profile = hosting_package_instance_load(array('p.nid' => $id));
-    $profiles[$id] = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
+    $profile = hosting_package_instance_load(['p.nid' => $id]);
+    $profiles[$id] = theme('hosting_site_profile', ['profile' => $profile, 'html' => TRUE]);
   }
   natcasesort($profiles);
-  reset($profiles);
 
   _hosting_site_field($form, $node, 'profile', array(
     '#type' => 'radios',
@@ -267,7 +242,7 @@ function hosting_site_form($node, &$form_state) {
     $selected_profile = $form_state['values']['profile'];
   }
   else {
-    $selected_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->nid;
+    $selected_profile = hosting_package_instance_load(['p.nid' => hosting_get_default_profile()])->nid;
   }
 
   // Load platforms for the selected profile.
@@ -278,20 +253,20 @@ function hosting_site_form($node, &$form_state) {
     $default_platform = $q['platform'];
 
     // Since platform is predetermined, limit the options based on the selected platform.
-    $selected_profile = hosting_package_instance_load(array('platform' => $default_platform, 'package_type' => 'profile'))->nid;
+    $selected_profile = hosting_package_instance_load(['platform' => $default_platform, 'package_type' => 'profile'])->nid;
     $platforms = hosting_get_profile_platforms($selected_profile);
 
     $form['profile']['#default_value'] = $selected_profile;
     $form['profile']['#options'] = hosting_get_profiles($default_platform);
     foreach ($form['profile']['#options'] as $id => &$name) {
-      $profile = hosting_package_instance_load(array('p.nid' => $id));
-      $name = theme('hosting_site_profile', array('profile' => $profile, 'html' => TRUE));
+      $profile = hosting_package_instance_load(['p.nid' => $id]);
+      $name = theme('hosting_site_profile', ['profile' => $profile, 'html' => TRUE]);
     }
     natcasesort($form['profile']['#options']);
     reset($form['profile']['#options']);
 
     // Set page title.
-    drupal_set_title(t('Create site on platform @name', array('@name' => $platforms[$default_platform])));
+    drupal_set_title(t('Create site on platform @name', ['@name' => $platforms[$default_platform]]));
   }
   else {
     $default_platform = NULL;
@@ -301,11 +276,7 @@ function hosting_site_form($node, &$form_state) {
     // Default to the first platform, if none was passed in the path.
     $default_platform = current(array_keys($platforms));
   }
-  _hosting_site_field($form, $node, 'platform', array(
-    '#type' => 'radios',
-    '#title' => t('Platform'),
-    '#required' => TRUE,
-    '#description' => t('The platform you want the site to be hosted on.<br />
+  _hosting_site_field($form, $node, 'platform', ['#type' => 'radios', '#title' => t('Platform'), '#required' => TRUE, '#description' => t('The platform you want the site to be hosted on.<br />
                           Not seeing a certain platform? Platforms shown are those that support the profile above.
                           If a different profile is selected, this list may change automatically.'),
     '#options' => $platforms,
@@ -385,10 +356,10 @@ function hosting_site_validate($node, &$form) {
     form_set_error('title', t("You have not specified a valid url for this site."));
   }
 
-  $length = strlen($url);
+  $length = strlen((string) $url);
   if ($length > HOSTING_MAX_ALIAS_LENGTH) {
     $long = $length - HOSTING_MAX_ALIAS_LENGTH;
-    form_set_error("title", t('The url your provided is @long character(s) too long. Please shorten.', array('@long' => $long)));
+    form_set_error("title", t('The url your provided is @long character(s) too long. Please shorten.', ['@long' => $long]));
   }
 
   if (isset($node->new_client) && !$node->new_client) {
@@ -397,7 +368,7 @@ function hosting_site_validate($node, &$form) {
       form_set_error('client', t('Please fill in a valid client'));
     }
     if (!user_access('administer clients') && !array_key_exists($client->nid, hosting_get_client_from_user($user->uid))) {
-      form_set_error('client', t('Access denied to client @client', array('@client' => $client->title)));
+      form_set_error('client', t('Access denied to client @client', ['@client' => $client->title]));
     }
     $node->client = $client->nid;
   }
@@ -453,9 +424,6 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
 
   // On Delete task forms, if variable is set, set the --force option.
   if ($form_id == 'hosting_task_confirm_form' && $form['task']['#value'] == 'delete' && variable_get('hosting_delete_force', FALSE)) {
-    $form['parameters']['force'] = array(
-      '#type' => 'value',
-      '#value' => 1,
-    );
+    $form['parameters']['force'] = ['#type' => 'value', '#value' => 1];
   }
 }

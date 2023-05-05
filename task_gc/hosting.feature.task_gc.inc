@@ -15,16 +15,17 @@
  *   associative array indexed by feature key.
  */
 function hosting_task_gc_hosting_feature() {
-  $features['task_gc'] = array(
-    // Title to display in form.
-    'title' => t('Task garbage collection'),
-    'description' => t('Cleanup task records for deleted sites.'),
-    // Initial status.
-    'status' => HOSTING_FEATURE_DISABLED,
-    // Module to enable/disable alongside feature.
-    'module' => 'hosting_task_gc',
-    // Which group to display in ( null , experimental ).
-    'group' => 'experimental',
-  );
+  $features = [];
+  $features['task_gc'] = [
+      // Title to display in form.
+      'title' => t('Task garbage collection'),
+      'description' => t('Cleanup task records for deleted sites.'),
+      // Initial status.
+      'status' => HOSTING_FEATURE_DISABLED,
+      // Module to enable/disable alongside feature.
+      'module' => 'hosting_task_gc',
+      // Which group to display in ( null , experimental ).
+      'group' => 'experimental',
+  ];
   return $features;
 }

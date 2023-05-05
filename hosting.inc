@@ -107,8 +107,8 @@ function _hosting_valid_fqdn_ip($fqdn) {
   #
   # We allow IPs here.
   #
-  return (preg_match("/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.?)+[a-z0-9]+$/", $fqdn) &&
-         !preg_match("/[.]{2,}/", $fqdn));
+  return (preg_match("/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.?)+[a-z0-9]+$/", (string) $fqdn) &&
+         !preg_match("/[.]{2,}/", (string) $fqdn));
 }
 
 /**
@@ -135,7 +135,7 @@ function hosting_format_interval($ts) {
     return t('Never');
   }
 
-  return t("@interval ago", array("@interval" => format_interval(REQUEST_TIME - $ts, 1)));
+  return t("@interval ago", ["@interval" => format_interval(REQUEST_TIME - $ts, 1)]);
 }
 
 /**
@@ -145,7 +145,7 @@ function hosting_format_interval($ts) {
  * not (yet?) resolve .. instances.
  */
 function hosting_path_normalize($path) {
-  return rtrim(preg_replace('/(\/\/*\.)?\/\/*/', '/', $path), '/');
+  return rtrim(preg_replace('/(\/\/*\.)?\/\/*/', '/', (string) $path), '/');
 }
 
 /**

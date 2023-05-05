@@ -8,7 +8,7 @@
  * Implements hook_views_default_views().
  */
 function hosting_client_views_default_views() {
-  $views = array();
+  $views = [];
 
   // Exported view: hosting_client_list
   $view = new view();
@@ -33,32 +33,9 @@ function hosting_client_views_default_views() {
   $handler->display->display_options['pager']['type'] = 'none';
   $handler->display->display_options['pager']['options']['offset'] = '0';
   $handler->display->display_options['style_plugin'] = 'table';
-  $handler->display->display_options['style_options']['columns'] = array(
-    'title' => 'title',
-    'uname' => 'uname',
-    'created' => 'created',
-  );
+  $handler->display->display_options['style_options']['columns'] = ['title' => 'title', 'uname' => 'uname', 'created' => 'created'];
   $handler->display->display_options['style_options']['default'] = 'title';
-  $handler->display->display_options['style_options']['info'] = array(
-    'title' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-    ),
-    'uname' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-    ),
-    'created' => array(
-      'sortable' => 1,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-    ),
-  );
+  $handler->display->display_options['style_options']['info'] = ['title' => ['sortable' => 1, 'default_sort_order' => 'asc', 'align' => '', 'separator' => ''], 'uname' => ['sortable' => 1, 'default_sort_order' => 'asc', 'align' => '', 'separator' => ''], 'created' => ['sortable' => 1, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '']];
   /* Field: Content: Title */
   $handler->display->display_options['fields']['title']['id'] = 'title';
   $handler->display->display_options['fields']['title']['table'] = 'node';
@@ -69,9 +46,7 @@ function hosting_client_views_default_views() {
   $handler->display->display_options['filters']['type']['id'] = 'type';
   $handler->display->display_options['filters']['type']['table'] = 'node';
   $handler->display->display_options['filters']['type']['field'] = 'type';
-  $handler->display->display_options['filters']['type']['value'] = array(
-    'client' => 'client',
-  );
+  $handler->display->display_options['filters']['type']['value'] = ['client' => 'client'];
 
   /* Display: Page */
   $handler = $view->new_display('page', 'Page', 'page_clients');

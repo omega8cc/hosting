@@ -98,12 +98,12 @@ class hostingService_example_basic extends hostingService_example {
   function view(&$render) {
     // REMEMBER TO CALL THE PARENT!
     parent::view($render);
-    $render['example_field'] = array(
-      '#type' => 'item',
-      '#title' => t('Example field'),
-      // Remember to pass the display through filter_xss!
-      '#markup' => filter_xss($this->example_field),
-    );
+    $render['example_field'] = [
+        '#type' => 'item',
+        '#title' => t('Example field'),
+        // Remember to pass the display through filter_xss!
+        '#markup' => filter_xss($this->example_field),
+    ];
   }
 
   /**
@@ -120,15 +120,7 @@ class hostingService_example_basic extends hostingService_example {
     // REMEMBER TO CALL THE PARENT!
     parent::form($form);
 
-    $form['example_field'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Example field'),
-      '#description' => t('An example field for the user to fill in.'),
-      '#size' => 40,
-      '#default_value' => ($this->example_field) ? $this->example_field : 'default value',
-      '#maxlength' => 64,
-      '#weight' => 5,
-    );
+    $form['example_field'] = ['#type' => 'textfield', '#title' => t('Example field'), '#description' => t('An example field for the user to fill in.'), '#size' => 40, '#default_value' => $this->example_field ?: 'default value', '#maxlength' => 64, '#weight' => 5];
   }
 
   /**
@@ -138,7 +130,7 @@ class hostingService_example_basic extends hostingService_example {
     // REMEMBER TO CALL THE PARENT!
     parent::validate($node, $form, $form_state);
 
-    if (count($this->example_field) > 30) {
+    if ((is_countable($this->example_field) ? count($this->example_field) : 0) > 30) {
       form_set_error('example_field', t("The example string must not be longer than 30 characters"));
     }
   }

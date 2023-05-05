@@ -26,6 +26,6 @@ function hosting_task_drush_update_status() {
   $task = drush_get_context('HOSTING_TASK');
   if (!empty($task)) {
     $message = _hosting_parse_error_code(hosting_task_update_status($task));
-    drush_log(dt('Updated task status to "!log"', array('!log' => $message)), 'info');
+    drush_log(dt('Updated task status to "!log"', ['!log' => $message]), 'info');
   }
 }

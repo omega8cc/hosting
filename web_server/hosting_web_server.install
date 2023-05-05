@@ -11,7 +11,7 @@
  * Add package description to hosting_package table.
  */
 function hosting_web_server_update_1() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_web_server} ADD COLUMN drush_path longtext NOT NULL default ''");
   return $ret;
 }
@@ -22,7 +22,7 @@ function hosting_web_server_update_1() {
  * Add server ports to hosting_web_server table.
  */
 function hosting_web_server_update_2() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_web_server} ADD COLUMN ports longtext NOT NULL default ''");
   db_query("UPDATE {hosting_web_server} SET ports = '80'");
   return $ret;
@@ -34,7 +34,7 @@ function hosting_web_server_update_2() {
  * Move a lot of fields to the hosting_server table.
  */
 function hosting_web_server_update_6000() {
-  $ret = array();
+  $ret = [];
 
   // THIS IS A MYSQL-ism, but we need it at this point.
   db_query("INSERT INTO {hosting_service} (nid, vid, service, type, restart_cmd, port, available) SELECT nid, vid, 'http', 'apache', restart_cmd, 80, 1 FROM {hosting_web_server}");
@@ -58,7 +58,7 @@ function hosting_web_server_update_6000() {
  * Remove the web_group field which now needs to be consistent between servers.
  */
 function hosting_web_server_update_6001() {
-  $ret = array();
+  $ret = [];
 
   db_drop_field($ret, "hosting_web_server", "web_group");
   return $ret;
@@ -71,7 +71,7 @@ function hosting_web_server_update_6001() {
  * Move the restart command value into it's new home in the service table.
  */
 function hosting_web_server_update_6002() {
-  $ret = array();
+  $ret = [];
   $result = db_query("SELECT * FROM {hosting_web_server}");
   while ($obj = db_fetch_object($result)) {
     db_query("UPDATE {hosting_service} SET restart_cmd = '%s', port = 80 WHERE nid=%d AND service='http' AND type = 'apache'", $obj->restart_cmd, $obj->nid);

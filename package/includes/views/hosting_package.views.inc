@@ -8,207 +8,41 @@
  * Implements hook_views_data().
  */
 function hosting_package_views_data() {
+  $data = [];
   // Hosting package.
-  $data['hosting_package']['table'] = array(
-    'group' => 'Hosting Package',
-    'title' => 'Package',
-    'join' => array(
-      'node' => array(
-        'left_field' => 'vid',
-         'field' => 'vid',
-      ),
-    ),
-  );
+  $data['hosting_package']['table'] = ['group' => 'Hosting Package', 'title' => 'Package', 'join' => ['node' => ['left_field' => 'vid', 'field' => 'vid']]];
 
-  $data['hosting_package']['package_type'] = array(
-    'title' => t('Type'),
-    'help' => t('The package type.'),
-    'field' => array(
-      'handler' => 'views_handler_field',
-      'click sortable' => TRUE,
-     ),
-    'filter' => array(
-      'handler' => 'views_handler_filter_in_operator',
-      'options callback' => '_hosting_package_types',
-    ),
-    'sort' => array(
-      'handler' => 'views_handler_sort',
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_string',
-    ),
-  );
+  $data['hosting_package']['package_type'] = ['title' => t('Type'), 'help' => t('The package type.'), 'field' => ['handler' => 'views_handler_field', 'click sortable' => TRUE], 'filter' => ['handler' => 'views_handler_filter_in_operator', 'options callback' => '_hosting_package_types'], 'sort' => ['handler' => 'views_handler_sort'], 'argument' => ['handler' => 'views_handler_argument_string']];
 
 
   // Hosting package instance.
   $data['hosting_package_instance']['table']['group'] = t('Hosting Package Instance');
 
-  $data['hosting_package_instance']['table']['base'] = array(
-    'field' => 'filename',
-    'title' => t('Hosting package instances'),
-    'help' => t('Hosting package instances'),
-  );
+  $data['hosting_package_instance']['table']['base'] = ['field' => 'filename', 'title' => t('Hosting package instances'), 'help' => t('Hosting package instances')];
 
-  $data['hosting_package_instance']['iid'] = array(
-    'title' => t('Instance ID'),
-    'help' => t('The package instance ID.'),
-    'field' => array(
-      'handler' => 'views_handler_field_numeric',
-      'click sortable' => TRUE,
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_numeric',
-      'numeric' => TRUE,
-    ),
-    'filter' => array(
-      'handler' => 'views_handler_filter_numeric',
-    ),
-    'sort' => array(
-      'handler' => 'views_handler_sort',
-    ),
-  );
+  $data['hosting_package_instance']['iid'] = ['title' => t('Instance ID'), 'help' => t('The package instance ID.'), 'field' => ['handler' => 'views_handler_field_numeric', 'click sortable' => TRUE], 'argument' => ['handler' => 'views_handler_argument_numeric', 'numeric' => TRUE], 'filter' => ['handler' => 'views_handler_filter_numeric'], 'sort' => ['handler' => 'views_handler_sort']];
 
-  $data['hosting_package_instance']['rid'] = array(
-    'title' => t('Reference ID'),
-    'help' => t('The package instance reference ID.'),
-    'field' => array(
-      'handler' => 'views_handler_field_node',
-      'click sortable' => TRUE,
-    ),
-    'relationship' => array(
-      'handler' => 'views_handler_relationship',
-      'base' => 'node',
-      'base field' => 'nid',
-      'label' => t('site'),
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_node_nid',
-    ),
-  );
+  $data['hosting_package_instance']['rid'] = ['title' => t('Reference ID'), 'help' => t('The package instance reference ID.'), 'field' => ['handler' => 'views_handler_field_node', 'click sortable' => TRUE], 'relationship' => ['handler' => 'views_handler_relationship', 'base' => 'node', 'base field' => 'nid', 'label' => t('site')], 'argument' => ['handler' => 'views_handler_argument_node_nid']];
 
-  $data['hosting_package_instance']['site_count'] = array(
-    'title' => t('Site count'),
-    'help' => t('A count of sites using a package.'),
-    'field' => array(
-      'field' => 'platform',
-      'handler' => 'hosting_package_handler_field_site_count',
-      'click sortable' => TRUE,
-    ),
-    'sort' => array(
-      'handler' => 'hosting_package_handler_sort_site_count',
-    ),
-  );
+  $data['hosting_package_instance']['site_count'] = ['title' => t('Site count'), 'help' => t('A count of sites using a package.'), 'field' => ['field' => 'platform', 'handler' => 'hosting_package_handler_field_site_count', 'click sortable' => TRUE], 'sort' => ['handler' => 'hosting_package_handler_sort_site_count']];
 
-  $data['hosting_package_instance']['package_id'] = array(
-    'title' => t('Package ID'),
-    'help' => t('The package ID.'),
-    'field' => array(
-      'handler' => 'views_handler_field_node',
-      'click sortable' => TRUE,
-    ),
-    'relationship' => array(
-      'handler' => 'views_handler_relationship',
-      'base' => 'node',
-      'base field' => 'nid',
-      'label' => t('package'),
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_node_nid',
-    ),
-  );
+  $data['hosting_package_instance']['package_id'] = ['title' => t('Package ID'), 'help' => t('The package ID.'), 'field' => ['handler' => 'views_handler_field_node', 'click sortable' => TRUE], 'relationship' => ['handler' => 'views_handler_relationship', 'base' => 'node', 'base field' => 'nid', 'label' => t('package')], 'argument' => ['handler' => 'views_handler_argument_node_nid']];
 
-  $data['hosting_package_instance']['filename'] = array(
-    'title' => t('File'),
-    'help' => t('The package instance file.'),
-    'field' => array(
-      'handler' => 'views_handler_field_file',
-      'click sortable' => TRUE,
-     ),
-    'sort' => array(
-      'handler' => 'views_handler_sort',
-    ),
-    'filter' => array(
-      'handler' => 'views_handler_filter_string',
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_string',
-    ),
-  );
+  $data['hosting_package_instance']['filename'] = ['title' => t('File'), 'help' => t('The package instance file.'), 'field' => ['handler' => 'views_handler_field_file', 'click sortable' => TRUE], 'sort' => ['handler' => 'views_handler_sort'], 'filter' => ['handler' => 'views_handler_filter_string'], 'argument' => ['handler' => 'views_handler_argument_string']];
 
-  $data['hosting_package_instance']['schema_version'] = array(
-    'title' => t('Schema version'),
-    'help' => t('The package instance schema version.'),
-    'field' => array(
-      'handler' => 'views_handler_field_numeric',
-      'click sortable' => TRUE,
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_numeric',
-      'numeric' => TRUE,
-    ),
-    'filter' => array(
-      'handler' => 'views_handler_filter_numeric',
-    ),
-    'sort' => array(
-      'handler' => 'views_handler_sort',
-    ),
-  );
+  $data['hosting_package_instance']['schema_version'] = ['title' => t('Schema version'), 'help' => t('The package instance schema version.'), 'field' => ['handler' => 'views_handler_field_numeric', 'click sortable' => TRUE], 'argument' => ['handler' => 'views_handler_argument_numeric', 'numeric' => TRUE], 'filter' => ['handler' => 'views_handler_filter_numeric'], 'sort' => ['handler' => 'views_handler_sort']];
 
-  $data['hosting_package_instance']['version'] = array(
-    'title' => t('Version'),
-    'help' => t('The package instance version.'),
-    'field' => array(
-      'handler' => 'views_handler_field',
-      'click sortable' => TRUE,
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_string',
-    ),
-    'filter' => array(
-      'handler' => 'views_handler_filter_string',
-    ),
-    'sort' => array(
-      'handler' => 'views_handler_sort',
-    ),
-  );
+  $data['hosting_package_instance']['version'] = ['title' => t('Version'), 'help' => t('The package instance version.'), 'field' => ['handler' => 'views_handler_field', 'click sortable' => TRUE], 'argument' => ['handler' => 'views_handler_argument_string'], 'filter' => ['handler' => 'views_handler_filter_string'], 'sort' => ['handler' => 'views_handler_sort']];
 
-  $data['hosting_package_instance']['version_code'] = array(
-    'title' => t('Version code'),
-    'help' => t('The package instance version code.'),
-    'field' => array(
-      'handler' => 'views_handler_field_numeric',
-      'click sortable' => TRUE,
-    ),
-    'argument' => array(
-      'handler' => 'views_handler_argument_numeric',
-      'numeric' => TRUE,
-    ),
-    'filter' => array(
-      'handler' => 'views_handler_filter_numeric',
-    ),
-    'sort' => array(
-      'handler' => 'views_handler_sort',
-    ),
-  );
+  $data['hosting_package_instance']['version_code'] = ['title' => t('Version code'), 'help' => t('The package instance version code.'), 'field' => ['handler' => 'views_handler_field_numeric', 'click sortable' => TRUE], 'argument' => ['handler' => 'views_handler_argument_numeric', 'numeric' => TRUE], 'filter' => ['handler' => 'views_handler_filter_numeric'], 'sort' => ['handler' => 'views_handler_sort']];
 
-  $data['hosting_package_instance']['status'] = array(
-    'title' => t('Status'),
-    'help' => t('The status of the package instance.'),
-    'field' => array(
-      'handler' => 'hosting_package_handler_field_status',
-      'click sortable' => TRUE,
-    ),
-    'filter' => array(
+  $data['hosting_package_instance']['status'] = ['title' => t('Status'), 'help' => t('The status of the package instance.'), 'field' => ['handler' => 'hosting_package_handler_field_status', 'click sortable' => TRUE], 'filter' => [
       'handler' => 'hosting_package_handler_filter_status',
       'label' => t('Status'),
       'type' => 'on-off',
       // use boolean_field = 1 instead of boolean_field <> 0 in WHERE statment
       'use equal' => TRUE,
-    ),
-    'sort' => array(
-      'handler' => 'views_handler_sort',
-    ),
-  );
+  ], 'sort' => ['handler' => 'views_handler_sort']];
 
   return $data;
 }
@@ -218,21 +52,7 @@ function hosting_package_views_data() {
  * Implements hook_views_plugins
  */
 function hosting_package_views_plugins() {
-  $plugins = array(
-    'access' => array(
-      'parent' => array(
-        'no ui' => TRUE,
-        'handler' => 'views_plugin_access',
-        'parent' => '',
-      ),
-      'package' => array(
-        'title' => t('Hosting package'),
-        'help' => t('Manage package access.'),
-        'handler' => 'hosting_package_plugin_access',
-        'path' => drupal_get_path('module', 'hosting_package') . '/includes/views',
-      ),
-    ),
-  );
+  $plugins = ['access' => ['parent' => ['no ui' => TRUE, 'handler' => 'views_plugin_access', 'parent' => ''], 'package' => ['title' => t('Hosting package'), 'help' => t('Manage package access.'), 'handler' => 'hosting_package_plugin_access', 'path' => drupal_get_path('module', 'hosting_package') . '/includes/views']]];
 
   return $plugins;
 }
@@ -252,7 +72,7 @@ function hosting_package_views_plugins() {
 function hosting_package_views_access($type, $display, $account = NULL) {
   switch ($type) {
     case 'page':
-      $path = explode('/', drupal_get_normal_path($_GET['q']));
+      $path = explode('/', (string) drupal_get_normal_path($_GET['q']));
       $nid = $path['1'];
       if (is_numeric($nid)) {
         $node = node_load($nid);

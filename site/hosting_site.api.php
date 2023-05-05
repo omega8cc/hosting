@@ -30,7 +30,7 @@ function hook_hosting_site_options_alter(&$return, $node) {
   // From: hosting_ssl_hosting_site_options_alter().
 
   // Disable the ssl key fields by default.
-  if (!count(hosting_ssl_get_servers())) {
+  if (!(is_countable(hosting_ssl_get_servers()) ? count(hosting_ssl_get_servers()) : 0)) {
     $return['ssl_enabled'] = FALSE;
   }
 
@@ -81,7 +81,7 @@ function hook_hosting_site_options_alter(&$return, $node) {
  */
 function hook_hosting_site_site_list_filters() {
   // From hosting_platform.
-  return array('platform');
+  return ['platform'];
 }
 
 /**

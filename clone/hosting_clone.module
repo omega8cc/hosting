@@ -8,14 +8,9 @@
  * Implements hook_hosting_tasks().
  */
 function hosting_clone_hosting_tasks() {
-  $options = array();
+  $options = [];
 
-  $options['site']['clone'] = array(
-    'title' => t('Clone'),
-    'description' => t('You may want to read our <a href="https://learn.omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can make a copy of your site using this form, but <strong>avoid changing its platform here at the same time</strong>. If you wish to securely change the platform this site (or its cloned copy) is hosted on, <i>Clone</i> it in its <strong>current</strong> platform first and then use <i>Migrate</i> to move it to the new platform. Hint: if you wish to change only the main domain of your site, use <i>Migrate</i>, not <i>Clone</i>.'),
-    'weight' => 5,
-    'dialog' => TRUE,
-  );
+  $options['site']['clone'] = ['title' => t('Clone'), 'description' => t('You may want to read our <a href="https://learn.omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can make a copy of your site using this form, but <strong>avoid changing its platform here at the same time</strong>. If you wish to securely change the platform this site (or its cloned copy) is hosted on, <i>Clone</i> it in its <strong>current</strong> platform first and then use <i>Migrate</i> to move it to the new platform. Hint: if you wish to change only the main domain of your site, use <i>Migrate</i>, not <i>Clone</i>.'), 'weight' => 5, 'dialog' => TRUE];
   return $options;
 }
 
@@ -23,11 +18,7 @@ function hosting_clone_hosting_tasks() {
  * Implements hook_permission().
  */
 function hosting_clone_permission() {
-  return array(
-    'create clone task' => array(
-      'title' => t('create clone task'),
-    ),
-  );
+  return ['create clone task' => ['title' => t('create clone task')]];
 }
 
 /**
@@ -49,7 +40,7 @@ function hosting_task_clone_form_validate($form, &$form_state) {
  * Implements hook_theme().
  */
 function hosting_clone_theme($existing, $type, $theme, $path) {
-  return array('hosting_task_clone_form' => array('render element' => 'form'));
+  return ['hosting_task_clone_form' => ['render element' => 'form']];
 }
 
 /**

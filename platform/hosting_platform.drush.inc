@@ -11,7 +11,7 @@ function hosting_hosting_platform_context_options(&$task) {
   $task->context_options['server'] = '@server_master';
   $task->context_options['web_server'] = hosting_context_name($task->ref->web_server);
   // Trim the path so we dont pass extra spaces.
-  $task->context_options['root'] = trim($task->ref->publish_path, " ");
+  $task->context_options['root'] = trim((string) $task->ref->publish_path, " ");
   if ($task->ref->makefile) {
     $task->context_options['makefile'] = $task->ref->makefile;
   }
@@ -29,7 +29,7 @@ function hosting_hosting_platform_context_options(&$task) {
 function hosting_platform_drush_context_import($context, &$node) {
   if ($context->type == 'platform') {
     if (!isset($node->title)) {
-      $node->title = str_replace('platform_', '', trim($context->name, '@'));
+      $node->title = str_replace('platform_', '', trim((string) $context->name, '@'));
     }
     $node->web_server = hosting_context_nid($context->web_server);
     $node->publish_path = $context->root;
@@ -79,7 +79,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     foreach ($context['profiles'] as $profile) {
       hosting_package_sync($packages['profiles'][$profile]);
       $instance = hosting_package_instance_load(
-        array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
+        ['p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile']);
       hosting_package_instance_sync($instance->iid, $instance->package_type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
 
       // @todo : package instances of modules to profiles. <-- huh?
@@ -99,7 +99,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
           $site->client = HOSTING_DEFAULT_CLIENT;
           $site->db_server = HOSTING_DEFAULT_DB_SERVER;
           node_save($site);
-          drush_log(dt("Imported existing site !domain", array('!domain' => _hosting_node_link($site->nid))));
+          drush_log(dt("Imported existing site !domain", ['!domain' => _hosting_node_link($site->nid)]));
           hosting_package_instance_sync($site->nid, $site->type, $packages['base']);
         }
       }
@@ -108,7 +108,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
 
   // When a server is verified, queue up a verify task for every platform.
   if ($task->ref->type == 'server') {
-    $query = db_query("SELECT nid FROM {hosting_platform} WHERE status = :status AND web_server = :web_server", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid));
+    $query = db_query("SELECT nid FROM {hosting_platform} WHERE status = :status AND web_server = :web_server", [':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid]);
     while ($nid = $query->fetch()) {
       hosting_add_task($nid->nid, 'verify');
     }

@@ -10,7 +10,7 @@ class hosting_task_handler_field_status extends views_handler_field {
   function option_definition() {
     $options = parent::option_definition();
 
-    $options['alter']['contains']['status_mode'] = array('default' => 'raw');
+    $options['alter']['contains']['status_mode'] = ['default' => 'raw'];
 
     return $options;
   }
@@ -19,29 +19,16 @@ class hosting_task_handler_field_status extends views_handler_field {
     parent::options_form($form, $form_state);
 
     if ($this->allow_advanced_render()) {
-      $form['alter']['status_mode'] = array(
-        '#type' => 'radios',
-        '#title' => t('Display mode'),
-        '#options' => array(
-          'raw' => t('Raw value'),
-          'text' => t('Text value'),
-          'class' => t('CSS class'),
-        ),
-        '#default_value' => $this->options['alter']['status_mode'],
-        '#description' => t(''),
-      );
+      $form['alter']['status_mode'] = ['#type' => 'radios', '#title' => t('Display mode'), '#options' => ['raw' => t('Raw value'), 'text' => t('Text value'), 'class' => t('CSS class')], '#default_value' => $this->options['alter']['status_mode'], '#description' => t('')];
     }
   }
 
   function render($values) {
     $value = $values->{$this->field_alias};
-    switch ($this->options['alter']['status_mode']) {
-      case 'text':
-        return _hosting_parse_error_code($value);
-
-      case 'class':
-        return hosting_task_status_class($value);
-    }
-    return $value;
+    return match ($this->options['alter']['status_mode']) {
+        'text' => _hosting_parse_error_code($value),
+        'class' => hosting_task_status_class($value),
+        default => $value,
+    };
   }
 }

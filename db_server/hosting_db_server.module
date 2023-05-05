@@ -8,20 +8,14 @@
  * Implements hook_hosting_service().
  */
 function hosting_db_server_hosting_service() {
-  return array(
-    'mysql' => 'db',
-  );
+  return ['mysql' => 'db'];
 }
 
 /**
  * Implements hook_hosting_service_type().
  */
 function hosting_db_server_hosting_service_type() {
-  return array(
-    'db' => array(
-      'title' => t('Database'),
-    ),
-  );
+  return ['db' => ['title' => t('Database')]];
 }
 
 /**
@@ -36,7 +30,7 @@ function hosting_get_db_server($hostname) {
     $ip = gethostbyname($hostname);
   }
   $result = db_query("SELECT nid FROM {node} WHERE title in ('%s', '%s') and type = :type",
-    array(':type' => 'server', '' => $ip, '' => $hostname))->fetchField();
+    [':type' => 'server', '' => $ip, '' => $hostname])->fetchField();
   if ($result) {
     return node_load($result);
   }
@@ -52,8 +46,8 @@ function hosting_get_db_server($hostname) {
  *   The node ID of the db server.
  */
 function hosting_get_sites_on_db_server($db_server_id) {
-  $return = array();
-  $result = db_query("SELECT nid, db_name FROM {hosting_site} WHERE db_server = :id", array(':id' => $db_server_id));
+  $return = [];
+  $result = db_query("SELECT nid, db_name FROM {hosting_site} WHERE db_server = :id", [':id' => $db_server_id]);
   while ($site = $result->fetch()) {
     $return[$site->nid] = $site->db_name;
   }
@@ -78,8 +72,5 @@ function hosting_db_server_nodeapi_server_presave(&$node) {
  * Implements hook_views_api().
  */
 function hosting_db_server_views_api() {
-  return array(
-    'api' => 2,
-    'path' => drupal_get_path('module', 'hosting_db_server'),
-  );
+  return ['api' => 2, 'path' => drupal_get_path('module', 'hosting_db_server')];
 }

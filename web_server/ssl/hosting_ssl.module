@@ -25,20 +25,14 @@ include_once 'hosting_ssl.nodeapi.inc';
  * Implements hook_hosting_service().
  */
 function hosting_ssl_hosting_service() {
-  return array(
-    'apache_ssl' => 'http',
-  );
+  return ['apache_ssl' => 'http'];
 }
 
 /**
  * Implements hook_permission().
  */
 function hosting_ssl_permission() {
-  return array(
-    'create ssl certificate' => array(
-      'title' => t('create ssl certificate'),
-    ),
-  );
+  return ['create ssl certificate' => ['title' => t('create ssl certificate')]];
 }
 
 /**
@@ -46,7 +40,7 @@ function hosting_ssl_permission() {
  */
 function hosting_ssl_get_servers() {
   $servers = hosting_get_servers('http');
-  $ssl_servers = array();
+  $ssl_servers = [];
   foreach ($servers as $nid => $title) {
     $node = node_load($nid);
     if ($node->services['http']->ssl_enabled) {
@@ -61,7 +55,7 @@ function hosting_ssl_get_servers() {
  */
 function hosting_ssl_get_platforms() {
   $servers = hosting_ssl_get_servers();
-  $ssl_platforms = array();
+  $ssl_platforms = [];
 
   $platforms = _hosting_get_platforms();
   foreach ($platforms as $nid => $title) {
@@ -80,10 +74,10 @@ function hosting_ssl_get_platforms() {
 function hosting_ssl_get_profiles() {
   $platforms = hosting_ssl_get_platforms();
 
-  $ssl_profiles = array();
+  $ssl_profiles = [];
   foreach ($platforms as $nid) {
     $platform = node_load($nid);
-    $ssl_profiles = array_merge($ssl_profiles, array_keys($platform->profiles));
+    $ssl_profiles = [...$ssl_profiles, ...array_keys($platform->profiles)];
   }
 
   return array_unique($ssl_profiles);
@@ -102,15 +96,8 @@ function hosting_ssl_form_alter(&$form, &$form_state, $form_id) {
  * Per-server, per-ip certificate listing.
  */
 function hosting_ssl_menu() {
-  $items = array();
-  $items['node/%hosting_ssl_cert_node/ssl'] = array(
-    'title' => 'Certificates',
-    'description' => 'SSL certificates deployed on this server',
-    'page callback' => 'hosting_ssl_server_cert_list',
-    'page arguments' => array(1),
-    'type' => MENU_LOCAL_TASK,
-    'access arguments' => array('view server'),
-  );
+  $items = [];
+  $items['node/%hosting_ssl_cert_node/ssl'] = ['title' => 'Certificates', 'description' => 'SSL certificates deployed on this server', 'page callback' => 'hosting_ssl_server_cert_list', 'page arguments' => [1], 'type' => MENU_LOCAL_TASK, 'access arguments' => ['view server']];
   return $items;
 }
 
@@ -138,21 +125,8 @@ function hosting_ssl_cert_node_load($arg) {
  * List SSL certificates associated with the given server.
  */
 function hosting_ssl_server_cert_list($node) {
-  drupal_set_title(t('Certificates installed on server @server', array('@server' => $node->title)), PASS_THROUGH);
-  $header = array(
-    array(
-      'data' => t('Domain'),
-      'field' => 'domain',
-    ),
-    array(
-      'data' => t('IP address'),
-      'field' => 'ip_address',
-    ),
-    array(
-      'data' => t('Client'),
-      'field' => 'client',
-    ),
-  );
+  drupal_set_title(t('Certificates installed on server @server', ['@server' => $node->title]), PASS_THROUGH);
+  $header = [['data' => t('Domain'), 'field' => 'domain'], ['data' => t('IP address'), 'field' => 'ip_address'], ['data' => t('Client'), 'field' => 'client']];
   $query = db_select('hosting_ip_addresses', 'ips');
   $query = $query->extend('PagerDefault');
   $query = $query->extend('TableSort');
@@ -170,21 +144,17 @@ function hosting_ssl_server_cert_list($node) {
     ->addTag('node_access');
   $result = $query->execute();
 
-  $rows = array();
+  $rows = [];
   foreach ($result as $cert) {
-    $row = array();
+    $row = [];
     $row[] = $cert->domain;
     $row[] = $cert->ip_address;
     $row[] = filter_xss($cert->client);
     $rows[] = $row;
   }
   return theme('table',
-    array(
-      'header' => $header,
-      'rows' => $rows,
-      'attributes' => array('class' => array('hosting-table')),
-    ))
-    . theme('pager', array('tags' => NULL, 'element' => 2));
+    ['header' => $header, 'rows' => $rows, 'attributes' => ['class' => ['hosting-table']]])
+    . theme('pager', ['tags' => NULL, 'element' => 2]);
 }
 
 /**

@@ -9,111 +9,12 @@
  * Implements hook_schema().
  */
 function hosting_server_schema() {
-  $schema['hosting_server'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'human_name' => array(
-        'type' => 'text',
-        'size' => 'small',
-        'not null' => FALSE,
-      ),
-      'verified' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'status' => array(
-        'type' => 'int',
-        'size' => 'tiny',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-    'primary key' => array('vid'),
-  );
+  $schema = [];
+  $schema['hosting_server'] = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'human_name' => ['type' => 'text', 'size' => 'small', 'not null' => FALSE], 'verified' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'status' => ['type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0]], 'primary key' => ['vid']];
 
-  $schema['hosting_ip_addresses'] = array(
-    'fields' => array(
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'ip_address' => array(
-        'type' => 'text',
-        'size' => 'small',
-        'not null' => TRUE,
-      ),
-      'id' => array(
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-    ),
-    'primary key' => array('id'),
-    'indexes' => array(
-      'nid' => array('nid'),
-    ),
-  );
+  $schema['hosting_ip_addresses'] = ['fields' => ['nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'ip_address' => ['type' => 'text', 'size' => 'small', 'not null' => TRUE], 'id' => ['type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE]], 'primary key' => ['id'], 'indexes' => ['nid' => ['nid']]];
 
-  $schema['hosting_service'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'service' => array(
-        'type' => 'text',
-        'size' => 'small',
-        'not null' => TRUE,
-      ),
-      'type' => array(
-        'type' => 'text',
-        'size' => 'small',
-        'not null' => TRUE,
-      ),
-      'restart_cmd' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => FALSE,
-      ),
-      'port' => array(
-        'type' => 'int',
-        'default' => 0,
-        'unsigned' => TRUE,
-        'not null' => FALSE,
-      ),
-      'available' => array(
-        'type' => 'int',
-        'size' => 'small',
-        'not null' => TRUE,
-        'default' => 1,
-      ),
-    ),
-    'indexes' => array(
-      'vid' => array('vid'),
-    ),
-  );
+  $schema['hosting_service'] = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'service' => ['type' => 'text', 'size' => 'small', 'not null' => TRUE], 'type' => ['type' => 'text', 'size' => 'small', 'not null' => TRUE], 'restart_cmd' => ['type' => 'text', 'size' => 'big', 'not null' => FALSE], 'port' => ['type' => 'int', 'default' => 0, 'unsigned' => TRUE, 'not null' => FALSE], 'available' => ['type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 1]], 'indexes' => ['vid' => ['vid']]];
 
   return $schema;
 }
@@ -122,9 +23,9 @@ function hosting_server_schema() {
  * Implements hook_update_N().
  */
 function hosting_server_update_6000() {
-  $return = array();
+  $return = [];
 
-  db_add_index($return, 'hosting_service', 'vid', array('vid'));
+  db_add_index($return, 'hosting_service', 'vid', ['vid']);
 
   return $return;
 }
@@ -135,7 +36,7 @@ function hosting_server_update_6000() {
  * Drop the drush_path and backup_path columns which are no longer needed.
  */
 function hosting_server_update_6001() {
-  $ret = array();
+  $ret = [];
 
   db_drop_field($ret, "hosting_server", "drush_path");
   db_drop_field($ret, "hosting_server", "backup_path");
@@ -150,7 +51,7 @@ function hosting_server_update_6001() {
  * Also remove hosting_service entries which are no longer relevant.
  */
 function hosting_server_update_6002() {
-  $ret = array();
+  $ret = [];
   db_query("DELETE FROM {hosting_service} WHERE service='server'");
   db_drop_field($ret, "hosting_server", "script_user");
   db_drop_field($ret, "hosting_server", "config_path");
@@ -164,18 +65,10 @@ function hosting_server_update_6002() {
  * Bring the port and restart command from hosting_web_server into hosting_service.
  */
 function hosting_server_update_6003() {
-  db_add_field($ret, 'hosting_service', 'port', array(
-    'type' => 'int',
-    'default' => 0,
-    'unsigned' => TRUE,
-    'not null' => FALSE
-  ));
+  $ret = null;
+  db_add_field($ret, 'hosting_service', 'port', ['type' => 'int', 'default' => 0, 'unsigned' => TRUE, 'not null' => FALSE]);
 
-  db_add_field($ret, 'hosting_service', 'restart_cmd',array(
-    'type' => 'text',
-    'size' => 'big',
-    'not null' => FALSE,
-  ));
+  db_add_field($ret, 'hosting_service', 'restart_cmd',['type' => 'text', 'size' => 'big', 'not null' => FALSE]);
 
   return $ret;
 }
@@ -187,32 +80,10 @@ function hosting_server_update_6003() {
  */
 function hosting_server_update_6004() {
 
-  $return = array();
+  $return = [];
   // create the table so we can rename it. 
   // retarded, i know.
-  $schema = array(
-   'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'ip_address' => array(
-        'type' => 'text',
-        'size' => 'small',
-        'not null' => TRUE,
-      ),
-    ),
-    'indexes' => array(
-      'vid' => array('vid'),
-    ));
+  $schema = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'ip_address' => ['type' => 'text', 'size' => 'small', 'not null' => TRUE]], 'indexes' => ['vid' => ['vid']]];
   db_create_table($return, 'hosting_server_ip', $schema);
 
   return $return;
@@ -224,7 +95,7 @@ function hosting_server_update_6004() {
  * Rename the IP address table so that sites can also use it.
  */
 function hosting_server_update_6005() {
-  $ret = array();
+  $ret = [];
   db_rename_table($ret, 'hosting_server_ip', 'hosting_ip_addresses');
   return $ret;
 }
@@ -235,15 +106,15 @@ function hosting_server_update_6005() {
  * Add primary key for IPs, drop versionning
  */
 function hosting_server_update_6200() {
-  $ret = array();
+  $ret = [];
   db_drop_index($ret, 'hosting_ip_addresses', 'vid');
   db_drop_field($ret, "hosting_ip_addresses", "vid");
-  db_add_field($ret, "hosting_ip_addresses", "id", array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE), array('primary key' => array('id')));
+  db_add_field($ret, "hosting_ip_addresses", "id", ['type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE], ['primary key' => ['id']]);
   $r = db_query("SELECT nid, ip_address FROM {hosting_ip_addresses}");
   for ($i = 0; $row = db_fetch_object($r); $i++) {
     $ret[] = update_sql("UPDATE {hosting_ip_addresses} SET id=$i WHERE nid={$row->nid} AND ip_address='{$row->ip_address}'");
   }
-  db_add_index($ret, 'hosting_ip_addresses', 'nid', array('nid'));
+  db_add_index($ret, 'hosting_ip_addresses', 'nid', ['nid']);
   return $ret;
 }
 
@@ -261,30 +132,15 @@ function hosting_server_update_6200() {
  */
 function hosting_server_update_6201() {
   if (!db_table_exists('hosting_ssl_site')) {
-    return array(array('success' => TRUE));
+    return [['success' => TRUE]];
   }
-  $ret = array();
-  $schema = array(
-    'fields' => array(
+  $ret = [];
+  $schema = ['fields' => [
       // cert id
-      'cid' => array( 
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
+      'cid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       // reference to the hosting_ip_addresses table
-      'ip_address' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-    'indexes' => array(
-      'cid' => array('cid'),
-      'ip_address' => array('ip_address'),
-    ));
+      'ip_address' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+  ], 'indexes' => ['cid' => ['cid'], 'ip_address' => ['ip_address']]];
   db_create_table($ret, 'hosting_ssl_cert_ips', $schema);
   return $ret;
 }
@@ -302,9 +158,9 @@ function hosting_server_update_6201() {
  */
 function hosting_server_update_6202() {
   if (!db_table_exists('hosting_ssl_site')) {
-    return array(array('success' => TRUE));
+    return [['success' => TRUE]];
   }
-  $ret = array();
+  $ret = [];
 
   /* this is rather complicated:
    *
@@ -350,7 +206,7 @@ function hosting_server_update_6202() {
  * not sure we cover all cases.
  */
 /* function hosting_server_update_6203() { */
-/*   $ret = array(); */
+/*   $ret = []; */
 /*   $ret[] = update_sql("DELETE {hosting_ip_addresses} FROM {hosting_ip_addresses} JOIN {node} ON hosting_ip_addresses.nid = node.nid WHERE node.type <> 'server';"); */
 /*   return $ret; */
 /* } */
@@ -359,28 +215,15 @@ function hosting_server_update_6202() {
  * Add 'name' field to hosting_server.
  */
 function hosting_server_update_7300() {
-  db_add_field('hosting_server', 'human_name', array(
-    'type' => 'text',
-    'size' => 'small',
-    'not null' => FALSE,
-  ));
+  db_add_field('hosting_server', 'human_name', ['type' => 'text', 'size' => 'small', 'not null' => FALSE]);
 }
 
 /**
  * Add 'verified' and 'status' fields to hosting_server.
  */
 function hosting_server_update_7301() {
-  db_add_field('hosting_server', 'verified', array(
-    'type' => 'int',
-    'not null' => TRUE,
-    'default' => 0,
-  ));
-  db_add_field('hosting_server', 'status', array(
-    'type' => 'int',
-    'size' => 'tiny',
-    'not null' => TRUE,
-    'default' => 0,
-  ));
+  db_add_field('hosting_server', 'verified', ['type' => 'int', 'not null' => TRUE, 'default' => 0]);
+  db_add_field('hosting_server', 'status', ['type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0]);
 }
 
 /**
@@ -388,7 +231,7 @@ function hosting_server_update_7301() {
  */
 function hosting_server_update_7302() {
   db_update('role_permission')
-    ->fields(array('permission' => 'administer servers'))
+    ->fields(['permission' => 'administer servers'])
     ->condition('permission', 'administer server')
     ->execute();
 }

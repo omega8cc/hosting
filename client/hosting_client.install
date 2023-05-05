@@ -8,72 +8,12 @@
  * Implements hook_schema().
  */
 function hosting_client_schema() {
-  $schema['hosting_client'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'uname' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-        'description' => 'Machine-usable name of this client (without shell metacharacters, usable for UNIX groups)',
-      ),
-    ),
-    'primary key' => array('vid'),
-    'unique keys' => array('uname_unq' => array('uname')),
-  );
+  $schema = [];
+  $schema['hosting_client'] = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'uname' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '', 'description' => 'Machine-usable name of this client (without shell metacharacters, usable for UNIX groups)']], 'primary key' => ['vid'], 'unique keys' => ['uname_unq' => ['uname']]];
 
-  $schema['hosting_client_user'] = array(
-    'fields' => array(
-      'user' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'client' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'contact_type' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-    ),
-    'primary key' => array('user', 'client'),
-  );
+  $schema['hosting_client_user'] = ['fields' => ['user' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'client' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'contact_type' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '']], 'primary key' => ['user', 'client']];
 
-  $schema['hosting_platform_client_access'] = array(
-    'fields' => array(
-      'pid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'cid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-  );
+  $schema['hosting_platform_client_access'] = ['fields' => ['pid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'cid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0]]];
   return $schema;
 }
 
@@ -83,10 +23,7 @@ function hosting_client_schema() {
 function hosting_client_install() {
   // Add default 'admin' client.
   $insert = db_insert('hosting_client_user')
-    ->fields(array(
-      'user' => 1,
-      'client' => 1,
-    ))
+    ->fields(['user' => 1, 'client' => 1])
     ->execute();
 }
 
@@ -99,10 +36,11 @@ function hosting_client_install() {
  * don't belong.
  */
 function hosting_client_update_1() {
+  $ret = [];
   switch ($GLOBALS['db_type']) {
     case 'mysql' :
     case 'mysqli':
-      $ret = array();
+      $ret = [];
       $result = db_query("SELECT email, count(distinct nid) as count FROM {hosting_client} GROUP BY email");
       while ($distinct = db_fetch_object($result)) {
         if ($distinct->count > 1) {
@@ -134,7 +72,7 @@ function hosting_client_update_1() {
  * Create the hosting_client_user relationship table
  */
 function hosting_client_update_2() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("CREATE TABLE {hosting_client_user} (
          user int(10) unsigned NOT NULL default '0',
          client int(10) unsigned NOT NULL default '0',
@@ -152,7 +90,7 @@ function hosting_client_update_2() {
  * Rebuild node access table
  */
 function hosting_client_update_3() {
-  $ret = array();
+  $ret = [];
   node_access_rebuild();
   return $ret;
 }
@@ -163,7 +101,7 @@ function hosting_client_update_3() {
  * Rebuild node access table
  */
 function hosting_client_update_4() {
-  $ret = array();
+  $ret = [];
   node_access_rebuild();
   return $ret;
 }
@@ -174,7 +112,7 @@ function hosting_client_update_4() {
  * Rebuild node access table
  */
 function hosting_client_update_5() {
-  $ret = array();
+  $ret = [];
   node_access_rebuild();
   return $ret;
 }
@@ -185,7 +123,7 @@ function hosting_client_update_5() {
  * Make it possible to have many clients per user and keep track of the contact type (admin/tech/billing/etc.) between users and clients
  */
 function hosting_client_update_6() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_client_user} DROP PRIMARY KEY, ADD PRIMARY KEY (user, client)");
   $ret[] = update_sql("ALTER TABLE {hosting_client_user} ADD contact_type LONGTEXT NOT NULL");
   node_access_rebuild();
@@ -199,7 +137,7 @@ function hosting_client_update_6() {
  */
 function hosting_client_update_7() {
   node_access_rebuild();
-  return array();
+  return [];
 }
 
 /**
@@ -209,7 +147,7 @@ function hosting_client_update_7() {
  * to have access to all platforms
  */
 function hosting_client_update_8() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("CREATE TABLE {hosting_platform_client_access}
                        (pid int(10) unsigned NOT NULL default '0',
                         cid int(10) unsigned NOT NULL default '0')");
@@ -223,7 +161,7 @@ function hosting_client_update_8() {
  * Was not happening on fresh installs via hook_install()
  */
 function hosting_client_update_9() {
-  $ret = array();
+  $ret = [];
   $result = db_query("SELECT user, client FROM {hosting_client_user} WHERE user = 1 AND client = 1");
   if (!db_affected_rows($result)) {
     $ret[] = update_sql("INSERT INTO {hosting_client_user} (user, client) VALUES (1, 1)");
@@ -249,9 +187,9 @@ function hosting_client_update_9() {
  * https://drupal.org/node/461840
  */
 function hosting_client_update_6000() {
-  $ret = array();
+  $ret = [];
 
-  db_add_field($ret, 'hosting_client', 'uname', array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''));
+  db_add_field($ret, 'hosting_client', 'uname', ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '']);
   // populate the unique uname field
   $result = db_query("SELECT n.nid,n.vid,n.title,hc.organization,hc.name,hc.email FROM {node} n JOIN {hosting_client} hc ON hc.nid = n.nid WHERE n.type = 'client'");
   while ($client = db_fetch_object($result)) {
@@ -268,17 +206,17 @@ function hosting_client_update_6000() {
       // fallback - use the email
       $name = $client->email;
     }
-    $unique = preg_replace("/[!\W\.\-]/", "", $name);
+    $unique = preg_replace("/[!\W\.\-]/", "", (string) $name);
     $failed_client = FALSE;
     $newname = $name;
     for ($i = ''; $i < 100; $i++) {
       if ($nid = db_result(db_query("SELECT nid FROM {hosting_client} WHERE uname = '%s'", $unique))) {
         // @ignore security_3
-        drupal_set_message(t('nid !nid dupes this client (!client_nid) unique: !unique', array('!nid' => $nid, '!client_nid' => $client->nid, '!unique' => $unique)));
+        drupal_set_message(t('nid !nid dupes this client (!client_nid) unique: !unique', ['!nid' => $nid, '!client_nid' => $client->nid, '!unique' => $unique]));
       }
       else {
         // @ignore security_3
-        drupal_set_message(t('setting client !name to !newname (!unique)', array('!name' => $name, '!newname' => $newname, '!unique' => $unique)));
+        drupal_set_message(t('setting client !name to !newname (!unique)', ['!name' => $name, '!newname' => $newname, '!unique' => $unique]));
         db_query("UPDATE {hosting_client} SET uname = '%s' WHERE nid = %d AND vid = %d", $unique, $client->nid, $client->vid);
         db_query("UPDATE {node} SET title = '%s' WHERE nid = %d", $newname, $client->nid);
         db_query("UPDATE {node_revisions} SET title = '%s' WHERE nid = %d AND vid = %d", $name, $client->nid, $client->vid);
@@ -290,11 +228,11 @@ function hosting_client_update_6000() {
       $newname = $name . $i;
     }
     if ($failed_client) {
-      $ret['#abort'] = array('success' => FALSE, 'query' => t('Could not find a unique client name for client @client (nid: @nid)', array('@client' => $failed_client, '@nid' => $client->nid)));
+      $ret['#abort'] = ['success' => FALSE, 'query' => t('Could not find a unique client name for client @client (nid: @nid)', ['@client' => $failed_client, '@nid' => $client->nid])];
       break;
     }
   }
-  db_add_unique_key($ret, 'hosting_client', 'uname_unq', array('uname'));
+  db_add_unique_key($ret, 'hosting_client', 'uname_unq', ['uname']);
   return $ret;
 }
 
@@ -306,9 +244,9 @@ function hosting_client_update_6000() {
  * See #1093436
  */
 function hosting_client_update_6001() {
-  $ret = array();
+  $ret = [];
   db_change_field($ret, 'hosting_client_user', 'contact_type', 'contact_type',
-                  array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''));
+                  ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '']);
   return $ret;
 }
 
@@ -322,7 +260,7 @@ function hosting_client_update_6001() {
  * removed from the schema.
  */
 function hosting_client_update_6002() {
-  $ret = array();
+  $ret = [];
   @db_drop_unique_key($ret, 'hosting_client', 'hosting_client_email_idx');
   $ret[0]['success'] = TRUE; // never fail
   return $ret;
@@ -341,7 +279,7 @@ function hosting_client_update_6003() {
   while ($nid = db_result($q)) {
     node_delete($nid);
   }
-  return array(); // never fail
+  return []; // never fail
 }
 
 /**
@@ -350,7 +288,7 @@ function hosting_client_update_6003() {
  * Make all sites with client relationship lost owned by the default client.
  */
 function hosting_client_update_6004() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("UPDATE {hosting_site} SET client = %d WHERE client = 0", HOSTING_DEFAULT_CLIENT);
   return $ret;
 }
@@ -361,7 +299,7 @@ function hosting_client_update_6004() {
  * Re-build node access.
  */
 function hosting_client_update_7001(&$sandbox) {
-  return array(); // never fail
+  return []; // never fail
 }
 
 /**

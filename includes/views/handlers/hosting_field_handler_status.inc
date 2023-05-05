@@ -11,12 +11,12 @@ class hosting_field_handler_status extends views_handler_field {
    */
   function construct() {
     parent::construct();
-    $this->additional_fields = array('verified');
+    $this->additional_fields = ['verified'];
   }
 
   function option_definition() {
     $options = parent::option_definition();
-    $options['status_mode'] = array('default' => 'text');
+    $options['status_mode'] = ['default' => 'text'];
 
     return $options;
   }

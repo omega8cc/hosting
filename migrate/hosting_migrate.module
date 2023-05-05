@@ -10,24 +10,16 @@ include_once 'hosting_migrate.batch.inc';
  * Implements hook_permission().
  */
 function hosting_migrate_permission() {
-  return array(
-    'create migrate task' => array(
-      'title' => t('create migrate task'),
-    ),
-  );
+  return ['create migrate task' => ['title' => t('create migrate task')]];
 }
 
 /**
  * Implements hook_menu().
  */
 function hosting_migrate_menu() {
+  $items = [];
   // TODO: add some security here
-  $items['hosting/migrate/compare'] = array(
-    'title' => 'Compare packages',
-    'page callback' => 'hosting_migrate_comparison',
-    'access arguments' => array('create migrate task'),
-    'type' => MENU_CALLBACK,
-  );
+  $items['hosting/migrate/compare'] = ['title' => 'Compare packages', 'page callback' => 'hosting_migrate_comparison', 'access arguments' => ['create migrate task'], 'type' => MENU_CALLBACK];
   /*
    $items['node/%hosting_platform_node/task_migrate'] = array(
    'title' => t('Migrate'),
@@ -46,20 +38,11 @@ function hosting_migrate_menu() {
  * Implements hook_hosting_tasks().
  */
 function hosting_migrate_hosting_tasks() {
-  $tasks = array();
+  $tasks = [];
 
-  $tasks['site']['migrate'] = array(
-    'title' => t('Migrate Site'),
-    'description' => t('You may want to read our <a href="https://learn.omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can move your site to a new platform using this form, but <b>avoid changing its domain name here at the same time</b>. If you wish to securely change the platform this site is hosted on, always <i>Clone</i> it in its <strong>current</strong> platform, then test <i>Migrate</i> of the cloned copy first and check if the cloned/migrated copy works fine, before you will try that with your live site.'),
-    'dialog' => TRUE,
-  );
+  $tasks['site']['migrate'] = ['title' => t('Migrate Site'), 'description' => t('You may want to read our <a href="https://learn.omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can move your site to a new platform using this form, but <b>avoid changing its domain name here at the same time</b>. If you wish to securely change the platform this site is hosted on, always <i>Clone</i> it in its <strong>current</strong> platform, then test <i>Migrate</i> of the cloned copy first and check if the cloned/migrated copy works fine, before you will try that with your live site.'), 'dialog' => TRUE];
 
-  $tasks['platform']['migrate'] = array(
-    'title' => t('Migrate Sites'),
-    'description' => t('You may want to read our <a href="https://omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can move your site to a new platform using this form, but <b>avoid changing its domain name here at the same time</b>. If you wish to securely change the platform this site is hosted on, always <i>Clone</i> it in its <strong>current</strong> platform, then test <i>Migrate</i> of the cloned copy first and check if the cloned/migrated copy works fine, before you will try that with your live site.'),
-    'page arguments' => array('hosting_migrate_platform', 1),
-    'dialog' => TRUE,
-  );
+  $tasks['platform']['migrate'] = ['title' => t('Migrate Sites'), 'description' => t('You may want to read our <a href="https://omega8.cc/the-best-recipes-for-disaster-139" target=_blank><strong>best recipes for disaster</strong></a> before going further. You can move your site to a new platform using this form, but <b>avoid changing its domain name here at the same time</b>. If you wish to securely change the platform this site is hosted on, always <i>Clone</i> it in its <strong>current</strong> platform, then test <i>Migrate</i> of the cloned copy first and check if the cloned/migrated copy works fine, before you will try that with your live site.'), 'page arguments' => ['hosting_migrate_platform', 1], 'dialog' => TRUE];
   return $tasks;
 }
 
@@ -109,75 +92,48 @@ function hosting_task_migrate_form_validate($form, &$form_state) {
  * Implements hook_theme().
  */
 function hosting_migrate_theme($existing, $type, $theme, $path) {
-  return array(
-    'hosting_migrate_comparison' => array(
-      'variables' => array('packages' => NULL),
-    ),
-  );
+  return ['hosting_migrate_comparison' => ['variables' => ['packages' => NULL]]];
 }
 
 /**
  * Implements hook_form().
  */
 function hosting_task_migrate_form($node) {
+  $form = [];
   $node->check_profile_migrations =  TRUE;
   $valid_options = hosting_site_available_options($node);
 
-  $form['new_uri'] = array(
-    '#title' => t('Domain name'),
-    '#description' => t("Changing the domain name when migrating effectively 'renames' the site."),
-    '#type' => 'textfield',
-    '#required' => TRUE,
-    '#weight' => '-1',
-    '#default_value' => hosting_site_canonical_url($node),
-  );
+  $form['new_uri'] = ['#title' => t('Domain name'), '#description' => t("Changing the domain name when migrating effectively 'renames' the site."), '#type' => 'textfield', '#required' => TRUE, '#weight' => '-1', '#default_value' => hosting_site_canonical_url($node)];
 
   $db_servers = hosting_get_servers('db');
   if (count($db_servers) > 1) {
-    $form['new_db_server'] = array(
-      '#type' => 'radios',
-      '#title' => t('Database server'),
-      '#required' => TRUE,
-      '#description' => t('The database server the site will use to host its content.'),
-      '#options' => $db_servers,
-      '#default_value' => $node->db_server,
-    );
+    $form['new_db_server'] = ['#type' => 'radios', '#title' => t('Database server'), '#required' => TRUE, '#description' => t('The database server the site will use to host its content.'), '#options' => $db_servers, '#default_value' => $node->db_server];
   }
   else {
-    $form['new_db_server'] = array(
-      '#type' => 'hidden',
-      '#value' => $node->db_server,
-    );
+    $form['new_db_server'] = ['#type' => 'hidden', '#value' => $node->db_server];
   }
 
 
   drupal_add_js(drupal_get_path('module', 'hosting_migrate') . '/hosting_migrate.js');
-  $packages = array();
+  $packages = [];
 
   $site_profile = node_load($node->profile);
 
   $profile_platform_instances = hosting_package_instances_load(
-    array('r.type' => 'platform', 'n.nid' => $node->profile, 'h.status' => HOSTING_PLATFORM_ENABLED));
+    ['r.type' => 'platform', 'n.nid' => $node->profile, 'h.status' => HOSTING_PLATFORM_ENABLED]);
 
   // In the list of possible targets, we also include install profiles on platforms that
   // USED to be named the same as our current install profile. Such as the d6 -> d7 rename
   // of the default profile to standard.
   $profile_platform_instances = array_merge($profile_platform_instances, hosting_package_instances_load(
-    array('r.type' => 'platform', 'p.old_short_name' => $site_profile->short_name)));
+    ['r.type' => 'platform', 'p.old_short_name' => $site_profile->short_name]));
 
   $site_platform = node_load($node->platform);
   $has_platform_available = FALSE;
 
   // Don't show the current platform if it's locked
   if (!_hosting_platform_is_locked($node->platform)) {
-    $form[$node->platform]['target_platform'] = array(
-      '#type' => 'radio',
-      '#title' => check_plain($site_platform->title),
-      "#return_value" => $node->platform,
-      "#default_value" => $node->platform,
-      '#description' => t("Current platform"),
-      '#parents' => array('parameters', 'target_platform'),
-    );
+    $form[$node->platform]['target_platform'] = ['#type' => 'radio', '#title' => check_plain($site_platform->title), "#return_value" => $node->platform, "#default_value" => $node->platform, '#description' => t("Current platform"), '#parents' => ['parameters', 'target_platform']];
     $has_platform_available = TRUE;
   }
   foreach ($profile_platform_instances as $profile_instance) {
@@ -185,22 +141,11 @@ function hosting_task_migrate_form($node) {
       $status = hosting_package_comparison($node->nid, $profile_instance->iid);
 
       $description = t("Upgrades: !upgrades, Warnings: !missing, Errors: !errors | <a href='!url' class='hosting-package-comparison-link'>Compare platforms</a>",
-        array(
-        '!upgrades' => $status['upgrade'],
-        '!missing' => $status['missing'] + $status['downgrade'],
-        '!errors' => $status['error'],
-        '!url' => url('hosting/migrate/compare/' . $node->nid . '/' . $profile_instance->iid),
-      )
+        ['!upgrades' => $status['upgrade'], '!missing' => $status['missing'] + $status['downgrade'], '!errors' => $status['error'], '!url' => url('hosting/migrate/compare/' . $node->nid . '/' . $profile_instance->iid)]
         );
       $platform = node_load($profile_instance->rid);
 
-      $form[$platform->nid]['target_platform'] = array(
-        '#type' => 'radio',
-        '#title' => check_plain($platform->title),
-        '#parents' => array('parameters', 'target_platform'),
-        "#return_value" => $platform->nid,
-        '#description' => $description,
-      );
+      $form[$platform->nid]['target_platform'] = ['#type' => 'radio', '#title' => check_plain($platform->title), '#parents' => ['parameters', 'target_platform'], "#return_value" => $platform->nid, '#description' => $description];
       if ($status['error']) {
         $form[$platform->nid]['target_platform']['#disabled'] = TRUE;
       }
@@ -222,7 +167,7 @@ function hosting_migrate_comparison($current, $target) {
   $current_tbl = _hosting_package_temporary_table($current);
   $target_tbl = _hosting_package_temporary_table($target);
 
-  $packages = array();
+  $packages = [];
 
   $result = db_query("SELECT c.nid, c.short_name,
     c.version as current_version, t.version as target_version,
@@ -247,7 +192,7 @@ function hosting_migrate_comparison($current, $target) {
     $packages[$obj->nid] = $obj;
   }
 
-  return theme("hosting_migrate_comparison", array('packages' => $packages));
+  return theme("hosting_migrate_comparison", ['packages' => $packages]);
 }
 
 function _hosting_migrate_version_display($version, $schema = NULL, $status = NULL) {
@@ -262,32 +207,27 @@ function _hosting_migrate_version_display($version, $schema = NULL, $status = NU
     $display .= " (" . $schema . ")";
   }
 
-  return array('class' => array('hosting-package-' . $status), 'data' => $display);
+  return ['class' => ['hosting-package-' . $status], 'data' => $display];
 }
 
 /**
  * Render a list of compared packages for migration.
  */
 function theme_hosting_migrate_comparison($variables) {
+  $options = [];
   $packages = $variables['packages'];
-  $rows = array();
+  $rows = [];
 
-  $headers = array(t("Package"), t("Current"), t("Target"));
+  $headers = [t("Package"), t("Current"), t("Target")];
   foreach ($packages as $key => $instance) {
-    $row = array();
-    $row[] = array(
-      'data' => $instance->short_name,
-      'class' => array('hosting-status'),
-    );
+    $row = [];
+    $row[] = ['data' => $instance->short_name, 'class' => ['hosting-status']];
     $target_schema = ((int) $instance->target_schema == 0) ? $instance->current_schema : $instance->target_schema;
     $row[] = _hosting_migrate_version_display($instance->current_version, $instance->current_schema);
     $row[] = _hosting_migrate_version_display($instance->target_version, $target_schema, $instance->status);
-    $rows[] = array(
-      'data' => $row,
-      'class' => ($instance->enabled) ? array('hosting-success') : array('hosting-info'),
-    );
+    $rows[] = ['data' => $row, 'class' => ($instance->enabled) ? ['hosting-success'] : ['hosting-info']];
   }
   $options['attributes']['class'] = 'hosting-migrate-comparison-return';
   $link = l(t('Go back'), 'node/' . arg(3) . '/site_migrate', $options);
-  return "<div id='hosting-package-comparison'>" . $link . theme('table', array('header' => $headers, 'rows' => $rows)) . $link . "</div>";
+  return "<div id='hosting-package-comparison'>" . $link . theme('table', ['header' => $headers, 'rows' => $rows]) . $link . "</div>";
 }

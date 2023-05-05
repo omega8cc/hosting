@@ -36,17 +36,11 @@ function _hosting_migrate_get_target_profile_name($task) {
   $profile = node_load($task->ref->profile);
 
   // get the profile instance we are migrating to.
-  $profile_instance = hosting_package_instance_load(array(
-    'i.rid' => $task->task_args['target_platform'],
-    'p.short_name' => $profile->short_name,
-  ));
+  $profile_instance = hosting_package_instance_load(['i.rid' => $task->task_args['target_platform'], 'p.short_name' => $profile->short_name]);
 
   if (empty($profile_instance)) {
     // get a possible upgrade path for the profile.
-    $profile_instance = hosting_package_instance_load(array(
-      'i.rid' => $task->task_args['target_platform'],
-      'p.old_short_name' => $profile->short_name,
-    ));
+    $profile_instance = hosting_package_instance_load(['i.rid' => $task->task_args['target_platform'], 'p.old_short_name' => $profile->short_name]);
   }
 
   return $profile_instance;
@@ -72,10 +66,7 @@ function hosting_migrate_post_hosting_migrate_task($task, $data) {
     }
     $site->db_name = $data['context']['db_name'];
 
-    $profile = hosting_package_instance_load(array(
-      'i.rid' => $target,
-      'p.short_name' => $data['context']['profile'],
-    ));
+    $profile = hosting_package_instance_load(['i.rid' => $target, 'p.short_name' => $data['context']['profile']]);
     if ($profile) {
       $site->profile = $profile->package_id;
     }

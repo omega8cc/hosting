@@ -8,7 +8,7 @@
  * Implements hook_views_default_views().
  */
 function hosting_site_views_default_views() {
-  $views = array();
+  $views = [];
 
   // Exported view: hosting_site_list
   $view = new view();
@@ -36,65 +36,9 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['pager']['options']['items_per_page'] = 25;
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['row_class'] = '[status]';
-  $handler->display->display_options['style_options']['columns'] = array(
-    'views_bulk_operations' => 'views_bulk_operations',
-    'status' => 'status',
-    'title' => 'title',
-    'title_3' => 'title_3',
-    'created' => 'created',
-    'title_2' => 'title_2',
-    'verified' => 'verified',
-  );
+  $handler->display->display_options['style_options']['columns'] = ['views_bulk_operations' => 'views_bulk_operations', 'status' => 'status', 'title' => 'title', 'title_3' => 'title_3', 'created' => 'created', 'title_2' => 'title_2', 'verified' => 'verified'];
   $handler->display->display_options['style_options']['default'] = '-1';
-  $handler->display->display_options['style_options']['info'] = array(
-    'views_bulk_operations' => array(
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'status' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title_3' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'created' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title_2' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'verified' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-  );
+  $handler->display->display_options['style_options']['info'] = ['views_bulk_operations' => ['align' => '', 'separator' => '', 'empty_column' => 0], 'status' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title_3' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'created' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title_2' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'verified' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0]];
   $handler->display->display_options['exposed_block'] = TRUE;
   /* Relationship: Hosting Site: Install Profile */
   $handler->display->display_options['relationships']['profile']['id'] = 'profile';
@@ -123,43 +67,7 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['force_single'] = 0;
   $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['entity_load_capacity'] = '10';
   $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['skip_batching'] = 1;
-  $handler->display->display_options['fields']['views_bulk_operations']['vbo_operations'] = array(
-    'action::hosting_site_backup_action' => array(
-      'selected' => 1,
-      'postpone_processing' => 0,
-      'skip_confirmation' => 0,
-      'override_label' => 1,
-      'label' => 'Backup',
-    ),
-    'action::hosting_site_delete_action' => array(
-      'selected' => 1,
-      'postpone_processing' => 0,
-      'skip_confirmation' => 0,
-      'override_label' => 1,
-      'label' => 'Delete',
-    ),
-    'action::hosting_site_disable_action' => array(
-      'selected' => 1,
-      'postpone_processing' => 0,
-      'skip_confirmation' => 0,
-      'override_label' => 1,
-      'label' => 'Disable',
-    ),
-    'action::hosting_site_enable_action' => array(
-      'selected' => 1,
-      'postpone_processing' => 0,
-      'skip_confirmation' => 1,
-      'override_label' => 1,
-      'label' => 'Enable',
-    ),
-    'action::hosting_site_verify_action' => array(
-      'selected' => 1,
-      'postpone_processing' => 0,
-      'skip_confirmation' => 1,
-      'override_label' => 1,
-      'label' => 'Verify',
-    ),
-  );
+  $handler->display->display_options['fields']['views_bulk_operations']['vbo_operations'] = ['action::hosting_site_backup_action' => ['selected' => 1, 'postpone_processing' => 0, 'skip_confirmation' => 0, 'override_label' => 1, 'label' => 'Backup'], 'action::hosting_site_delete_action' => ['selected' => 1, 'postpone_processing' => 0, 'skip_confirmation' => 0, 'override_label' => 1, 'label' => 'Delete'], 'action::hosting_site_disable_action' => ['selected' => 1, 'postpone_processing' => 0, 'skip_confirmation' => 0, 'override_label' => 1, 'label' => 'Disable'], 'action::hosting_site_enable_action' => ['selected' => 1, 'postpone_processing' => 0, 'skip_confirmation' => 1, 'override_label' => 1, 'label' => 'Enable'], 'action::hosting_site_verify_action' => ['selected' => 1, 'postpone_processing' => 0, 'skip_confirmation' => 1, 'override_label' => 1, 'label' => 'Verify']];
   /* Field: Class */
   $handler->display->display_options['fields']['status']['id'] = 'status';
   $handler->display->display_options['fields']['status']['table'] = 'hosting_site';
@@ -228,18 +136,14 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['filters']['type']['id'] = 'type';
   $handler->display->display_options['filters']['type']['table'] = 'node';
   $handler->display->display_options['filters']['type']['field'] = 'type';
-  $handler->display->display_options['filters']['type']['value'] = array(
-    'site' => 'site',
-  );
+  $handler->display->display_options['filters']['type']['value'] = ['site' => 'site'];
   $handler->display->display_options['filters']['type']['expose']['operator'] = FALSE;
   /* Filter criterion: Hosting Site: Status */
   $handler->display->display_options['filters']['status']['id'] = 'status';
   $handler->display->display_options['filters']['status']['table'] = 'hosting_site';
   $handler->display->display_options['filters']['status']['field'] = 'status';
   $handler->display->display_options['filters']['status']['operator'] = 'not in';
-  $handler->display->display_options['filters']['status']['value'] = array(
-    -2 => '-2',
-  );
+  $handler->display->display_options['filters']['status']['value'] = [-2 => '-2'];
   $handler->display->display_options['filters']['status']['expose']['operator'] = FALSE;
   /* Filter criterion: Content: Published */
   $handler->display->display_options['filters']['status_1']['id'] = 'status_1';
@@ -276,51 +180,9 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['row_class'] = '[status]';
-  $handler->display->display_options['style_options']['columns'] = array(
-    'status' => 'status',
-    'title' => 'title',
-    'title_3' => 'title_3',
-    'created' => 'created',
-    'title_2' => 'title_2',
-  );
+  $handler->display->display_options['style_options']['columns'] = ['status' => 'status', 'title' => 'title', 'title_3' => 'title_3', 'created' => 'created', 'title_2' => 'title_2'];
   $handler->display->display_options['style_options']['default'] = '-1';
-  $handler->display->display_options['style_options']['info'] = array(
-    'status' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title_3' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'created' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'title_2' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-  );
+  $handler->display->display_options['style_options']['info'] = ['status' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title_3' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'created' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0], 'title_2' => ['sortable' => 0, 'default_sort_order' => 'asc', 'align' => '', 'separator' => '', 'empty_column' => 0]];
   $handler->display->display_options['defaults']['style_options'] = FALSE;
   $handler->display->display_options['defaults']['row_plugin'] = FALSE;
   $handler->display->display_options['defaults']['row_options'] = FALSE;
@@ -365,9 +227,7 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['arguments']['nid']['summary_options']['items_per_page'] = '25';
   $handler->display->display_options['arguments']['nid']['specify_validation'] = TRUE;
   $handler->display->display_options['arguments']['nid']['validate']['type'] = 'node';
-  $handler->display->display_options['arguments']['nid']['validate_options']['types'] = array(
-    'client' => 'client',
-  );
+  $handler->display->display_options['arguments']['nid']['validate_options']['types'] = ['client' => 'client'];
   $handler->display->display_options['arguments']['nid']['validate_options']['access'] = TRUE;
   /* Contextual filter: Content: Nid */
   $handler->display->display_options['arguments']['nid_1']['id'] = 'nid_1';
@@ -383,9 +243,7 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['arguments']['nid_1']['summary_options']['items_per_page'] = '25';
   $handler->display->display_options['arguments']['nid_1']['specify_validation'] = TRUE;
   $handler->display->display_options['arguments']['nid_1']['validate']['type'] = 'node';
-  $handler->display->display_options['arguments']['nid_1']['validate_options']['types'] = array(
-    'platform' => 'platform',
-  );
+  $handler->display->display_options['arguments']['nid_1']['validate_options']['types'] = ['platform' => 'platform'];
   $handler->display->display_options['arguments']['nid_1']['validate_options']['access'] = TRUE;
   /* Contextual filter: Content: Nid */
   $handler->display->display_options['arguments']['nid_2']['id'] = 'nid_2';
@@ -401,9 +259,7 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['arguments']['nid_2']['summary_options']['items_per_page'] = '25';
   $handler->display->display_options['arguments']['nid_2']['specify_validation'] = TRUE;
   $handler->display->display_options['arguments']['nid_2']['validate']['type'] = 'node';
-  $handler->display->display_options['arguments']['nid_2']['validate_options']['types'] = array(
-    'package' => 'package',
-  );
+  $handler->display->display_options['arguments']['nid_2']['validate_options']['types'] = ['package' => 'package'];
   $handler->display->display_options['arguments']['nid_2']['validate_options']['access'] = TRUE;
   /* Contextual filter: Content: Nid */
   $handler->display->display_options['arguments']['nid_3']['id'] = 'nid_3';
@@ -419,9 +275,7 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['arguments']['nid_3']['summary_options']['items_per_page'] = '25';
   $handler->display->display_options['arguments']['nid_3']['specify_validation'] = TRUE;
   $handler->display->display_options['arguments']['nid_3']['validate']['type'] = 'node';
-  $handler->display->display_options['arguments']['nid_3']['validate_options']['types'] = array(
-    'server' => 'server',
-  );
+  $handler->display->display_options['arguments']['nid_3']['validate_options']['types'] = ['server' => 'server'];
   $handler->display->display_options['arguments']['nid_3']['validate_options']['access'] = TRUE;
   $handler->display->display_options['defaults']['filter_groups'] = FALSE;
   $handler->display->display_options['defaults']['filters'] = FALSE;
@@ -429,18 +283,14 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['filters']['type']['id'] = 'type';
   $handler->display->display_options['filters']['type']['table'] = 'node';
   $handler->display->display_options['filters']['type']['field'] = 'type';
-  $handler->display->display_options['filters']['type']['value'] = array(
-    'site' => 'site',
-  );
+  $handler->display->display_options['filters']['type']['value'] = ['site' => 'site'];
   $handler->display->display_options['filters']['type']['expose']['operator'] = FALSE;
   /* Filter criterion: Hosting Site: Status */
   $handler->display->display_options['filters']['status']['id'] = 'status';
   $handler->display->display_options['filters']['status']['table'] = 'hosting_site';
   $handler->display->display_options['filters']['status']['field'] = 'status';
   $handler->display->display_options['filters']['status']['operator'] = 'not in';
-  $handler->display->display_options['filters']['status']['value'] = array(
-    -2 => '-2',
-  );
+  $handler->display->display_options['filters']['status']['value'] = [-2 => '-2'];
   $handler->display->display_options['filters']['status']['expose']['operator'] = FALSE;
   /* Filter criterion: Content: Published */
   $handler->display->display_options['filters']['status_1']['id'] = 'status_1';

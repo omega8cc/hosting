@@ -50,9 +50,7 @@ function hook_hosting_servers_titles_alter(&$servers, $service) {
  * @see hosting_server_services()
  */
 function hook_hosting_service() {
-  return array(
-    'mysql' => 'db',
-  );
+  return ['mysql' => 'db'];
 }
 
 /**
@@ -63,11 +61,7 @@ function hook_hosting_service() {
  * @see hosting_server_services()
  */
 function hook_hosting_service_type() {
-  return array(
-    'db' => array(
-      'title' => t('Database'),
-    ),
-  );
+  return ['db' => ['title' => t('Database')]];
 }
 
 /**

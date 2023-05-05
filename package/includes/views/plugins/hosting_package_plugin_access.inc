@@ -26,7 +26,7 @@ class hosting_package_plugin_access extends views_plugin_access {
    *   access control.)
    */
   function get_access_callback() {
-    return array('hosting_package_views_access', array($this->display->display_plugin, $this->display->id));
+    return ['hosting_package_views_access', [$this->display->display_plugin, $this->display->id]];
   }
 
   /**

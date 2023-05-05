@@ -11,9 +11,9 @@ class hosting_task_handler_filter_type extends views_handler_filter_in_operator 
     if (!isset($this->value_options)) {
       $this->value_title = t('Task Type');
 
-      $options = array();
+      $options = [];
 
-      foreach (array('site', 'platform', 'server') as $type) {
+      foreach (['site', 'platform', 'server'] as $type) {
         $tasks = hosting_available_tasks($type);
         if (!empty($tasks)) {
           foreach ($tasks as $identifier => $task) {

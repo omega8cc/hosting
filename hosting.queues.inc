@@ -57,35 +57,18 @@ function hosting_get_queues($refresh = FALSE) {
   static $cache = NULL;
 
   if (is_null($cache) || $refresh) {
-    $cache = array();
-    $defaults = array(
-      'type' => HOSTING_QUEUE_TYPE_SERIAL,
-      'max_threads' => 6,
-      'threshold' => '100',
-      'min_threads' => 1,
-      'timeout' => strtotime("10 minutes", 0),
-      'frequency' => strtotime("5 minutes", 0),
-      'items' => 5,
-      'enabled' => TRUE,
-      'singular' => t('item'),
-      'plural' => t('items'),
-    );
+    $cache = [];
+    $defaults = ['type' => HOSTING_QUEUE_TYPE_SERIAL, 'max_threads' => 6, 'threshold' => '100', 'min_threads' => 1, 'timeout' => strtotime("10 minutes", 0), 'frequency' => strtotime("5 minutes", 0), 'items' => 5, 'enabled' => TRUE, 'singular' => t('item'), 'plural' => t('items')];
     $queues = module_invoke_all('hosting_queues');
     if (!is_array($queues)) {
-      $queues = array();
+      $queues = [];
     }
     drupal_alter('hosting_queues', $queues);
     foreach ($queues as $key => $queue) {
       $queue = array_merge($defaults, $queue);
 
       // Configurable settings.
-      $configured = array(
-        'frequency' => variable_get('hosting_queue_' . $key . '_frequency', $queue['frequency']),
-        'items' => variable_get('hosting_queue_' . $key . '_items', $queue['items']),
-        'enabled' => variable_get('hosting_queue_' . $key . '_enabled', $queue['enabled']),
-        'last_run' => variable_get('hosting_queue_' . $key . '_last_run', FALSE),
-        'interval' => variable_get('hosting_queue_' . $key . '_interval', FALSE),
-      );
+      $configured = ['frequency' => variable_get('hosting_queue_' . $key . '_frequency', $queue['frequency']), 'items' => variable_get('hosting_queue_' . $key . '_items', $queue['items']), 'enabled' => variable_get('hosting_queue_' . $key . '_enabled', $queue['enabled']), 'last_run' => variable_get('hosting_queue_' . $key . '_last_run', FALSE), 'interval' => variable_get('hosting_queue_' . $key . '_interval', FALSE)];
       $queue = array_merge($queue, $configured);
 
       if ($queue['type'] == HOSTING_QUEUE_TYPE_BATCH) {
@@ -143,23 +126,23 @@ function hosting_get_queues($refresh = FALSE) {
 function hosting_run_queue() {
   $cmd = drush_get_command();
   $queue = $cmd['queue'];
-  $count = drush_get_option(array('i', 'items'), 5); // process a default of 5 items at a time.
+  $count = drush_get_option(['i', 'items'], 5); // process a default of 5 items at a time.
   $semaphore = "hosting_queue_{$queue}_running";
 
   variable_set('hosting_queue_' . $queue . '_last_run', $t = REQUEST_TIME);
 
-  drush_log(dt('Acquiring lock on @queue queue.', array('@queue' => $queue)));
+  drush_log(dt('Acquiring lock on @queue queue.', ['@queue' => $queue]));
   $lock_wait = drush_get_option('lock-wait', HOSTING_QUEUE_DEFAULT_LOCK_WAIT);
   if (!lock_wait($semaphore, $lock_wait) || drush_get_option('force', FALSE)) {
     if (lock_acquire($semaphore, HOSTING_QUEUE_LOCK_TIMEOUT)) {
-      drush_log(dt('Acquired lock on @queue queue.', array('@queue' => $queue)));
+      drush_log(dt('Acquired lock on @queue queue.', ['@queue' => $queue]));
     }
   }
   elseif (drush_get_option('force', FALSE)) {
-    drush_log(dt('Bypassing lock on @queue queue.', array('@queue' => $queue)), 'warning');
+    drush_log(dt('Bypassing lock on @queue queue.', ['@queue' => $queue]), 'warning');
   }
   else {
-    drush_die(dt('Cannot acquire lock on @queue queue.', array('@queue' => $queue)));
+    drush_die(dt('Cannot acquire lock on @queue queue.', ['@queue' => $queue]));
   }
 
   $func = "hosting_" . $queue . "_queue";
@@ -168,7 +151,7 @@ function hosting_run_queue() {
     $func($count);
   }
 
-  drush_log(dt('Releasing @queue lock.', array('@queue' => $queue)));
+  drush_log(dt('Releasing @queue lock.', ['@queue' => $queue]));
   lock_release($semaphore);
 }
 
@@ -203,12 +186,12 @@ function _hosting_queue_next_run($queue) {
 }
 
 function _hosting_queues_clean_output($return) {
-  return filter_xss($return, array());
+  return filter_xss($return, []);
 }
 
 
 function _hosting_dispatch_cmd() {
-  $cmd = sprintf("/usr/bin/env php %s %s hosting-dispatch ", DRUSH_COMMAND, escapeshellarg(d()->name));
+  $cmd = sprintf("/usr/bin/env php %s %s hosting-dispatch ", DRUSH_COMMAND, escapeshellarg((string) d()->name));
   return $cmd;
 }
 
@@ -244,13 +227,13 @@ END;
 function hosting_queues_cron_removal($crontab) {
 
   foreach ($crontab as $k => $cron) {
-    if (preg_match('|SHELL=/bin/sh|', $cron)) {
+    if (preg_match('|SHELL=/bin/sh|', (string) $cron)) {
       unset($crontab[$k]);
     }
-    if (preg_match("|PATH=$_SERVER[PATH]|", $cron)) {
+    if (preg_match("|PATH=$_SERVER[PATH]|", (string) $cron)) {
       unset($crontab[$k]);
     }
-    if (preg_match('|hosting-dispatch|', $cron)) {
+    if (preg_match('|hosting-dispatch|', (string) $cron)) {
       unset($crontab[$k]);
     }
   }

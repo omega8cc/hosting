@@ -11,16 +11,8 @@ class hostingService_http_pack extends hostingService_http {
   public $name = 'Web Pack';
 
   function view(&$render) {
-    $render['master_servers'] = array(
-      '#type' => 'item',
-      '#title' => t('Master web servers'),
-      '#markup' => theme('item_list', array('items' => array_map('_hosting_node_link', array_intersect_key($this->master_servers, hosting_get_servers('http'))))),
-    );
-    $render['slave_servers'] = array(
-      '#type' => 'item',
-      '#title' => t('Slave web servers'),
-      '#markup' => theme('item_list', array('items' => array_map('_hosting_node_link', array_intersect_key($this->slave_servers, hosting_get_servers('http'))))),
-    );
+    $render['master_servers'] = ['#type' => 'item', '#title' => t('Master web servers'), '#markup' => theme('item_list', ['items' => array_map('_hosting_node_link', array_intersect_key($this->master_servers, hosting_get_servers('http')))])];
+    $render['slave_servers'] = ['#type' => 'item', '#title' => t('Slave web servers'), '#markup' => theme('item_list', ['items' => array_map('_hosting_node_link', array_intersect_key($this->slave_servers, hosting_get_servers('http')))])];
   }
 
   function form(&$form) {
@@ -50,9 +42,9 @@ class hostingService_http_pack extends hostingService_http {
 
     $ssl_enabled = TRUE;
 
-    $master_servers = array();
-    $slave_servers = array();
-    $result = db_query('SELECT web_server_nid, type FROM {hosting_web_pack} WHERE vid = :vid', array(':vid' => $this->server->vid));
+    $master_servers = [];
+    $slave_servers = [];
+    $result = db_query('SELECT web_server_nid, type FROM {hosting_web_pack} WHERE vid = :vid', [':vid' => $this->server->vid]);
     while ($web_server = $result->fetch()) {
       if ($web_server->type == 'master') {
         $master_servers[] = $web_server->web_server_nid;
@@ -65,28 +57,18 @@ class hostingService_http_pack extends hostingService_http {
     }
 
     $this->ssl_enabled = $ssl_enabled;
-    $this->setValues(array('master_servers' => drupal_map_assoc($master_servers)));
-    $this->setValues(array('slave_servers' => drupal_map_assoc($slave_servers)));
+    $this->setValues(['master_servers' => drupal_map_assoc($master_servers)]);
+    $this->setValues(['slave_servers' => drupal_map_assoc($slave_servers)]);
   }
 
   function insert() {
     parent::insert();
     foreach (array_filter($this->master_servers) as $web_server) {
-      $record = array(
-        'nid' => $this->server->nid,
-        'vid' => $this->server->vid,
-        'web_server_nid' => $web_server,
-        'type' => 'master',
-      );
+      $record = ['nid' => $this->server->nid, 'vid' => $this->server->vid, 'web_server_nid' => $web_server, 'type' => 'master'];
       drupal_write_record('hosting_web_pack', $record);
     }
     foreach (array_filter($this->slave_servers) as $web_server) {
-      $record = array(
-        'nid' => $this->server->nid,
-        'vid' => $this->server->vid,
-        'web_server_nid' => $web_server,
-        'type' => 'slave',
-      );
+      $record = ['nid' => $this->server->nid, 'vid' => $this->server->vid, 'web_server_nid' => $web_server, 'type' => 'slave'];
       drupal_write_record('hosting_web_pack', $record);
     }
   }
@@ -113,7 +95,7 @@ class hostingService_http_pack extends hostingService_http {
   }
 
   function context_import($context) {
-    $master_servers = $slave_server = array();
+    $master_servers = $slave_server = [];
 
     foreach ($context->master_web_servers as $master_server_context) {
       $nid = hosting_context_nid($master_server_context);

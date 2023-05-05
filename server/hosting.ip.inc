@@ -10,12 +10,8 @@
 function _hosting_ip_view(&$node) {
   $ip_list = isset($node->ip_addresses) ? $node->ip_addresses : array();
 
-  if (count($ip_list)) {
-    $node->content['info']['ip_addresses'] = array(
-      '#type' => 'item',
-      '#title' => t('IP addresses'),
-      '#markup' => implode('<br />', $ip_list),
-    );
+  if (is_countable($ip_list) ? count($ip_list) : 0) {
+    $node->content['info']['ip_addresses'] = ['#type' => 'item', '#title' => t('IP addresses'), '#markup' => implode('<br />', $ip_list)];
   }
 }
 
@@ -23,10 +19,10 @@ function _hosting_ip_view(&$node) {
  * IP Utility function for hook_update/hook_insert.
  */
 function _hosting_ip_save($node, $update = FALSE) {
-  $ips = isset($node->ip_addresses) ? (array) $node->ip_addresses : array();
+  $ips = isset($node->ip_addresses) ? (array) $node->ip_addresses : [];
 
   foreach ($ips as $id => $ip) {
-    $ip = trim($ip);
+    $ip = trim((string) $ip);
     if (empty($ip)) {
       // empty fields are considered removed
       db_delete('hosting_ip_addresses')
@@ -35,23 +31,18 @@ function _hosting_ip_save($node, $update = FALSE) {
     }
     else {
       $num_updated = db_update('hosting_ip_addresses')
-        ->fields(array(
-          'ip_address' => $ip,
-        ))
+        ->fields(['ip_address' => $ip])
         ->condition('id', $id)
         ->execute();
     }
   }
 
-  $ips = isset($node->new_ip_addresses) ? (array) $node->new_ip_addresses : array();
+  $ips = isset($node->new_ip_addresses) ? (array) $node->new_ip_addresses : [];
   foreach ($ips as $id => $ip) {
     if (!empty($ip)) {
       // new entries are prefixed with the string 'new', insert those
       db_insert('hosting_ip_addresses')
-        ->fields(array(
-          'nid' => $node->nid,
-          'ip_address' => $ip,
-        ))
+        ->fields(['nid' => $node->nid, 'ip_address' => $ip])
         ->execute();
     }
   }
@@ -63,24 +54,22 @@ function _hosting_ip_save($node, $update = FALSE) {
 function _hosting_ip_validate($node) {
   $ips = isset($node->ip_addresses) ? $node->ip_addresses : array();
   foreach ($ips as $id => $ip) {
-    $ip = trim($ip);
+    $ip = trim((string) $ip);
     if (empty($ip)) {
       // deletion, look if the IP is in use
-      $cid = db_query('SELECT ssl_key FROM {hosting_ssl_cert_ips} i INNER JOIN {hosting_ssl_cert} c ON c.cid = i.cid WHERE ip_address = :id', array(':id' => $id))->fetchField();
+      $cid = db_query('SELECT ssl_key FROM {hosting_ssl_cert_ips} i INNER JOIN {hosting_ssl_cert} c ON c.cid = i.cid WHERE ip_address = :id', [':id' => $id])->fetchField();
       if ($cid) {
-        form_set_error("ip_addresses][$id", t('Cannot remove IP associated with certificate %cert.', array('%cert' => $cid)));
+        form_set_error("ip_addresses][$id", t('Cannot remove IP associated with certificate %cert.', ['%cert' => $cid]));
       }
     } elseif (!_hosting_valid_ip($ip)) {
-      form_set_error("ip_addresses][$id", t('Invalid IP address: %ip.', array(
-        '%ip' => $ip )));
+      form_set_error("ip_addresses][$id", t('Invalid IP address: %ip.', ['%ip' => $ip]));
     }
   }
 
-  $ips = isset($node->new_ip_addresses) ? (array) $node->new_ip_addresses : array();
+  $ips = isset($node->new_ip_addresses) ? (array) $node->new_ip_addresses : [];
   foreach ($ips as $id => $ip) {
     if (!empty($ip) && !_hosting_valid_ip($ip)) {
-      form_set_error("ip_addresses][$id", t('Invalid IP address: %ip.', array(
-        '%ip' => $ip )));
+      form_set_error("ip_addresses][$id", t('Invalid IP address: %ip.', ['%ip' => $ip]));
     }
   }
 }
@@ -89,8 +78,8 @@ function _hosting_ip_validate($node) {
  * IP Utility function for hook_load.
  */
 function _hosting_ip_load($node) {
-  $ip_list = array();
-  $result = db_query("SELECT id,ip_address FROM {hosting_ip_addresses} WHERE nid = :nid ORDER BY id", array(':nid' => $node->nid));
+  $ip_list = [];
+  $result = db_query("SELECT id,ip_address FROM {hosting_ip_addresses} WHERE nid = :nid ORDER BY id", [':nid' => $node->nid]);
   while ($obj = $result->fetch()) {
     $ip_list[$obj->id] = $obj->ip_address;
   }
@@ -118,7 +107,7 @@ function hosting_ip_allocate($cert, $site) {
   $server = node_load($platform->web_server);
 
   // IP allocation for master server
-  $ips = array();
+  $ips = [];
 
   // IP allocation for nodes in the cluster
   // XXX: this should be in classes, see below
@@ -137,7 +126,7 @@ function hosting_ip_allocate($cert, $site) {
       }
       break;
     default:
-      $ips = array(hosting_server_ip_allocate($server->nid));
+      $ips = [hosting_server_ip_allocate($server->nid)];
   }
   foreach ($ips as $ip) {
     if (!$ip) {
@@ -150,10 +139,7 @@ function hosting_ip_allocate($cert, $site) {
   foreach ($ips as $ip) {
     if ($ip) {
      $id = db_insert('hosting_ssl_cert_ips')
-      ->fields(array(
-        'cid' => $cert->cid,
-        'ip_address' => $ip,
-      ))
+      ->fields(['cid' => $cert->cid, 'ip_address' => $ip])
       ->execute();
     }
   }
@@ -181,6 +167,6 @@ function hosting_server_ip_allocate($server) {
                        ON (hosting_ip_addresses.id = hosting_ssl_cert_ips.ip_address)
                    WHERE hosting_ssl_cert_ips.ip_address IS NULL
                      AND nid = :nid LIMIT 1;",
-                   array(':nid' => $server)
+                   [':nid' => $server]
                  )->fetchField();
 }

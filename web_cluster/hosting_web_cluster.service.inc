@@ -11,11 +11,7 @@ class hostingService_http_cluster extends hostingService_http {
   public $name = 'Web Cluster';
 
   function view(&$render) {
-    $render['web_servers'] = array(
-      '#type' => 'item',
-      '#title' => t('Web servers'),
-      '#markup' => theme('item_list', array('items' => array_map('_hosting_node_link', array_intersect_key($this->web_servers, hosting_get_servers('http'))))),
-    );
+    $render['web_servers'] = ['#type' => 'item', '#title' => t('Web servers'), '#markup' => theme('item_list', ['items' => array_map('_hosting_node_link', array_intersect_key($this->web_servers, hosting_get_servers('http')))])];
   }
 
   function form(&$form) {
@@ -39,8 +35,8 @@ class hostingService_http_cluster extends hostingService_http {
 
     $ssl_enabled = TRUE;
 
-    $web_servers = array();
-    $result = db_query('SELECT web_server_nid FROM {hosting_web_cluster} WHERE vid = :vid', array(':vid' => $this->server->vid));
+    $web_servers = [];
+    $result = db_query('SELECT web_server_nid FROM {hosting_web_cluster} WHERE vid = :vid', [':vid' => $this->server->vid]);
     while ($web_server = $result->fetch()) {
       $web_servers[] = $web_server->web_server_nid;
       $server = node_load($web_server->web_server_nid);
@@ -48,17 +44,13 @@ class hostingService_http_cluster extends hostingService_http {
     }
 
     $this->ssl_enabled = $ssl_enabled;
-    $this->setValues(array('web_servers' => drupal_map_assoc($web_servers)));
+    $this->setValues(['web_servers' => drupal_map_assoc($web_servers)]);
   }
 
   function insert() {
     parent::insert();
     foreach (array_filter($this->web_servers) as $web_server) {
-      $record = array(
-        'nid' => $this->server->nid,
-        'vid' => $this->server->vid,
-        'web_server_nid' => $web_server,
-      );
+      $record = ['nid' => $this->server->nid, 'vid' => $this->server->vid, 'web_server_nid' => $web_server];
       drupal_write_record('hosting_web_cluster', $record);
     }
   }

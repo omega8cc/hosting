@@ -8,33 +8,8 @@
  * Implements hook_schema().
  */
 function hosting_db_server_schema() {
-  $schema['hosting_db_server'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'db_user' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => TRUE,
-      ),
-      'db_passwd' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => TRUE,
-      ),
-    ),
-    'primary key' => array('vid'),
-  );
+  $schema = [];
+  $schema['hosting_db_server'] = ['fields' => ['vid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'db_user' => ['type' => 'text', 'size' => 'big', 'not null' => TRUE], 'db_passwd' => ['type' => 'text', 'size' => 'big', 'not null' => TRUE]], 'primary key' => ['vid']];
 
   return $schema;
 }
@@ -45,9 +20,9 @@ function hosting_db_server_schema() {
  * Get rid of db_server node type and associate ourselves with server nodes instead.
  */
 function hosting_db_server_update_6000() {
-  drupal_install_modules(array('hosting_server'));
+  drupal_install_modules(['hosting_server']);
 
-  $ret = array();
+  $ret = [];
   $result = db_query("SELECT nid, vid, title FROM {node} WHERE type='db_server'");
   while ($record = db_fetch_object($result)) {
     if ($record->title == 'localhost') {
@@ -86,7 +61,7 @@ function hosting_db_server_update_6000() {
  * Get rid of the db type value, it duplicates the service info
  */
 function hosting_db_server_update_6001() {
-  $ret = array();
+  $ret = [];
   db_drop_field($ret, 'hosting_db_server', 'db_type');
   return $ret;
 }

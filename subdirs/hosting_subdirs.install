@@ -10,7 +10,7 @@
 function hosting_subdirs_install() {
   // Get the weight of the hosting_site module.
   $result = db_select('system', 's')
-              ->fields('s', array('weight'))
+              ->fields('s', ['weight'])
               ->condition('name', 'hosting_site', '=')
               ->execute();
   $weight = !empty($result) ? $result->fetchField() : 0;
@@ -18,7 +18,7 @@ function hosting_subdirs_install() {
   // Set our module to run before hosting_site.
   // @see: hosting_subdirs_node_presave().
   db_update('system')
-    ->fields(array('weight' => $weight - 1))
+    ->fields(['weight' => $weight - 1])
     ->condition('name', 'hosting_subdirs', '=')
     ->execute();
 }

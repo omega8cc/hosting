@@ -8,40 +8,8 @@
  * Implements hook_schema().
  */
 function hosting_alias_schema() {
-  $schema['hosting_site_alias'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'alias' => array(
-        'type' => 'varchar',
-        'length' => 128,
-        'not null' => TRUE,
-      ),
-      'automatic' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'redirection' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-      ),
-    ),
-    'indexes' => array(
-      'vid' => array('vid'),
-      'alias' => array('alias'),
-    ),
-  );
+  $schema = [];
+  $schema['hosting_site_alias'] = ['fields' => ['vid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'alias' => ['type' => 'varchar', 'length' => 128, 'not null' => TRUE], 'automatic' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'redirection' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE]], 'indexes' => ['vid' => ['vid'], 'alias' => ['alias']]];
 
   return $schema;
 }
@@ -52,7 +20,7 @@ function hosting_alias_schema() {
  * This removes dodgy data created by an import bug.
  */
 function hosting_alias_update_1() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("DELETE FROM {hosting_site_alias} WHERE alias='Array'");
   return $ret;
 }
@@ -63,8 +31,8 @@ function hosting_alias_update_1() {
  * Add the redirection field.
  */
 function hosting_alias_update_2() {
-  $ret = array();
-  db_add_field($ret, 'hosting_site_alias', 'redirection', array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'));
+  $ret = [];
+  db_add_field($ret, 'hosting_site_alias', 'redirection', ['type' => 'int', 'not null' => TRUE, 'default' => 0, 'size' => 'tiny']);
   return $ret;
 }
 
@@ -73,12 +41,8 @@ function hosting_alias_update_2() {
  * Alter the redirection field to a varchar
  */
 function hosting_alias_update_6203() {
-  $ret = array();
-  $spec = array(
-      'type' => 'varchar',
-      'length' => 255,
-      'not null' => TRUE,
-  );
+  $ret = [];
+  $spec = ['type' => 'varchar', 'length' => 255, 'not null' => TRUE];
   db_change_field($ret, 'hosting_site_alias', 'redirection', 'redirection', $spec);
   return $ret;
 }
@@ -87,7 +51,7 @@ function hosting_alias_update_6203() {
 * Fixup redirection data after table change in hosting_alias_update_6203()
 */
 function hosting_alias_update_6204() {
-  $ret = array();
+  $ret = [];
   $result = db_query("SELECT alias.nid FROM {hosting_site_alias} alias INNER JOIN {hosting_site} site ON site.nid = alias.nid WHERE redirection=1 AND site.status>-2");
   while ($obj = db_fetch_object($result)) {
     $node = node_load($obj->nid);

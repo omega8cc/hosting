@@ -8,7 +8,5 @@
  * Implements hook_hosting_service().
  */
 function hosting_web_cluster_hosting_service() {
-  return array(
-    'cluster' => 'http',
-  );
+  return ['cluster' => 'http'];
 }

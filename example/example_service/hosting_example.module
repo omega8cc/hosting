@@ -44,12 +44,12 @@
  *    of the server node form.
  */
 function hosting_example_hosting_service_type() {
-  return array(
-    'example' => array(// Machine name
-      'title' => t('Example service'), // Human-readable name
-      'weight' => 0, // Optional, defaults to 0
-    ),
-  );
+  return ['example' => [
+      // Machine name
+      'title' => t('Example service'),
+      // Human-readable name
+      'weight' => 0,
+  ]];
 }
 
 /**
@@ -72,7 +72,7 @@ function hosting_example_hosting_service_type() {
  * @see hosting_server_services()
  */
 function hosting_example_hosting_service() {
-  return array('basic' => 'example'); // Service implementation => service type.
+  return ['basic' => 'example']; // Service implementation => service type.
 }
 
 /**

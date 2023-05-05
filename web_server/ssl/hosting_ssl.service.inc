@@ -8,7 +8,7 @@ class hostingService_http_ssl extends hostingService_http_public {
 
   function load() {
     parent::load();
-    $this->mergeData("SELECT ssl_port FROM {hosting_ssl_server} WHERE vid=:vid", array(':vid' => $this->server->vid));
+    $this->mergeData("SELECT ssl_port FROM {hosting_ssl_server} WHERE vid=:vid", [':vid' => $this->server->vid]);
     $this->ssl_enabled = TRUE;
   }
 
@@ -54,11 +54,7 @@ class hostingService_http_ssl extends hostingService_http_public {
 
   function view(&$render) {
     parent::view($render);
-    $render['ssl_port'] = array(
-      '#type' => 'item',
-      '#title' => t('SSL Port'),
-      '#markup' => filter_xss($this->ssl_port),
-    );
+    $render['ssl_port'] = ['#type' => 'item', '#title' => t('SSL Port'), '#markup' => filter_xss($this->ssl_port)];
   }
 
   public function validate(&$node, &$form, &$form_state) {
@@ -89,7 +85,7 @@ class hostingService_http_apache_ssl extends hostingService_http_ssl {
 
   function default_restart_cmd() {
     $command = '/usr/sbin/apachectl'; # a proper default for most of the world
-    foreach (explode(':', $_SERVER['PATH']) as $path) {
+    foreach (explode(':', (string) $_SERVER['PATH']) as $path) {
       $options[] = "$path/apache2ctl";
       $options[] = "$path/apachectl";
     }

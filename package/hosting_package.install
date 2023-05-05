@@ -8,117 +8,12 @@
  * Implements hook_schema().
  */
 function hosting_package_schema() {
-  $schema['hosting_package'] = array(
-    'fields' => array(
-      'vid' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'package_type' => array(
-        'type' => 'varchar',
-        'length' => 16,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'short_name' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'old_short_name' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'description' => array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => TRUE,
-      ),
-    ),
-    'primary key' => array('vid'),
-    'indexes' => array('hosting_package_nid_idx' => array('nid')),
-  );
+  $schema = [];
+  $schema['hosting_package'] = ['fields' => ['vid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'nid' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0], 'package_type' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => ''], 'short_name' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''], 'old_short_name' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''], 'description' => ['type' => 'text', 'size' => 'big', 'not null' => TRUE]], 'primary key' => ['vid'], 'indexes' => ['hosting_package_nid_idx' => ['nid']]];
 
-  $schema['hosting_package_instance'] = array(
-    'fields' => array(
-      'iid' => array(
-        'type' => 'serial',
-        'not null' => TRUE,
-      ),
-      'rid' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'package_id' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'filename' => array(
-        'type' => 'text',
-        'size' => 'normal',
-        'not null' => TRUE,
-      ),
-      'schema_version' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'version' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'version_code' => array(
-        'type' => 'int',
-        'size' => 'big',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'status' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'platform' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-    'primary key' => array('iid'),
-    'indexes' => array(
-      'hosting_package_rid_idx' => array('rid'),
-      'hosting_package_id_idx' => array('package_id'),
-    ),
-  );
+  $schema['hosting_package_instance'] = ['fields' => ['iid' => ['type' => 'serial', 'not null' => TRUE], 'rid' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'package_id' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'filename' => ['type' => 'text', 'size' => 'normal', 'not null' => TRUE], 'schema_version' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'version' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''], 'version_code' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE, 'default' => 0], 'status' => ['type' => 'int', 'not null' => TRUE, 'default' => 0], 'platform' => ['type' => 'int', 'not null' => TRUE, 'default' => 0]], 'primary key' => ['iid'], 'indexes' => ['hosting_package_rid_idx' => ['rid'], 'hosting_package_id_idx' => ['package_id']]];
 
-  $schema['hosting_package_languages'] = array(
-    'fields' => array(
-      'iid' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-      ),
-      'language' => array(
-        'type' => 'varchar',
-        'length' => 12,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-    ),
-  );
+  $schema['hosting_package_languages'] = ['fields' => ['iid' => ['type' => 'int', 'not null' => TRUE], 'language' => ['type' => 'varchar', 'length' => 12, 'not null' => TRUE, 'default' => '']]];
 
   return $schema;
 }
@@ -129,7 +24,7 @@ function hosting_package_schema() {
  * Add package description to hosting_package table
  */
 function hosting_package_update_1() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_package} ADD COLUMN description longtext NOT NULL default ''");
   return $ret;
 }
@@ -140,7 +35,7 @@ function hosting_package_update_1() {
  * Add localization support for installed sites
  */
 function hosting_package_update_2() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("CREATE TABLE {hosting_package_languages} (
     vid int NOT NULL,
     nid int(10) UNSIGNED NOT NULL,
@@ -156,7 +51,7 @@ function hosting_package_update_2() {
  * No limit on short_name length
  */
 function hosting_package_update_3() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_package} MODIFY COLUMN short_name longtext NOT NULL default ''");
   return $ret;
 }
@@ -168,7 +63,7 @@ function hosting_package_update_3() {
  */
 function hosting_package_update_4() {
   include_once(drupal_get_path('module', 'hosting_task') . '/hosting_task.module');
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("DROP TABLE {hosting_package_languages}");
   $ret[] = update_sql("CREATE TABLE {hosting_package_languages} (
     iid int UNSIGNED NOT NULL,
@@ -189,7 +84,7 @@ function hosting_package_update_4() {
  * Denormalize package and package release node types
  */
 function hosting_package_update_5() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("ALTER TABLE {hosting_package_instance} ADD COLUMN package_id int(10) NOT NULL default '0'");
   $ret[] = update_sql("ALTER TABLE {hosting_package_instance} ADD COLUMN version longtext NOT NULL default ''");
   $ret[] = update_sql("ALTER TABLE {hosting_package_instance} ADD COLUMN filename longtext NOT NULL default ''");
@@ -240,7 +135,7 @@ function hosting_package_update_5() {
  * Rebuild the package instance database and re-verify all sites.
  */
 function hosting_package_update_6() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("DELETE FROM {hosting_package_instance}");
   $ret[] = update_sql("UPDATE {sequences} SET id=1 WHERE name='{hosting_package_instance}_iid'");
   $result = db_query("SELECT nid FROM {node} WHERE type='platform' AND status=1");
@@ -262,14 +157,14 @@ function hosting_package_update_6() {
  * Required by Drupal 6 update.
  */
 function hosting_package_update_7() {
-  $ret = array();
+  $ret = [];
 
 
   db_drop_primary_key($ret, 'hosting_package_instance');
   db_field_set_no_default($ret, 'hosting_package_instance', 'iid');
   db_change_field($ret, 'hosting_package_instance', 'iid', 'iid',
-    array('type' => 'serial', 'not null' => TRUE),
-    array('primary key' => array('iid')));
+    ['type' => 'serial', 'not null' => TRUE],
+    ['primary key' => ['iid']]);
 
   return $ret;
 }
@@ -281,13 +176,8 @@ function hosting_package_update_7() {
  */
 function hosting_package_update_8() {
   include_once(drupal_get_path('module', 'hosting_package') . '/hosting_package.instance.inc');
-  $ret = array();
-  db_add_field($ret, 'hosting_package_instance', 'version_code', array(
-      'type' => 'int',
-      'size' => 'big',
-      'not null' => TRUE,
-      'default' => 0,
-    ));
+  $ret = [];
+  db_add_field($ret, 'hosting_package_instance', 'version_code', ['type' => 'int', 'size' => 'big', 'not null' => TRUE, 'default' => 0]);
 
   // The contents of update 9 was originally inside this function,
   // but due to an error in the regular expression the code needs to be
@@ -302,7 +192,7 @@ function hosting_package_update_8() {
  * Regenerate the package version codes to fix a error related to the regular expression
  */
 function hosting_package_update_9() {
-  $ret = array();
+  $ret = [];
 
   // This code was originally in update 8, but was moved here to avoid people executing the same functionality
   // twice.
@@ -346,7 +236,7 @@ function hosting_package_update_6001() {
   $ret = hosting_task_update_6000();
 
   // There appear to be two types of duplication that can be encountered. So we try and find traces of either here.
-  $duplicate = array();
+  $duplicate = [];
   $result = db_query("SELECT DISTINCT(package_id) FROM {hosting_package_instance} GROUP BY rid, filename HAVING count(*) > 1 ORDER BY package_id;");
   while ($instance = db_fetch_array($result)) {
     $duplicate[$instance['package_id']] = $instance['package_id'];
@@ -359,13 +249,13 @@ function hosting_package_update_6001() {
   // We'll only actually execute this fix if duplicates were found (i.e users upgrading from 0.3 should never encounter this).
   if (count($duplicate)) {
     foreach ($duplicate as $nid) {
-      $ret[] = array('success' => TRUE, 'query' => "Delete package ". $nid);
+      $ret[] = ['success' => TRUE, 'query' => "Delete package ". $nid];
       node_delete($nid);
     }
     // Schedule re-verify of all existing platforms
     $result = db_query("SELECT nid FROM {node} WHERE type='platform' AND status=1");
     while ($platform = db_fetch_object($result)) {
-      $ret[] = array('success' => TRUE, 'query' => "Re-verify scheduled for platform ". $platform->nid);
+      $ret[] = ['success' => TRUE, 'query' => "Re-verify scheduled for platform ". $platform->nid];
       hosting_add_task($platform->nid, 'verify');
     }
   }
@@ -384,14 +274,9 @@ function hosting_package_update_6001() {
  * can be made.
  */
 function hosting_package_update_6002() {
-  $ret = array();
+  $ret = [];
   if (!variable_get('hosting_package_update_6002_run', FALSE)) {
-    db_add_field($ret, 'hosting_package', 'old_short_name', array(
-        'type' => 'text',
-        'size' => 'big',
-        'not null' => TRUE,
-        'default' => '',
-      ));
+    db_add_field($ret, 'hosting_package', 'old_short_name', ['type' => 'text', 'size' => 'big', 'not null' => TRUE, 'default' => '']);
     variable_set('hosting_package_update_6002_run', TRUE);
   }
   return $ret;
@@ -406,12 +291,13 @@ function hosting_package_update_6002() {
  * creating new sites. See #599758
  */
 function hosting_package_update_6003() {
-  $ret = array();
+  $ret = [];
   $ret[] = update_sql("UPDATE {hosting_package} h JOIN {node} n ON n.nid = h.nid SET status = 1 WHERE h.short_name = 'hostmaster' OR h.short_name = 'hostslave'");
   return $ret;
 }
 
 function hosting_package_update_6004() {
+  $records = [];
   if (!variable_get('hosting_package_update_6004_run', false)) {
     // we want to enforce that the hostmaster site is always referred to as @hostmaster
     $own_site = db_result(db_query("SELECT s.nid FROM {hosting_site} s LEFT JOIN {hosting_package} p ON s.profile=p.nid WHERE p.short_name='hostmaster'"));
@@ -437,18 +323,18 @@ function hosting_package_update_6004() {
  * See #969326 and #934864
  */
 function hosting_package_update_6005() {
-  $ret = array();
+  $ret = [];
   db_change_field($ret, 'hosting_package', 'short_name', 'short_name',
-                  array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''));
+                  ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '']);
   db_change_field($ret, 'hosting_package', 'old_short_name', 'old_short_name',
-                  array('type' => 'varchar', 'length' => 255, 'not null' => TRUE,  'default' => ''));
+                  ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '']);
   db_change_field($ret, 'hosting_package', 'description', 'description',
-                  array('type' => 'text', 'size' => 'big', 'not null' => TRUE));
+                  ['type' => 'text', 'size' => 'big', 'not null' => TRUE]);
 
   db_change_field($ret, 'hosting_package_instance', 'filename', 'filename',
-                  array('type' => 'varchar', 'length' => 255, 'not null' => TRUE,  'default' => ''));
+                  ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '']);
   db_change_field($ret, 'hosting_package_instance', 'version', 'version',
-                  array('type' => 'varchar', 'length' => 255, 'not null' => TRUE,  'default' => ''));
+                  ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '']);
   return $ret;
 }
 
@@ -470,10 +356,10 @@ function hosting_package_update_6005() {
  * @see hosting_package_comparison()
  */
 function hosting_package_update_6006() {
-  $ret = array();
-  db_add_index($ret, 'hosting_package_instance', 'hosting_package_id_idx', array('package_id'));
-  db_add_index($ret, 'hosting_package_instance', 'hosting_package_rid_idx', array('rid'));
-  db_add_index($ret, 'hosting_package', 'hosting_package_nid_idx', array('nid'));
+  $ret = [];
+  db_add_index($ret, 'hosting_package_instance', 'hosting_package_id_idx', ['package_id']);
+  db_add_index($ret, 'hosting_package_instance', 'hosting_package_rid_idx', ['rid']);
+  db_add_index($ret, 'hosting_package', 'hosting_package_nid_idx', ['nid']);
   return $ret;
 }
 
@@ -481,12 +367,12 @@ function hosting_package_update_6006() {
  * Enable the "Hosting package list" block on Package nodes.
  */
 function hosting_package_update_6200() {
-  $ret = array();
+  $ret = [];
 
   // Temporarily enable Install Profile API module and load includes.
-  module_enable(array('install_profile_api'));
+  module_enable(['install_profile_api']);
   drupal_load('module', 'install_profile_api');
-  install_include(array('block'));
+  install_include(['block']);
 
   // Enable block.
   $theme = 'eldir';
@@ -498,7 +384,7 @@ if (!empty(\$node)) {\n
 }\n
 ?>");
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 }
@@ -507,8 +393,8 @@ if (!empty(\$node)) {\n
  * Allow the tracking of site-specific packages.
  */
 function hosting_package_update_6201() {
-  $ret = array();
-  db_add_field($ret, 'hosting_package_instance', 'platform', array('type' => 'int', 'not null' => TRUE, 'default' => 0));
+  $ret = [];
+  db_add_field($ret, 'hosting_package_instance', 'platform', ['type' => 'int', 'not null' => TRUE, 'default' => 0]);
   return $ret;
 }
 
@@ -516,12 +402,12 @@ function hosting_package_update_6201() {
  * Call custom functions for block visibility.
  */
 function hosting_package_update_6202() {
-  $ret = array();
+  $ret = [];
 
   // Temporarily enable Install Profile API module and load includes.
-  module_enable(array('install_profile_api'));
+  module_enable(['install_profile_api']);
   drupal_load('module', 'install_profile_api');
-  install_include(array('block'));
+  install_include(['block']);
 
   // Set block visibility.
   $theme = 'eldir';
@@ -529,7 +415,7 @@ function hosting_package_update_6202() {
 return hosting_package_block_visibility();
 ?>");
 
-  module_disable(array('install_profile_api'));
+  module_disable(['install_profile_api']);
 
   return $ret;
 
@@ -539,11 +425,7 @@ return hosting_package_block_visibility();
  * Change filename field to longtext.
  */
 function hosting_package_update_7301() {
-  $spec = array(
-    'type' => 'text',
-    'size' => 'normal',
-    'not null' => TRUE,
-  );
+  $spec = ['type' => 'text', 'size' => 'normal', 'not null' => TRUE];
 
   db_change_field('hosting_package_instance', 'filename', 'filename', $spec);
 }

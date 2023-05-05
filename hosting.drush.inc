@@ -12,18 +12,10 @@ define('HOSTING_QUEUE_LOCK_TIMEOUT', 3600.0);
  * Implements hook_drush_command().
  */
 function hosting_drush_command() {
-  $items['hosting-dispatch'] = array(
-    'description' => dt('Centralized command for dispatching the various queue processors (hosting, cron, backup etc.)'),
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-    'options' => array(
-      'lock-wait' => dt('Time to wait to acquire a lock on dispatched queues. Defaults to @wait seconds.', array('@wait' => HOSTING_QUEUE_DEFAULT_LOCK_WAIT)),
-      'force' => dt('Continue even if the task queue is still locked.'),
-    ),
-  );
+  $items = [];
+  $items['hosting-dispatch'] = ['description' => dt('Centralized command for dispatching the various queue processors (hosting, cron, backup etc.)'), 'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL, 'options' => ['lock-wait' => dt('Time to wait to acquire a lock on dispatched queues. Defaults to @wait seconds.', ['@wait' => HOSTING_QUEUE_DEFAULT_LOCK_WAIT]), 'force' => dt('Continue even if the task queue is still locked.')]];
 
-  $items['hosting-setup'] = array(
-    'description' => dt('Set up initial configuration settings such as the cron entry for the queue dispatcher and more.'),
-  );
+  $items['hosting-setup'] = ['description' => dt('Set up initial configuration settings such as the cron entry for the queue dispatcher and more.')];
 
   // If we're trying to get help, then try to bootstrap as much as possible.
   $current_command = drush_get_command();
@@ -35,59 +27,18 @@ function hosting_drush_command() {
   if (function_exists('hosting_get_queues')) {
     $queues = hosting_get_queues();
     foreach ($queues as $queue => $info) {
-      $dispatch = dt("Dispatched: @items items every @frequency minutes", array('@items' => $info['items'], '@frequency' => round($info['frequency'] / 60)));
-      $items['hosting-' . $queue] = array(
-        'callback' => 'hosting_run_queue',
-        'description' => $info['description'] . " " . $dispatch,
-        'queue' => $queue,
-        'options' => array(
-          'lock-wait' => dt('Time to wait to acquire a lock on the @queue queue. Defaults to @wait seconds.', array('@queue' => $queue, '@wait' => HOSTING_QUEUE_DEFAULT_LOCK_WAIT)),
-          'force' => dt('Continue even if the task queue is still locked.'),
-        ),
-      );
+      $dispatch = dt("Dispatched: @items items every @frequency minutes", ['@items' => $info['items'], '@frequency' => round($info['frequency'] / 60)]);
+      $items['hosting-' . $queue] = ['callback' => 'hosting_run_queue', 'description' => $info['description'] . " " . $dispatch, 'queue' => $queue, 'options' => ['lock-wait' => dt('Time to wait to acquire a lock on the @queue queue. Defaults to @wait seconds.', ['@queue' => $queue, '@wait' => HOSTING_QUEUE_DEFAULT_LOCK_WAIT]), 'force' => dt('Continue even if the task queue is still locked.')]];
     }
   }
 
-  $items['hosting-task'] = array(
-    'description' => 'execute a specific queue item',
-    'arguments' => array(
-      '@context_name' => 'Context to work on',
-      'command' => 'provision-[command] to invoke',
-      'task_args' => 'If triggering tasks by context_name, any additional command arguments are passed as task_args. Specify the needed task_args in the format name=value.',
-    ),
-    'options' => array(
-      'force' => array(
-        'description' => 'Force the specified task to execute even if it is not queued to run.',
-      ),
-    ),
-    'examples' => array(
-      'drush @hostmaster hosting-task @sitename.com backup "description=backup description"' => 'Run backup task on sitename.com with the description "backup description".',
-      'drush @hostmaster hosting-task 42 --verbose --force' => 'Run the task with ID 42.',
-    ),
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-  );
+  $items['hosting-task'] = ['description' => 'execute a specific queue item', 'arguments' => ['@context_name' => 'Context to work on', 'command' => 'provision-[command] to invoke', 'task_args' => 'If triggering tasks by context_name, any additional command arguments are passed as task_args. Specify the needed task_args in the format name=value.'], 'options' => ['force' => ['description' => 'Force the specified task to execute even if it is not queued to run.']], 'examples' => ['drush @hostmaster hosting-task @sitename.com backup "description=backup description"' => 'Run backup task on sitename.com with the description "backup description".', 'drush @hostmaster hosting-task 42 --verbose --force' => 'Run the task with ID 42.'], 'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL];
 
-  $items['hosting-import'] = array(
-    'description' => 'Import an existing backend context name into the front end.',
-    'arguments' => array(
-      '@context_name' => 'Context to import',
-    ),
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-  );
+  $items['hosting-import'] = ['description' => 'Import an existing backend context name into the front end.', 'arguments' => ['@context_name' => 'Context to import'], 'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL];
 
-  $items['hosting-pause'] = array(
-    'description' => dt('Prepare the hostmaster site to be migrated to a new platform.'),
-  );
+  $items['hosting-pause'] = ['description' => dt('Prepare the hostmaster site to be migrated to a new platform.')];
 
-  $items['hosting-resume'] = array(
-    'description' => dt('Complete the migration of the hostmaster site to a new platform.'),
-    'arguments' => array(
-      'example.com' => dt('The url of the site being migrated.')),
-    'options' => array(
-      'old_platform_name' => dt('The old platform name'),
-      'new_platform_name' => dt('The new platform name'),
-    ),
-  );
+  $items['hosting-resume'] = ['description' => dt('Complete the migration of the hostmaster site to a new platform.'), 'arguments' => ['example.com' => dt('The url of the site being migrated.')], 'options' => ['old_platform_name' => dt('The old platform name'), 'new_platform_name' => dt('The new platform name')]];
 
   return $items;
 }
@@ -124,7 +75,7 @@ function drush_hosting_import($alias) {
 function hosting_drush_import($alias) {
   $name = (is_object($alias)) ? $alias->name : $alias;
 
-  static $known_contexts = array();
+  static $known_contexts = [];
 
   // Avoid re-importing the same object twice in one execution
   // of the script.
@@ -145,7 +96,7 @@ function hosting_drush_import($alias) {
     $node = new stdClass();
     $node->type = $context->type;
     // Set the hosting name too.
-    $node->hosting_name = trim($context->name, '@');
+    $node->hosting_name = trim((string) $context->name, '@');
     $node->status = 1;
     $node->import = TRUE;
   }

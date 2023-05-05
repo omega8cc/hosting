@@ -15,10 +15,10 @@ function hosting_quota_admin_client_list() {
   $result->join('node', 'n', 'q.client = n.nid');
   $result->fields('q')->fields('n');
   $result = $result->extend('PagerDefault')->limit($items_per_page)->execute();
-  $output = array();
+  $output = [];
 
   while ($row = $result->fetchObject()) {
-    $resource = array($row->resource => $all_resources[$row->resource]);
+    $resource = [$row->resource => $all_resources[$row->resource]];
 
     // Pass in raw limit and usage
     $output[$row->client][$row->resource]['limit'] = $row->value;
@@ -32,7 +32,7 @@ function hosting_quota_admin_client_list() {
     $output[$row->client]['name'] = $row->title;
   }
 
-  return theme('hosting_quota_admin_list', array('client_quotas' => $output, 'resources' => $all_resources, 'items_per_page' => $items_per_page));
+  return theme('hosting_quota_admin_list', ['client_quotas' => $output, 'resources' => $all_resources, 'items_per_page' => $items_per_page]);
 }
 
 /**
@@ -40,37 +40,18 @@ function hosting_quota_admin_client_list() {
  */
 function hosting_quota_admin_defaults_form($form, $form_state) {
 
-  $form = array();
+  $form = [];
   $all_resources = module_invoke_all('hosting_quota_resource');
 
-  $form['info'] = array(
-    '#type' => 'markup',
-    '#prefix' => '<p>',
-    '#value' => t('Set default limits for each resource. This value will be used as the default value when new clients are created and to set quota limits for all clients currently without limits'),
-    '#suffix' => '</p>',
-  );
+  $form['info'] = ['#type' => 'markup', '#prefix' => '<p>', '#value' => t('Set default limits for each resource. This value will be used as the default value when new clients are created and to set quota limits for all clients currently without limits'), '#suffix' => '</p>'];
 
-  $form['quota'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Client quota settings'),
-    '#access' => user_access('edit all quotas'),
-    '#collapsible' => FALSE,
-    '#collapsed' => FALSE,
-  );
+  $form['quota'] = ['#type' => 'fieldset', '#title' => t('Client quota settings'), '#access' => user_access('edit all quotas'), '#collapsible' => FALSE, '#collapsed' => FALSE];
 
   foreach ($all_resources as $resource => $quota) {
-    $form['quota'][$resource] = array(
-      '#title' => check_plain($quota['title']),
-      '#description' => check_plain($quota['description']),
-      '#type' => 'textfield',
-      '#default_value' => variable_get("hosting_quota_default_{$resource}", 0),
-    );
+    $form['quota'][$resource] = ['#title' => check_plain($quota['title']), '#description' => check_plain($quota['description']), '#type' => 'textfield', '#default_value' => variable_get("hosting_quota_default_{$resource}", 0)];
   }
 
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Submit'),
-  );
+  $form['submit'] = ['#type' => 'submit', '#value' => t('Submit')];
 
   $form['#tree'] = TRUE;
 
