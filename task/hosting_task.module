@@ -709,7 +709,7 @@ function hosting_task_count_running() {
  * @see hook_hosting_tasks_alter()
  * @see hosting_task_menu_access()
  */
-function hosting_available_tasks(?string $type = NULL, $reset = FALSE) {
+function hosting_available_tasks($type = NULL, $reset = FALSE) {
   static $cache = [];
 
   if (!count($cache) || $reset) {
@@ -1087,13 +1087,30 @@ function _hosting_task_log_table($node, $last_position = 0) {
  * @see _drush_print_log()
  */
 function _hosting_task_log_class($type) {
-  $type = match (strtolower((string) $type)) {
-      'warning', 'cancel', 'rollback' => 'warning',
-      'failed', 'error' => 'error',
-      'queue' => 'queue',
-      'ok', 'completed', 'success' => 'success',
-      default => 'info',
-  };
+  switch (strtolower($type)) {
+    case 'warning':
+    case 'cancel':
+    case 'rollback':   // aegir-specific
+      $type = 'warning';
+      break;
+    case 'failed':
+    case 'error':
+      $type = 'error';
+      break;
+    case 'queue':   // aegir-specific
+      $type = 'queue';
+      break;
+    case 'ok':
+    case 'completed':
+    case 'success':
+      $type = 'success';
+      break;
+    case 'notice':
+    case 'info':
+    case 'message':
+    default:
+      $type = 'info';
+  }
 
   return 'hosting-' . $type;
 }
