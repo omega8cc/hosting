@@ -169,5 +169,7 @@ function hosting_get_hostmaster_site_nid() {
  */
 function hosting_get_hostmaster_platform_nid() {
   $hostmaster_site = node_load(hosting_get_hostmaster_site_nid());
-  return $hostmaster_site->platform;
+  if (!is_null($hostmaster_site) && isset($hostmaster_site->platform)) {
+    return $hostmaster_site->platform;
+  }
 }
