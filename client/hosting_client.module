@@ -490,7 +490,7 @@ function hosting_client_register_user($node) {
   $user = user_save($user, $edit);
 
   if ($user->uid && variable_get('hosting_client_send_welcome', FALSE)) {
-    if ($node->client_name) {
+    if (isset($node->client_name)) {
       $to = sprintf("%s <%s>", $node->client_name, $node->email);
     }
     else {
@@ -504,7 +504,7 @@ function hosting_client_register_user($node) {
       '!site' => variable_get('site_name', 'Drupal'),
       '!password' => $pass,
       '!uri' => $GLOBALS['base_url'],
-      '!uri_brief' => substr($base_url, strlen('http://')),
+      '!uri_brief' => substr($GLOBALS['base_url'], strlen('http://')),
       '!date' => format_date(REQUEST_TIME),
       '!login_uri' => url('user', array('absolute' => TRUE)),
       '!edit_uri' => url('user/' . $user->uid . '/edit', array('absolute' => TRUE)),
