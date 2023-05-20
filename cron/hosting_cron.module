@@ -261,7 +261,7 @@ function hosting_cron_node_insert($node) {
     $use_cron_interval = ADV_CRON_TURNED_OFF;
     $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
 
-    if ($node->cron_interval > -1) {
+    if (isset($node->cron_interval) && $node->cron_interval > -1) {
       $use_cron_interval = $node->cron_interval;
     }
     else {
