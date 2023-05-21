@@ -24,8 +24,12 @@ function drush_hosting_clone_pre_hosting_task($task) {
     }
 
     if (module_exists('hosting_alias')) {
-      $task->options['aliases'] = str_replace("\n", ",", $task->task_args['aliases']);
-      $task->options['redirection'] = $task->task_args['redirection'];
+      if (isset($task->task_args['aliases'])) {
+        $task->options['aliases'] = str_replace("\n", ",", $task->task_args['aliases']);
+      }
+      if (isset($task->task_args['redirection'])) {
+        $task->options['redirection'] = $task->task_args['redirection'];
+      }
     }
   }
 }
