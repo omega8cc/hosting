@@ -95,7 +95,7 @@ function hosting_platform_edit_form_on_site_page($site) {
  * Wrapper for node_page_edit, for the "Edit Platform" tab.
  */
 function hosting_platform_edit_form_on_site_page_access($op, $site) {
-  if ($site->type == 'site') {
+  if ($site->type == 'site' && !empty($site->platform)) {
     $platform = node_load($site->platform);
     return node_access($op, $platform);
   }
