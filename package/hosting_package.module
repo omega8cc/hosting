@@ -424,35 +424,37 @@ function _hosting_package_plural_map($key = NULL) {
  * @todo Make this prettier.
  */
 function hosting_package_sync(&$data) {
-  foreach ($data as $plural => $packages) {
-    $type = _hosting_package_plural_map($plural);
-    foreach ($packages as $short_name => $file) {
-      $name = isset($file['info']['name']) ? $file['info']['name'] : $short_name;
-      if (!($package = hosting_get_package($short_name, $type))) {
-        // Create a new package.
-        $package = new stdClass();
-        $package->type = 'package';
-        $package->uid = 1;
-        $package->package_type = $type;
-        $package->short_name = $short_name;
-        $package->old_short_name = isset($file['info']['old_short_name']) ? $file['info']['old_short_name'] : '';
-        $package->status = 1;
+  if (!empty($data) && is_array($data)) {
+    foreach ($data as $plural => $packages) {
+      $type = _hosting_package_plural_map($plural);
+      foreach ($packages as $short_name => $file) {
+        $name = isset($file['info']['name']) ? $file['info']['name'] : $short_name;
+        if (!($package = hosting_get_package($short_name, $type))) {
+          // Create a new package.
+          $package = new stdClass();
+          $package->type = 'package';
+          $package->uid = 1;
+          $package->package_type = $type;
+          $package->short_name = $short_name;
+          $package->old_short_name = isset($file['info']['old_short_name']) ? $file['info']['old_short_name'] : '';
+          $package->status = 1;
+        }
+
+        // we only call node save when the title, description changes
+        // or when it's a new package.
+        if (!isset($package->nid) ||
+          (isset($package->title) && ($package->title != $name)) ||
+          (isset($file['info']['description']) && ($package->description != $file['info']['description'])) ||
+          (isset($file['info']['old_short_name']) && ($package->old_short_name != $file['info']['old_short_name']))) {
+
+          $package->title = $name;
+          $package->description = isset($file['info']['description']) ? $file['info']['description'] : '';
+          $package->old_short_name = isset($file['info']['old_short_name']) ? $file['info']['old_short_name'] : '';
+
+          node_save($package);
+        }
+        $data[$plural][$short_name]['package_id'] = $package->nid;
       }
-
-      // we only call node save when the title, description changes
-      // or when it's a new package.
-      if (!isset($package->nid) ||
-        (isset($package->title) && ($package->title != $name)) ||
-        (isset($file['info']['description']) && ($package->description != $file['info']['description'])) ||
-        (isset($file['info']['old_short_name']) && ($package->old_short_name != $file['info']['old_short_name']))) {
-
-        $package->title = $name;
-        $package->description = isset($file['info']['description']) ? $file['info']['description'] : '';
-        $package->old_short_name = isset($file['info']['old_short_name']) ? $file['info']['old_short_name'] : '';
-
-        node_save($package);
-      }
-      $data[$plural][$short_name]['package_id'] = $package->nid;
     }
   }
 }
