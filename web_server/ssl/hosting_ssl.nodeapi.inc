@@ -224,11 +224,11 @@ function hosting_ssl_filter_key($key) {
  * Implements hook_nodeapi_TYPE_OP().
  */
 function hosting_ssl_nodeapi_site_validate($node, &$form) {
-  if ($node->ssl_enabled) {
+  if (!empty($node->ssl_enabled)) {
     // TODO: find a way to avoid calling this function multiple times in hook_validate
     $valid_options = hosting_site_available_options($node);
 
-    if ($node->ssl_key == HOSTING_SSL_CUSTOM_KEY) {
+    if (!empty($node->ssl_key) && $node->ssl_key == HOSTING_SSL_CUSTOM_KEY) {
       if (!strlen($node->ssl_key_new)) {
         form_set_error('ssl_key_new', t("The encryption key field is required to enable us to generate a new SSL certificate for your site."));
       }
