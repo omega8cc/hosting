@@ -127,7 +127,7 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
     drush_set_context('HOSTING_TASK', $task);
     drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
     module_invoke_all('hosting_task_update_status', $task, $task->task_status);
-
+    
     // Load Task Info.
     $tasks_info = hosting_available_tasks($task->ref->type);
 
@@ -189,6 +189,33 @@ function drush_hosting_task()
     // Save arbitrary data "settings".
     $task->context_options['settings'] = $task->ref->hosting_settings ?? [];
 
+    // Launch a provision-save for the platform before running it for the site.
+    if ($task->ref->type == 'site') {
+
+      // Create a verify task to use as a mock so we can load provision-save options and trigger post_hosting_verify hooks.
+      $platform_task = _drush_hosting_task_create_platform_task($task);
+      $platform_node = $platform_task->ref;
+
+      // drush_hosting_task_provision_save($platform_node->hosting_name, $platform_task->context_options, t('Saving codebase metadata...'));
+      // Save Platform Alias file.
+      drush_invoke_process('@none', 'provision-save', array('@' . $platform_node->hosting_name), $platform_task->context_options, array('method' => $mode, 'integrate' => TRUE));
+      drush_log(dt('Saved alias: @name | @data', [
+        '@name' => $platform_node->hosting_name,
+        '@data' => print_r($platform_task->context_options, 1),
+      ]), 'ok');
+
+      // Run platform verify task if this is a site install. Provision MUST run platform verify before provision-install.
+      // We can't do this in drush_x_provision_install_x() hook because there's no set there yet, so the command can fail if composer didn't install.
+      if ($task->task_type == 'install') {
+        chdir(d('@hostmaster')->root);
+        $output = provision_backend_invoke("@{$platform_node->hosting_name}", "provision-verify", $task->args, $task->options);
+        hosting_platform_post_hosting_verify_task($platform_task, $output);
+
+        // Load new root from platform after verification. (to detect docroot)
+        $task->context_options['root'] = $output['context']['root'];
+      }
+    }
+
     // Save Current Context Alias file.
     drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
     drush_log(dt('Saved alias: @name | @data', [
@@ -196,14 +223,6 @@ function drush_hosting_task()
       '@data' => print_r($task->context_options, 1),
     ]), 'ok');
 
-    // If task is install, run provision-verify first.
-    if ($task->task_type == 'install') {
-      chdir(d('@hostmaster')->root);
-      $output = provision_backend_invoke("@{$task->ref->hosting_name}", "provision-verify");
-
-      // Load new root from platform after verification. (to detect docroot)
-      $task->context_options['root'] = $output['context']['root'];
-    }
   }
 
   if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
@@ -255,7 +274,7 @@ function drush_hosting_task_provision_save($hosting_name, $context_options, $mes
 }
 
 /**
- * @param $site_task
+ * @param $site_task'
  */
 function _drush_hosting_task_create_platform_task($site_task) {
   $platform_node = node_load($site_task->ref->platform);
