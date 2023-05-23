@@ -84,7 +84,12 @@ function hosting_platform_hosting_verify_task_rollback($task, $data) {
 function hosting_platform_post_hosting_verify_task($task, $data) {
 
   $node = $task->ref;
-  if ($node->type == 'platform') {
+  if ($node->type == 'platform' || $node->type == "site") {
+
+    if (empty($node->platform_status) && !empty($node->site_status)) {
+      $node->platform_status = $node->site_status;
+    }
+
     $context = $data['context'];
     $packages = $context['packages'];
 
@@ -110,15 +115,32 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     // Update platform metadata that might change.
     // Load git information from context.
     $options = $data['context'];
-    if (isset($options['git_sha'])) {
-      $node->git_sha = $options['git_sha'];
-      $node->git_last = $options['git_last'];
-      $node->git_status = substr($options['git_status'], 0,2000);
-      $node->git_refs = $options['git_refs'];
-      $node->git_docroot = $options['git_docroot'];
+
+    if ($node->type == 'site') {
+      $node->platform_node = node_load($node->platform);
+
+      if (isset($options['git_sha'])) {
+        $node->platform_node->git_sha = $options['git_sha'];
+        $node->platform_node->git_last = $options['git_last'];
+        $node->platform_node->git_status = substr($options['git_status'], 0,2000);
+        $node->platform_node->git_refs = $options['git_refs'];
+        $node->platform_node->git_docroot = $options['git_docroot'];
+        $node->publish_path = $options['git_root'] . '/' . $options['git_docroot'];
+      }
+    }
+    else {
+      // @TODO: Platforms should be gone so they won't need this
+      if (isset($options['git_sha'])) {
+        $node->git_sha = $options['git_sha'];
+        $node->git_last = $options['git_last'];
+        $node->git_status = substr($options['git_status'], 0,2000);
+        $node->git_refs = $options['git_refs'];
+        $node->git_docroot = $options['git_docroot'];
+        $node->publish_path = $options['git_root'] . '/' . $options['git_docroot'];
+      }
     }
 
-    // Save the platform being verified.
+    // Save the thing being verified.
     node_save($node);
     drush_log(dt('Metadata saved for %type %title [%url] %publish_path git ref: %git_ref', [
       '%type' => $node->type,
@@ -130,20 +152,20 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       '%git_ref' => $node->git_reference,
     ]), 'p_log');
 
-
+    $rid = $node->type == "site"? $node->platform: $node->nid;
 
     hosting_package_sync($packages['base']);
     hosting_package_sync($packages['sites-all']);
-    hosting_package_instance_sync($node->nid, $task->ref->type, $packages['base'], $packages['sites-all']);
+    hosting_package_instance_sync($rid, 'platform', $packages['base'], $packages['sites-all']);
 
     // If there were profiles found in context data, loop and sync.
     if (isset($context['profiles']) && is_array($context['profiles'])) {
       foreach ($context['profiles'] as $profile) {
         hosting_package_sync($packages['profiles'][$profile]);
         $instance = hosting_package_instance_load(
-          array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
+          array('p.short_name' => $profile, 'i.rid' => $rid, 'p.package_type' => 'profile'));
         if (!empty($instance)) {
-          hosting_package_instance_sync($instance->iid, $node->type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
+          hosting_package_instance_sync($instance->iid, 'platform', $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
         }
 
         // @todo : package instances of modules to profiles. <-- huh?
@@ -151,7 +173,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     }
 
     // If configured to do so, import all sites found on this platform.
-    if (variable_get('hosting_platform_automatic_site_import', TRUE)) {
+    if ($node->type == 'platform' && variable_get('hosting_platform_automatic_site_import', TRUE)) {
       foreach ($context['sites'] as $url) {
         if (hosting_domain_allowed($url)) {
           // Import any sites that have not been created yet.
