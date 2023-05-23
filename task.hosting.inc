@@ -127,7 +127,7 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
     drush_set_context('HOSTING_TASK', $task);
     drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
     module_invoke_all('hosting_task_update_status', $task, $task->task_status);
-    
+
     // Load Task Info.
     $tasks_info = hosting_available_tasks($task->ref->type);
 
@@ -274,7 +274,7 @@ function drush_hosting_task_provision_save($hosting_name, $context_options, $mes
 }
 
 /**
- * @param $site_task'
+ * @param $site_task
  */
 function _drush_hosting_task_create_platform_task($site_task) {
   $platform_node = node_load($site_task->ref->platform);
