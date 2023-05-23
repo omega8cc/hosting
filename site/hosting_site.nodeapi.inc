@@ -415,7 +415,13 @@ function hosting_site_node_insert($node) {
   if ($node->type == "site") {
     if ((empty($node->old_vid))) {
       hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : str_replace('.', '', $node->title), $node->hosting_settings);
-      hosting_add_task($node->nid, 'install');
+      if (isset($node->import)) {
+        // This is necessary for Hostmaster install.
+        hosting_add_task($node->nid, 'import');
+      }
+      else {
+        hosting_add_task($node->nid, 'install');
+      }
     }
   }
 
