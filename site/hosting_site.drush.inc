@@ -138,9 +138,12 @@ function drush_hosting_site_pre_hosting_task($task) {
 function hosting_site_post_hosting_install_task($task, $data) {
   if ($task->ref->type == 'site') {
     $context = $data['context'];
-    $packages = $context['packages'];
-    hosting_package_sync($packages);
-    hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
+    if (!empty($context['packages'])) {
+      $packages = $context['packages'];
+      hosting_package_sync($packages);
+      hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);
+    }
+
     $task->ref->site_status = HOSTING_SITE_ENABLED;
     $task->ref->no_verify = TRUE;
     $task->ref->verified = REQUEST_TIME;
