@@ -50,7 +50,7 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['file_public_path'] = $task->ref->file_public_path;
   $task->context_options['file_private_path'] = $task->ref->file_private_path;
   $task->context_options['file_temporary_path'] = $task->ref->file_temporary_path;
-
+  
 }
 
 /**
@@ -167,9 +167,11 @@ function hosting_site_post_hosting_install_task($task, $data) {
  * Implements the hosting_failed_install hook
  */
 function hosting_site_hosting_install_task_rollback($task, $data) {
+  // @TODO : we need to check the returned list of errors, not the code.
   if (drush_cmp_error('PROVISION_DRUPAL_SITE_INSTALLED')) {
-    // Site has already been installed. Throw a warning.
-    drush_log(dt("This site appears to be installed already."), 'warning');
+    // Site has already been installed. Try to import instead.
+    drush_log(dt("This site appears to be installed already. Generating an import task."));
+    hosting_add_task($task->rid, 'import');
   }
   else {
     $task->ref->no_verify = TRUE;

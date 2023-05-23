@@ -355,13 +355,11 @@ function hosting_site_hosting_tasks() {
     // 'command' => 'install',
   );
 
-  // "Import" in aegir means load the site onto your server manually then "import" a site node into the front end.
-  // This is confusing. Let's remove it and see if anyone complains.
-//  $tasks['site']['import'] = array(
-//    'title' => t('Import'),
-//    'description' => t('Import an existing site into Aegir'),
-//    'hidden' => TRUE,
-//  );
+  $tasks['site']['import'] = array(
+    'title' => t('Import'),
+    'description' => t('Import an existing site into Aegir'),
+    'hidden' => TRUE,
+  );
 
   $tasks['site']['deploy'] = array(
     'title' => t('Deploy'),
