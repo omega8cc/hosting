@@ -158,7 +158,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
           $site = new stdClass();
           $site->type = 'site';
           $site->site_status = HOSTING_SITE_QUEUED;
-          $site->import = TRUE;
+          $site->no_install = TRUE;
           $site->title = $url;
           $site->platform = $node->nid;
           $site->client = HOSTING_DEFAULT_CLIENT;

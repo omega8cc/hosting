@@ -46,7 +46,7 @@ function hosting_clone_post_hosting_clone_task($task, $data) {
     $clone->title = hosting_site_clean_domain($task->task_args['new_uri']);
     $clone->hosting_name = hosting_site_get_domain($clone->title);
     $clone->platform = $target;
-    $clone->import = 1; # make sure the site doesn't reinstall...
+    $clone->no_install = TRUE; # make sure the site doesn't reinstall...
     $clone->verified = 0; # ... and it does verify
     $clone->aliases = isset($task->task_args['aliases']) ? $task->task_args['aliases'] : array();
     $clone->redirection = isset($task->task_args['redirection']) ? $task->task_args['redirection'] : FALSE;
