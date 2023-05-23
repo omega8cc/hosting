@@ -244,19 +244,9 @@ function hook_hosting_TASK_OBJECT_context_options(&$task) {
  * @see drush_backend_output()
  */
 function hook_hosting_TASK_TYPE_task_rollback($task, $data) {
-  // From hosting_site_hosting_install_task_rollback().
-
-  // @TODO : we need to check the returned list of errors, not the code.
-  if (drush_cmp_error('PROVISION_DRUPAL_SITE_INSTALLED')) {
-    // Site has already been installed. Try to import instead.
-    drush_log(dt("This site appears to be installed already. Generating an import task."));
-    hosting_add_task($task->rid, 'import');
-  }
-  else {
     $task->ref->no_verify = TRUE;
-    $task->ref->site_status = HOSTING_SITE_DISABLED;
+    $task->ref->field_custom = "Site task was rolled back.";
     node_save($task->ref);
-  }
 }
 
 /**
