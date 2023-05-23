@@ -12,7 +12,6 @@ function hosting_task_views_default_views() {
 
   // Exported view: hosting_task_list
   $view = new view();
-  $view = new view();
   $view->name = 'hosting_task_list';
   $view->description = 'Display a list of tasks in Aegir.';
   $view->tag = 'hosting_task';
@@ -636,7 +635,7 @@ function hosting_task_views_default_views() {
 
   $views[$view->name] = $view;
 
-  // Exported view: hosting_task_list
+  // Exported view: hosting_task_history
   $view = new view();
   $view->name = 'hosting_task_history';
   $view->description = '';
