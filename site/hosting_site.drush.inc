@@ -50,7 +50,7 @@ function hosting_hosting_site_context_options(&$task) {
   $task->context_options['file_public_path'] = $task->ref->file_public_path;
   $task->context_options['file_private_path'] = $task->ref->file_private_path;
   $task->context_options['file_temporary_path'] = $task->ref->file_temporary_path;
-  
+
 }
 
 /**
