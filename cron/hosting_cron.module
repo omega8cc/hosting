@@ -12,7 +12,7 @@ define('ADV_CRON_DEFAULT', 3600);
 define('ADV_CRON_TURNED_OFF', 0);
 
 // Define the max number of sites to run cron in parallel.
-define('ADV_CRON_MAX_PLL', 0);
+define('ADV_CRON_MAX_PLL', 5);
 
 /**
  * Implements hook_hosting_queues().
