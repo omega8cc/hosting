@@ -308,7 +308,7 @@ function hosting_cron_get_sites($count) {
   $result = db_query('SELECT n.nid, hs.last_cron, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
   $counter = 0;
   foreach ($result as $site) {
-    if ($counter <= $count) {
+    if ($counter <= $count && $counter <= ADV_CRON_MAX_PLL) {
       //
       // Run cron if it has never ran before for this site,
       // but only if it has been enabled for this site.
