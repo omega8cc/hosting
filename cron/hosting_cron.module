@@ -11,6 +11,9 @@ define('ADV_CRON_DEFAULT', 3600);
 // Define the interval interpreted as cron turned off.
 define('ADV_CRON_TURNED_OFF', 0);
 
+// Define the max number of sites to run cron in parallel.
+define('ADV_CRON_MAX_PLL', 0);
+
 /**
  * Implements hook_hosting_queues().
  *
@@ -60,7 +63,7 @@ function hosting_cron_permission() {
  * This function is called by hosting_run_queue() whenever the "Advanced Cron"
  * queue is run.
  */
-function hosting_cron_queue($count) {
+function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
   // Get a list of sites for which to run cron.
   $sites = hosting_cron_get_sites($count);
   foreach ($sites as $site) {
@@ -133,19 +136,16 @@ function hosting_cron_node_load($nodes, $types) {
   foreach ($nodes as $nid => &$node) {
     if ($node->type == 'site') {
 
-      $this_cron_interval = "0";
-      $node->cron_interval = "0";
-
-      $result = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
-      if ($result) {
-        $this_cron_interval = array('cron_interval' => $result);
+      $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
+      if ($this_cron_interval) {
+        $this_cron_interval = array('cron_interval' => $this_cron_interval);
       }
 
-      if ($node->cron_interval > -1) {
+      if (isset($node->cron_interval) && $node->cron_interval > -1) {
         $cron_interval_ok = TRUE;
       }
       else {
-        if ($this_cron_interval > -1) {
+        if (isset($this_cron_interval) && $this_cron_interval > -1) {
           $node->cron_interval = $this_cron_interval;
         }
       }
@@ -304,10 +304,11 @@ function hosting_cron_node_insert($node) {
 /**
  * Retrieves a list of sites for which to run cron.
  */
-function hosting_cron_get_sites($limit = 5) {
+function hosting_cron_get_sites($count) {
   $result = db_query('SELECT n.nid, hs.last_cron, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
+  $counter = 0;
   foreach ($result as $site) {
-    if (count($sites) <= $limit) {
+    if ($counter <= $count) {
       //
       // Run cron if it has never ran before for this site,
       // but only if it has been enabled for this site.
@@ -328,6 +329,7 @@ function hosting_cron_get_sites($limit = 5) {
         $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $site->nid))->fetchField();
         if ($this_cron_interval != ADV_CRON_TURNED_OFF) {
           $sites[$site->nid] = node_load($site->nid);
+          $counter++;
         }
       }
       else {
@@ -345,6 +347,7 @@ function hosting_cron_get_sites($limit = 5) {
         if ($this_cron_interval != ADV_CRON_TURNED_OFF) {
           if ($site->last_cron + $this_cron_interval < time()) {
             $sites[$site->nid] = node_load($site->nid);
+            $counter++;
           }
         }
       }
