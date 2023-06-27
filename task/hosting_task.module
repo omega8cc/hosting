@@ -364,7 +364,8 @@ function hosting_task_menu_access($node, $task) {
       }
 
       $site_installing = hosting_task_outstanding($node->nid, 'install');
-      $site_installed = $node->verified && $node->site_status == HOSTING_SITE_ENABLED;
+      // Site can be verified but not enabled if something goes wrong.
+      $site_installed = $node->verified; // && $node->site_status == HOSTING_SITE_ENABLED;
       $site_enabled = (hosting_task_outstanding($node->nid, 'enable') || ($node->site_status == HOSTING_SITE_ENABLED));
 
       // If site is in the process of installing, don't allow any tasks.
@@ -378,7 +379,7 @@ function hosting_task_menu_access($node, $task) {
       }
 
       // If the site is not enabled, we can either delete it, or enable it again.
-      elseif (!$site_enabled) {
+      if (!$site_enabled) {
         return in_array($task, ['enable', 'delete', 'deploy']);
       }
 
