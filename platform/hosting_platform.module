@@ -445,18 +445,17 @@ function hosting_platform_form(&$node) {
   );
 
   // @TODO: Detect clone state instead of just saying "it worked!".
-  $git_root_description = $node->nid
+  $git_root_description = $node->git_root
     ? '<div class="alert alert-info"><i class="fa fa-info-circle"></i> ' . t('The repository was cloned to: &path', array('&path' => $node->git_root))
     : t('The full path on the server to clone the git repository to.') . "</div>"
   ;
 
   $form['git']['git_root'] = array(
-    '#type' => $node->nid? 'value': 'textfield',
+    '#type' => $node->git_root? 'value': 'textfield',
     '#title' => t('Path to Clone'),
     '#default_value' => $node->git_root,
     '#weight' => 10,
     '#description' => $git_root_description,
-    '#suffix' => $git_root_description,
   );
 
   $form['git']['git_reference'] = array(
