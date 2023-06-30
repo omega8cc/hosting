@@ -91,7 +91,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     }
 
     $context = $data['context'];
-    $packages = $context['packages'];
+    $packages = $context['packages'] ?? [];
 
     // Lock platforms by default.
     if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
