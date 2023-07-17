@@ -236,11 +236,10 @@ function hosting_server_services() {
 function hosting_services_new_object($name, $type, $node, $values = NULL) {
   $services = hosting_server_services();
 
-  $class = $services[$name]['types'][$type];
-  if (!$class) {
+  if (empty($services[$name]['types'][$type])) {
     return;
   }
-  return new $class($node, $values);
+  return new $services[$name]['types'][$type]($node, $values);
 }
 
 /**
