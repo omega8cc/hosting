@@ -193,6 +193,9 @@ function hosting_alias_form_data(&$form, &$form_state) {
     '#description' => t('Requests to all domains will be redirected to the redirection target.'),
     '#options' => $options,
     '#default_value' => $default,
+    '#parents' => array(
+      'redirection'
+    )
   );
   return $form;
 }
