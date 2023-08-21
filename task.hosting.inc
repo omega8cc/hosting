@@ -91,9 +91,12 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
   $running_tasks = hosting_task_processing($task->rid);
   $running_task = current($running_tasks);
   if (count($running_tasks) && !drush_get_option('force', FALSE)) {
-    return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Task postponed: Another task is still running. To force, call: !command', array(
+    return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Task is being held (!task_url). Waiting for prior task to complete (!url). To force, call: !command', array(
       '!command' => "drush @hostmaster hosting-task $task->nid --force",
       '!url' => url("node/$running_task", [
+        'absolute' => true,
+      ]),
+      '!task_url' => url("node/$task->nid", [
         'absolute' => true,
       ]),
     )));
