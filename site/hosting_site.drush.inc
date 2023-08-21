@@ -15,6 +15,8 @@ function hosting_hosting_site_context_options(&$task) {
 
   //  $task->context_options['platform'] = hosting_context_name($task->ref->platform);
 
+  $task->context_options['site_enabled'] = $task->ref->site_status == HOSTING_SITE_ENABLED || $task->ref->site_status == HOSTING_SITE_QUEUED;
+
   // Pass git options.
   $task->context_options['git_root'] = $task->ref->git_root;
   $task->context_options['git_remote'] = $task->ref->git_remote;
@@ -180,6 +182,9 @@ function hosting_site_hosting_install_task_rollback($task, $data) {
     $task->ref->no_verify = TRUE;
     $task->ref->site_status = HOSTING_SITE_DISABLED;
     node_save($task->ref);
+
+    // Save alias again so it has site_status
+    drush_provision_save();
   }
 }
 
