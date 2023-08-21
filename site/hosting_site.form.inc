@@ -343,30 +343,22 @@ function hosting_site_form($node, &$form_state) {
     '#description' => t('If checked, any changes to the cloned git code will be reset and lost during deployment or verify tasks'),
     '#default_value' => $node->git_reset,
   );
-
   $form['hosting_settings']['deployment'] = array(
     '#title' => t('Deployment'),
     '#type' => 'fieldset',
     '#group' => 'site_settings',
   );
-  $form['hosting_settings']['deployment']['methods'] = array(
-  );
   $form['hosting_settings']['deployment']['continuous'] = [
     '#type' => 'checkbox',
     '#title' => t('Continous Deployment'),
     '#description' => t('When new code is available, deploy it as soon as possible. If not selected, you must deploy new code manually.'),
-    '#default_value' => $node->hosting_settings['deployment']['continuous']
+    '#default_value' => $node->hosting_settings['deployment']['continuous'],
   ];
   $form['hosting_settings']['deployment']['manual_overrides'] = [
     '#type' => 'checkbox',
     '#title' => t('Allow overriding Deploy Steps'),
     '#description' => t('When starting a deployment manually, allow users to select the steps to run.'),
     '#default_value' => $node->hosting_settings['deployment']['manual_overrides'],
-    '#states' => [
-      'visible' => [
-        ':input[name="hosting_settings[deployment][methods][manual]"]' => ['checked'   => TRUE],
-      ]
-    ]
   ];
 
   $form['hosting_settings']['deployment']['steps'] = hosting_site_deploy_steps_form_element($node);
