@@ -250,6 +250,10 @@ function hosting_site_post_hosting_delete_task($task, $data) {
 
     // Clean up package instances
     hosting_package_instance_sync($task->ref->nid, 'site');
+
+    $task->ref = node_load($task->ref->platform);
+    hosting_platform_post_hosting_delete_task($task, $data);
+
   }
 }
 
