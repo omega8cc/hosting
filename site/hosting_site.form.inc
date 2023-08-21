@@ -324,7 +324,7 @@ function hosting_site_form($node, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Git Reference'),
     '#description' => $node->nid
-      ? t('Enter a git reference to checkout. If left blank, no changes will be made.')
+      ? t('Enter a git reference to checkout.')
       : t('The desired git reference. Can be a branch, tag or SHA. If left blank, the default branch will be checked out.'),
     '#default_value' => $node->git_reference,
   );
