@@ -223,7 +223,8 @@ function drush_hosting_task()
     }
   }
 
-  if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
+  if (empty($task->ref->hosting_name)
+    || ($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
     || ($task->ref->type == 'platform' && $task->ref->platform_status == HOSTING_PLATFORM_DELETED)) {
 
     // We're performing a task on a site that has been deleted...
