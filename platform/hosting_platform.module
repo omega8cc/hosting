@@ -46,20 +46,6 @@ function hosting_platform_menu() {
     'access arguments' => array('create', 'platform'),
   );
 
-  $items['node/%node/platform-edit'] = array(
-    'title' => 'Codebase Settings',
-    'page callback' => 'hosting_platform_edit_form_on_site_page',
-    'page arguments' => array(1),
-    'access callback' => 'hosting_platform_edit_form_on_site_page_access',
-    'access arguments' => array('update', 1),
-    'weight' => 0,
-    'type' => MENU_LOCAL_TASK,
-    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-    'file' => 'node.pages.inc',
-    'file path' => drupal_get_path('module', 'node'),
-    'weight' => -98,
-  );
-
   return $items;
 }
 
