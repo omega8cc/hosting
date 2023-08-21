@@ -311,6 +311,39 @@ function hosting_site_form($node, &$form_state) {
     '#type' => 'vertical_tabs',
   );
 
+  // Settings
+  $form['hosting_settings']['code'] = array(
+    '#title' => t('Codebase'),
+    '#type' => 'fieldset',
+    '#group' => 'site_settings',
+    '#weight' => -100,
+    '#tree' => false,
+  );
+
+  $form['hosting_settings']['code']['git_reference'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Git Reference'),
+    '#description' => $node->nid
+      ? t('Enter a git reference to checkout. If left blank, no changes will be made.')
+      : t('The desired git reference. Can be a branch, tag or SHA. If left blank, the default branch will be checked out.'),
+    '#default_value' => $node->git_reference,
+  );
+
+  $form['hosting_settings']['code']['git_remote'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Git Repository URL'),
+    '#description' => t('The URL or path of the git repository to clone for this site.'),
+    '#default_value' => $node->git_remote,
+    '#required' => TRUE,
+  );
+
+  $form['hosting_settings']['code']['git_reset'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Reset working copy changes.'),
+    '#description' => t('If checked, any changes to the cloned git code will be reset and lost during deployment or verify tasks'),
+    '#default_value' => $node->git_reset,
+  );
+
   $form['hosting_settings']['deployment'] = array(
     '#title' => t('Deployment'),
     '#type' => 'fieldset',

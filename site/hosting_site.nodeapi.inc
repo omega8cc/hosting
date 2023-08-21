@@ -453,6 +453,12 @@ function hosting_site_update(&$node) {
     if ($node->site_status == HOSTING_SITE_DELETED) {
       $node->no_verify = TRUE;
     }
+
+    // Set platform node settings
+    $node->platform_node->git_reference = $node->git_reference;
+    $node->platform_node->git_remote = $node->git_remote;
+    $node->platform_node->git_reset = $node->git_reset;
+
     db_update('hosting_site')
       ->fields(array(
         'client' => $node->client,
