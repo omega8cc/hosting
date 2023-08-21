@@ -320,7 +320,9 @@ function drush_hosting_post_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');
 
   $hook = sprintf("post_hosting_%s_task", str_replace('-', '_', $task->task_type));
-  drush_log(dt('Invoking :hook hooks.', array(':hook' => $hook)));
-  module_invoke_all($hook, $task, drush_get_context('HOSTING_DRUSH_OUTPUT'));
+  foreach (module_implements($hook) as $module) {
+    drush_log(dt('Invoking :module_:hook hook...', array(':hook' => $hook, ':module' => $module)));
+    module_invoke($module, $hook, $task, drush_get_context('HOSTING_DRUSH_OUTPUT'));
+  }
 }
 
