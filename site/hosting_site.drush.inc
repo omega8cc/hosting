@@ -324,7 +324,7 @@ function hosting_site_post_hosting_verify_task($task, $data) {
     }
     node_save($task->ref);
     $context = $data['context'];
-    $packages = $context['packages'];
+    $packages = $context['packages'] ?? [];
 
     hosting_package_sync($packages);
     hosting_package_instance_sync($task->ref->nid, $task->ref->type, $packages);

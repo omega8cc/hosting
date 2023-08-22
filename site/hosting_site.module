@@ -367,6 +367,7 @@ function hosting_site_hosting_tasks() {
     'dialog' => TRUE,
     'icon' => 'truck',
     'provision_save' => TRUE,
+    'command' => 'provision-deploy-code',
   );
 
   $tasks['site']['test'] = array(
