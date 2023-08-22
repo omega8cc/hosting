@@ -88,12 +88,27 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
 
   // If task is already running for this RID, and --force option was not set, bail out.
   // This isn't really an error, but I don't see any way to abando
-  $running_tasks = hosting_task_processing($task->rid);
-  $running_task = current($running_tasks);
-  if (count($running_tasks) && !drush_get_option('force', FALSE)) {
-    return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Task is being held (!task_url). Waiting for prior task to complete (!url). To force, call: !command', array(
+  $context_tasks = hosting_task_processing($task->rid);
+
+  $max_tasks = variable_get('hosting_queue_tasks_items', 5);
+  $running_tasks = hosting_task_count_running();
+
+  if ($running_tasks > $max_tasks) {
+    return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Waiting to run task !task_url :   Maximum tasks limit (!limit) reached. Configure task limit at !link', array(
+      '!limit' => $max_tasks,
+      '!link' => url("admin/hosting/queues", [
+        'absolute' => true,
+      ]),
+      '!task_url' => url("node/$task->nid", [
+        'absolute' => true,
+      ]),
+    )));
+  }
+
+  if (count($context_tasks) && !drush_get_option('force', FALSE)) {
+    return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Waiting on other tasks. See !url  To force, call: !command', array(
       '!command' => "drush @hostmaster hosting-task $task->nid --force",
-      '!url' => url("node/$running_task", [
+      '!url' => url("node/$task->rid", [
         'absolute' => true,
       ]),
       '!task_url' => url("node/$task->nid", [
