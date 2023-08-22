@@ -251,16 +251,13 @@ function drush_hosting_task()
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
   drush_set_context('HOSTING_DRUSH_OUTPUT', $output);
 
-  // On successful delete, remove the named context.
-  if ($task->task_type == 'delete' && !drush_get_error()) {
-
-    // Use the task_arg if there is one, hosting_name as a backup. $node->ref->hosting_name may be missing.
-    // Run the "provision-save --delete" command on $context_to_delete.
-    if (!empty($task->task_args['hosting_context'])) {
-      drush_log(dt("Deleting back-end context file for !context.", array(
-        '!context' => $task->task_args['hosting_context'],
-      )), 'notice');
-    }
+  // When provision-delete finishes, delete the codebase.
+  // @TODO: Running _provision_recursive_delete in drush_provision_drupal_provision_delete fails
+  // because it tries to load the composer codebase again here. No idea why. Couldn't get it to unbootstrap the code.
+  if ($task->ref->type == 'site' && $task->task_type == 'delete' && !drush_get_error()) {
+    // Actually delete files.
+    _provision_recursive_delete($task->ref->git_root ?? $task->ref->publish_path);
+    d($alias)->service('http')->sync($task->ref->git_root);
   }
 }
 
