@@ -339,7 +339,10 @@ function hosting_site_post_hosting_verify_task($task, $data) {
 function hosting_site_hosting_verify_task_rollback($task, $data) {
   if ($task->ref->type == 'site') {
     $task->ref->no_verify = TRUE;
-    $task->ref->verified = 0;
+
+    // This makes it look like the site was never verified, causing side effects in the UI.
+    // $task->ref->verified = 0;
+
     node_save($task->ref);
   }
 }
