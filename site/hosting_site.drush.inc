@@ -183,8 +183,6 @@ function hosting_site_hosting_install_task_rollback($task, $data) {
     $task->ref->site_status = HOSTING_SITE_DISABLED;
     node_save($task->ref);
 
-    // Save alias again so it has site_status
-    drush_provision_save();
   }
 }
 
