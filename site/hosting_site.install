@@ -15,10 +15,8 @@ function hosting_site_install() {
       'allow_reinstall' => 0,
     ),
     'deployment' => array(
-      'methods' => array(
-        'continuous' => 1,
-        'manual_overrides' => 0,
-      ),
+      'continuous' => 1,
+      'manual_overrides' => 0,
       'steps' => array(
         'build' => 1,
         'update' => 1,
@@ -617,10 +615,8 @@ function hosting_site_update_7402() {
       'allow_reinstall' => 0,
     ),
     'deployment' => array(
-      'methods' => array(
-        'continuous' => 1,
-        'manual_overrides' => 0,
-      ),
+      'continuous' => 1,
+      'manual_overrides' => 0,
       'steps' => array(
         'build' => 1,
         'update' => 1,
