@@ -694,6 +694,9 @@ function hosting_site_install_methods_form_element($node = null) {
         ":input[name='{$parent}[install][method]']" => array('value' => 'clone'),
       ),
     ),
+    '#element_validate' => array(
+      'hosting_site_form_validate_other_drush_alias'
+    ),
   );
 
   $element['import'] = array(
@@ -774,5 +777,14 @@ function hosting_task_install_save_settings($element, &$form_state) {
     $site_node->hosting_settings['install'] = $form_state['values']['hosting_settings']['install'];
     $site_node->no_verify = TRUE;
     node_save($site_node);
+  }
+}
+
+/**
+ * Element validate hook for "Other Drush Alias"
+ */
+function hosting_site_form_validate_other_drush_alias($element, &$form_state) {
+  if ($form_state['values']['hosting_settings']['install']['clone_source'] == '_other'&& empty($element['#value'])) {
+    form_set_error('hosting_settings][install][clone_source_drush', t('If "Other Drush Alias" is selected, you must enter a Drush Alias.'));
   }
 }
