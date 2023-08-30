@@ -65,8 +65,11 @@ function hosting_git_queue() {
 
     if ($site_node->git_ref_type == 'branch' && ($site_node->hosting_settings['deployment']['continuous'] ?? false)) {
       drush_log(dt('Checking site @name at @git_root...', $t), 'notice');
-      $command = "cd {$site_node->git_root} && $bin_path/git-behind && drush @hostmaster hosting-task @{$name} deploy &";
-      drush_shell_proc_open($command);
+      $command = "cd {$site_node->git_root} && $bin_path/git-behind";
+      $exit = drush_shell_proc_open($command);
+      if ($exit === 0) {
+        hosting_add_task($site_node->nid, 'deploy');
+      }
     }
     else {
       drush_log(dt('Skipping deployment for site @name at @git_root because @reason', $t), 'notice');
