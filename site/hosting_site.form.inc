@@ -784,7 +784,7 @@ function hosting_task_install_save_settings($element, &$form_state) {
  * Element validate hook for "Other Drush Alias"
  */
 function hosting_site_form_validate_other_drush_alias($element, &$form_state) {
-  if ($form_state['values']['hosting_settings']['install']['clone_source'] == '_other'&& empty($element['#value'])) {
+  if ($form_state['values']['hosting_settings']['install']['method'] == 'clone' && $form_state['values']['hosting_settings']['install']['clone_source'] == '_other'&& empty($element['#value'])) {
     form_set_error('hosting_settings][install][clone_source_drush', t('If "Other Drush Alias" is selected, you must enter a Drush Alias.'));
   }
 }
