@@ -24,7 +24,7 @@ function hosting_site_hosting_queues() {
  */
 function hosting_git_queue() {
 
-  // Load all sites with a git_remote.
+  // Load all sites with a git_remote and without an existing deploy task running or queued.
   $query = db_select('hosting_site', 's');
   $query->join('hosting_context', 'c', 'c.nid = s.nid');
   $query->join('hosting_platform', 'p', 'p.nid = s.platform');
@@ -42,11 +42,16 @@ function hosting_git_queue() {
   $hostmaster_path = d('@hostmaster')->root;
   $bin_path = realpath(dirname($hostmaster_path) . '/bin');
   foreach ($result as $name => $site) {
-    $site_node = node_load($site->nid);
     $t = [
       '@name' => $site->name,
       '@git_root' => $site->git_root,
     ];
+    $tasks = hosting_task_outstanding($site->nid, 'deploy');
+    if (!empty($tasks)) {
+      drush_log(dt('Site @name has outstanding deploy tasks. Skipping.', $t), 'notice');
+      continue;
+    }
+    $site_node = node_load($site->nid);
 
     if ($site_node->git_ref_type != 'branch') {
       $t['@reason'] = t('Not on a branch');
