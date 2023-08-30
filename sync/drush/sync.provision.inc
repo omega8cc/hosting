@@ -102,7 +102,7 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
 
   // Fetch the source site, to have the latest files on the master server.
 //  provision_drupal_fetch_site($source);
-  $cwd = d()->root;
+  $cwd = \Webmozart\PathUtil\Path::getHomeDirectory();
 
   if (drush_get_option('database')) {
     // Drop the database
