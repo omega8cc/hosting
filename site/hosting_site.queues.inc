@@ -60,19 +60,24 @@ function hosting_git_queue() {
       $t['@reason'] = t('Continuous deployment is disabled.');
     }
     else {
-      $t['@reason'] = '';
+      $t['@reason'] = $site_node->hosting_settings['deployment']['continuous'] ? 'is continuous': 'not continuous';
     }
 
     if ($site_node->git_ref_type == 'branch' && ($site_node->hosting_settings['deployment']['continuous'] ?? false)) {
       drush_log(dt('Checking site @name at @git_root...', $t), 'notice');
-      $command = "cd {$site_node->git_root} && $bin_path/git-behind";
+      $command = "$bin_path/git-behind";
+      chdir($site_node->git_root);
       $exit = drush_shell_proc_open($command);
       if ($exit === 0) {
         hosting_add_task($site_node->nid, 'deploy');
       }
+      else {
+        $t['@reason'] = t('git checkout is not behind: @command', array('@command' => $command));
+        drush_log(dt('Skipping deploy task creation for site @name at @git_root because @reason', $t), 'notice');
+      }
     }
     else {
-      drush_log(dt('Skipping deployment for site @name at @git_root because @reason', $t), 'notice');
+      drush_log(dt('Skipping git behind check for site @name at @git_root because @reason', $t), 'notice');
     }
   }
 }
