@@ -93,7 +93,7 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
   $max_tasks = variable_get('hosting_queue_tasks_items', 3);
   $running_tasks = hosting_task_count_running();
 
-  if ($running_tasks >= $max_tasks) {
+  if (!drush_get_option('force', false) && $running_tasks >= $max_tasks) {
     return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Waiting to run task !task_url :   Maximum tasks limit (!limit) reached. Configure task limit at !link', array(
       '!limit' => $max_tasks,
       '!link' => url("admin/hosting/queues", [
