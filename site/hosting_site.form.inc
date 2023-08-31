@@ -143,7 +143,7 @@ function hosting_site_form($node, &$form_state) {
     '#group' => 'site_settings',
     '#weight' => -100,
   );
-
+dsm($node->hosting_settings);
   $form['hosting_settings']['general']['protected'] = array(
     '#title' => t('Protect Site'),
     '#description' => t('Prevent users from disabling, deleting or syncing to this site.'),
@@ -161,10 +161,7 @@ function hosting_site_form($node, &$form_state) {
     '#states' => [
       'visible' => [
         ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
-      ],
-      'unchecked' => [
-        ':input[name="hosting_settings[general][protected]"]' => ['checked' => FALSE],
-      ],
+      ]
     ],
   );
 
