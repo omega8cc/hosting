@@ -102,8 +102,6 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
 
   // Fetch the source site, to have the latest files on the master server.
 //  provision_drupal_fetch_site($source);
-  $cwd = \Webmozart\PathUtil\Path::getHomeDirectory();
-
   if (drush_get_option('database')) {
     // Drop the database
     drush_log(dt('Dropping tables for destination database (@destination)', array('@destination' => $destination)), 'ok');
@@ -113,6 +111,7 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
     $command = "drush sql-sync $options $source $destination";
 
     $environment = [];
+    $cwd = d()->root;
     provision_process($command, $cwd, dt('Syncing database... running from ' . $cwd), $environment, TRUE);
   }
   else {
