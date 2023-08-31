@@ -113,6 +113,8 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
 
     $environment = [];
     provision_process($command, $cwd, dt('Syncing database... running from ' . $cwd), $environment, TRUE);
+    provision_process("drush @destination updb", $cwd, dt('Updating database...'), $environment, TRUE);
+
   }
   else {
     drush_log(dt('Skipped syncing databases...'), 'ok');
