@@ -90,10 +90,10 @@ function drush_hosting_task_validate($id = NULL, $type = NULL) {
   // This isn't really an error, but I don't see any way to abando
   $context_tasks = hosting_task_processing($task->rid);
 
-  $max_tasks = variable_get('hosting_queue_tasks_items', 5);
+  $max_tasks = variable_get('hosting_queue_tasks_items', 3);
   $running_tasks = hosting_task_count_running();
 
-  if ($running_tasks > $max_tasks) {
+  if ($running_tasks >= $max_tasks) {
     return drush_set_error(DRUSH_APPLICATION_ERROR, dt('Waiting to run task !task_url :   Maximum tasks limit (!limit) reached. Configure task limit at !link', array(
       '!limit' => $max_tasks,
       '!link' => url("admin/hosting/queues", [
