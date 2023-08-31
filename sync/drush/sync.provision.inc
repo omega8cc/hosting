@@ -102,6 +102,7 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
 
   // Fetch the source site, to have the latest files on the master server.
 //  provision_drupal_fetch_site($source);
+  $cwd = d()->root;
   if (drush_get_option('database')) {
     // Drop the database
     drush_log(dt('Dropping tables for destination database (@destination)', array('@destination' => $destination)), 'ok');
@@ -111,7 +112,6 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
     $command = "drush sql-sync $options $source $destination";
 
     $environment = [];
-    $cwd = d()->root;
     provision_process($command, $cwd, dt('Syncing database... running from ' . $cwd), $environment, TRUE);
   }
   else {
@@ -143,7 +143,7 @@ function drush_provision_sync($source = NULL, $destination = NULL) {
       $options = array_merge($default_options, $global_extra_options);
 
       $command = "drush rsync $source:%files $destination:%files";
-      provision_process($command, d()->root, dt('Syncing files...'), $environment, TRUE);
+      provision_process($command, $cwd, dt('Syncing files...'), $environment, TRUE);
     }
   }
   else {
