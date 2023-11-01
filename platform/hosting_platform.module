@@ -631,6 +631,20 @@ function hosting_platform_form_publish_path_validate($element, &$form_state, &$f
   // If platform path doesn't already begin with the basepath and does not begin with a "/", append default base path.
   if (strpos($element['#value'], $platform_base_path) !== 0 && strpos($element['#value'], '/') !== 0) {
     $full_path = hosting_path_normalize($platform_base_path . '/' . $element['#value']);
+
+    if (is_readable($full_path . '/docroot/index.php')) {
+      $full_path = $full_path  . '/docroot';
+    }
+    elseif (is_readable($full_path . '/web/index.php')) {
+      $full_path = $full_path  . '/web';
+    }
+    elseif (is_readable($full_path . '/html/index.php')) {
+      $full_path = $full_path  . '/html';
+    }
+    elseif (is_readable($full_path . '/www/index.php')) {
+      $full_path = $full_path  . '/www';
+    }
+
     form_set_value($element, $full_path, $form_state);
   }
 }
