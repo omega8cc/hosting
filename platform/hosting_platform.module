@@ -252,6 +252,24 @@ function hosting_platform_delete_action($node) {
 }
 
 /**
+ * Callback for platform lock action.
+ *
+ * @see: hosting_task_action_info().
+ */
+function hosting_platform_dlock_action($node) {
+  hosting_add_task($node->nid, 'dlock');
+}
+
+/**
+ * Callback for platform unlock action.
+ *
+ * @see: hosting_task_action_info().
+ */
+function hosting_platform_dunlock_action($node) {
+  hosting_add_task($node->nid, 'dunlock');
+}
+
+/**
  * Helper function to get platforms that haven't been deleted.
  *
  * @param int $web_server
