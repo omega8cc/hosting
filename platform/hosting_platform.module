@@ -611,7 +611,7 @@ function hosting_platform_delete($node) {
  */
 function hosting_platform_form_publish_path_validate($element, &$form_state, &$form) {
   $platform_base_path = variable_get('hosting_platform_base_path', '/var/aegir/platforms/');
-  
+
   // If platform path doesn't already begin with the basepath and does not begin with a "/", append default base path.
   if (strpos($element['#value'], $platform_base_path) !== 0 && strpos($element['#value'], '/') !== 0) {
     $full_path = hosting_path_normalize($platform_base_path . '/' . $element['#value']);
