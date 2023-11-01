@@ -663,14 +663,14 @@ function hosting_platform_validate($node, &$form) {
                AND h.status >= :status";
     $args = array(
       ':title' => $node->title,
-      ':status' => HOSTING_PLATFORM_QUEUED,
+      ':status' => HOSTING_PLATFORM_ENABLED,
     );
     if (!is_null($node->nid)) {
       $sql .= " AND n.nid <> :nid";
       $args[':nid'] = $node->nid;
     }
     $result = db_query($sql, $args)->fetch();
-    if ($result) {
+    if (!empty($result)) {
       form_set_error('title',
         t('Platform name %name is already defined. Platform names must be unique across all servers.',
         array('%name' => $result->name))
@@ -678,11 +678,11 @@ function hosting_platform_validate($node, &$form) {
     }
 
     // Make sure the path is unique. Remote servers can't have the same path to a platform that is in use by another server.
-    $exists = hosting_platform_path_exists($node->publish_path);
-    if ($exists) {
+    $exists = hosting_platform_path_exists($result->publish_path);
+    if (!empty($exists)) {
       form_set_error('publish_path',
-        t('Path is already in use by platform %name. Platform Paths must be unique across all servers.',
-        array('%name' => $result->name))
+        t('Path is already in use by platform %publish_path. Platform Paths must be unique across all servers.',
+        array('%publish_path' => $result->publish_path))
       );
     }
 
