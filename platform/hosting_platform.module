@@ -107,7 +107,7 @@ function hosting_platform_edit_form_on_site_page_access($op, $site) {
 function hosting_platform_hosting_tasks() {
   $tasks = array();
   $tasks['platform']['verify'] = array(
-    'title' => t('Verify Platform'),
+    'title' => t('Verify + Lock Drush'),
     'description' => t('Verify that the platform is correctly installed and working.'),
     'weight' => 10,
     'provision_save' => TRUE,
@@ -136,11 +136,13 @@ function hosting_platform_hosting_tasks() {
         Are you really sure you want to unlock this platform?'),
     'weight' => 10,
   );
+/*
   $tasks['platform']['dlock'] = array(
     'title' => t('Lock Local Drush'),
     'description' => t('Lock this platform Local Drush.'),
     'weight' => 10,
   );
+ */
   $tasks['platform']['dunlock'] = array(
     'title' => t('Unlock Local Drush'),
     'description' => t('Unlock this platform Local Drush.'),
