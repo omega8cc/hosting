@@ -214,6 +214,12 @@ function hosting_platform_node_access($node, $op, $account) {
 
     case 'view':
       return user_access('view platform', $account);
+
+    case 'dlock':
+      return user_access('edit platform', $account);
+
+    case 'dunlock':
+      return user_access('edit platform', $account);
   }
 }
 
