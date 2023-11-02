@@ -136,13 +136,11 @@ function hosting_platform_hosting_tasks() {
         Are you really sure you want to unlock this platform?'),
     'weight' => 10,
   );
-/*
-  $tasks['platform']['dlock'] = array(
-    'title' => t('Lock Local Drush'),
-    'description' => t('Lock this platform Local Drush.'),
-    'weight' => 10,
-  );
- */
+//   $tasks['platform']['dlock'] = array(
+//     'title' => t('Lock Local Drush'),
+//     'description' => t('Lock this platform Local Drush.'),
+//     'weight' => 10,
+//   );
   $tasks['platform']['dunlock'] = array(
     'title' => t('Unlock Local Drush'),
     'description' => t('Unlock this platform Local Drush.'),
