@@ -26,6 +26,8 @@ function hosting_task_hosting_feature() {
         'view own tasks',
         'retry failed tasks',
         'view task',
+        'drush lock',
+        'drush unlock',
       ),
       'aegir client' => array(
         'create backup task',
