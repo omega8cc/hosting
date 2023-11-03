@@ -177,11 +177,11 @@ function hosting_platform_permission() {
     'create sites on locked platforms' => array(
       'title' => t('create sites on locked platforms'),
     ),
-    'drush lock' => array(
-      'title' => t('drush lock'),
+    'create dlock task' => array(
+      'title' => t('create dlock task'),
     ),
-    'drush unlock' => array(
-      'title' => t('drush unlock'),
+    'create dunlock task' => array(
+      'title' => t('create dunlock task'),
     ),
   );
 }
@@ -214,10 +214,10 @@ function hosting_platform_node_access($node, $op, $account) {
       return user_access('view platform', $account);
 
     case 'dlock':
-      return user_access('drush lock', $account);
+      return user_access('create dlock task', $account);
 
     case 'dunlock':
-      return user_access('drush unlock', $account);
+      return user_access('create dunlock task', $account);
   }
 }
 
