@@ -122,7 +122,7 @@ function hosting_platform_hosting_tasks() {
     'dialog' => TRUE,
   );
   $tasks['platform']['lock'] = array(
-    'title' => t('Lock'),
+    'title' => t('Lock Platform'),
     'description' => t('Locking this platform will not delete or disable it or its sites, but will
         prevent any new sites from being created on it. This may be useful when you have sites that
         cannot be migrated onto a newer platform, but you wish to prevent other users or clients
@@ -131,7 +131,7 @@ function hosting_platform_hosting_tasks() {
     'weight' => 10,
   );
   $tasks['platform']['unlock'] = array(
-    'title' => t('Unlock'),
+    'title' => t('Unlock Platform'),
     'description' => t('Unlocking this platform will allow sites to be provisioned on it.
         Are you really sure you want to unlock this platform?'),
     'weight' => 10,
