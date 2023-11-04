@@ -122,7 +122,7 @@ function hosting_platform_hosting_tasks() {
     'dialog' => TRUE,
   );
   $tasks['platform']['lock'] = array(
-    'title' => t('Lock'),
+    'title' => t('Lock Platform'),
     'description' => t('Locking this platform will not delete or disable it or its sites, but will
         prevent any new sites from being created on it. This may be useful when you have sites that
         cannot be migrated onto a newer platform, but you wish to prevent other users or clients
@@ -131,7 +131,7 @@ function hosting_platform_hosting_tasks() {
     'weight' => 10,
   );
   $tasks['platform']['unlock'] = array(
-    'title' => t('Unlock'),
+    'title' => t('Unlock Platform'),
     'description' => t('Unlocking this platform will allow sites to be provisioned on it.
         Are you really sure you want to unlock this platform?'),
     'weight' => 10,
@@ -362,14 +362,14 @@ function _hosting_get_locked_platforms() {
                       FROM {node} n
                       LEFT JOIN {hosting_platform} h
                       ON n.nid = h.nid
-                      WHERE n.type = :n.type
-                      AND n.status = :n.status
-                      AND h.status = :h.status
+                      WHERE n.type = :type
+                      AND n.status = :nstatus
+                      AND h.status = :hstatus
                       ORDER BY n.title
                      ", array(
                        ':type' => 'platform',
-                       ':n.status' => NODE_PUBLISHED,
-                       ':h.status' => HOSTING_PLATFORM_LOCKED,
+                       ':nstatus' => NODE_PUBLISHED,
+                       ':hstatus' => HOSTING_PLATFORM_LOCKED,
                      )
                    );
   while ($platform = $result->fetch()) {
