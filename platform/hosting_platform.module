@@ -687,7 +687,7 @@ function hosting_platform_validate($node, &$form) {
                AND h.status >= :status";
     $args = array(
       ':title' => $node->title,
-      ':status' => HOSTING_PLATFORM_ENABLED,
+      ':status' => HOSTING_PLATFORM_QUEUED,
     );
     if (!is_null($node->nid)) {
       $sql .= " AND n.nid <> :nid";
@@ -728,7 +728,7 @@ function hosting_platform_path_exists($path) {
       AND h.status >= :status",
     array(
       ':publish_path' => hosting_path_normalize($path),
-      ':status' => HOSTING_PLATFORM_ENABLED,
+      ':status' => HOSTING_PLATFORM_QUEUED,
     )
   )->fetch();
   return $result;
