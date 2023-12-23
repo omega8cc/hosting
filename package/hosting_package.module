@@ -174,7 +174,9 @@ function hosting_get_profile_languages($profile = NULL, $platform = NULL) {
       'i.rid' => $platform,
       'i.package_id' => $profile,
     ));
-    $languages = array_merge($languages, $instance->languages);
+    if ($instance->languages) {
+      $languages = array_merge($languages, $instance->languages);
+    }
   }
   else {
     $result = db_query("SELECT DISTINCT language FROM {hosting_package_languages}");
