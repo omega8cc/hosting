@@ -131,7 +131,7 @@ function drush_hosting_queued() {
 
 
     // Get some tasks to run.
-    if ($tasks = @hosting_get_new_tasks()) {
+    if ($tasks = @hosting_get_new_tasks(1)) {
 
       drush_log(dt("Found %count tasks in queue. Running...", array(
         '%count' => count($tasks),
