@@ -11,7 +11,7 @@
 function _hosting_task_log($entry) {
   $task = drush_get_context('HOSTING_TASK');
   if ($task->vid) {
-    hosting_task_log($task->vid, $entry['type'], $entry['message'], $entry['error'], $entry['timestamp']);
+    hosting_task_log($task->vid, $entry['type'], $entry['message'], isset($entry['error']) ? $entry['error'] : '', $entry['timestamp']);
   }
   else {
     _hosting_task_log_print($entry);
