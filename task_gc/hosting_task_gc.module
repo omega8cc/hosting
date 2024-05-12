@@ -34,8 +34,15 @@ function hosting_task_gc_hosting_queues() {
  */
 function hosting_task_gc_queue() {
   global $user;
+
+  // Prevent session information from being saved while queue is running.
+  $original_session_saving = drupal_save_session();
+  drupal_save_session(FALSE);
+
+  // Switch to the super user.
   $old_user = $user;
   $user = user_load(1);
+
   $result = hosting_task_gc_list_sites();
   while ($site = $result->fetchObject()) {
     $query = "SELECT nid FROM {hosting_task} WHERE rid = :nid";
@@ -45,7 +52,10 @@ function hosting_task_gc_queue() {
       watchdog('hosting_task_gc', 'Deleted task node with nid @nid.', array('@nid' => $row->nid));
     }
   }
+
+  // Restore the user.
   $user = $old_user;
+  drupal_save_session($original_session_saving);
 
   // Look for orphaned task log entries.
   $query = "SELECT DISTINCT h.vid
@@ -81,8 +91,27 @@ function hosting_task_gc_list_sites() {
  *   The number of sites.
  */
 function hosting_task_gc_count_sites() {
-  $query = "SELECT COUNT(DISTINCT s.nid) AS num_sites "
-          . "FROM {hosting_site} s INNER JOIN {hosting_task} t ON s.nid = t.rid "
-          . "WHERE s.status = :status";
-  return db_query($query, array(':status' => HOSTING_SITE_DELETED))->fetchField();
+  // This query can be super expensive to run, so only run it once every hour.
+  if ($cache = cache_get(__FUNCTION__)) {
+    return $cache->data;
+  }
+  else {
+    $query = "SELECT COUNT(DISTINCT s.nid) AS num_sites "
+      . "FROM {hosting_site} s INNER JOIN {hosting_task} t ON s.nid = t.rid "
+      . "WHERE s.status = :status";
+    $result = db_query($query, array(':status' => HOSTING_SITE_DELETED))->fetchField();
+    cache_set(__FUNCTION__, $result, 'cache', REQUEST_TIME + 3600);
+    return $result;
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function hosting_task_gc_node_update($node) {
+  if ($node->type == "site") {
+    if (isset($node->site_status) && $node->site_status == HOSTING_SITE_DELETED) {
+      cache_clear_all('hosting_task_gc_count_sites', 'cache');
+    }
+  }
 }
