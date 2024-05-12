@@ -30,7 +30,9 @@ function hosting_package_instance_sync($rid, $type) {
     ->execute();
 
   $map = _hosting_package_plural_map();
+  // phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection
   $args = func_get_args();
+
   $rid = array_shift($args);
   // We need to pass in $type, since there's a possibility of collision b/w a
   // profile's iid, and the nid of a site or platform.

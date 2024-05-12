@@ -154,10 +154,9 @@ function hosting_site_hosting_install_task_rollback($task, $data) {
 
 /**
  * Implements hook_hosting_post_disable().
- * I am not very fond of the use of bitwise operators with negatives.
  */
 function hosting_site_post_hosting_disable_task($task, $data) {
-  if ($data['context']['backup_file'] && $data->ref->type == 'site') {
+  if (!empty($data['context']['backup_file']) && $data->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being disabled'), $data['context']['backup_file_size']);
   }
@@ -172,10 +171,9 @@ function hosting_site_post_hosting_disable_task($task, $data) {
 
 /**
  * Implements hook_hosting_post_restore().
- * I am not very fond of the use of bitwise operators with negatives.
  */
 function hosting_site_post_hosting_restore_task($task, $data) {
-  if ($data['context']['backup_file'] && $task->ref->type == 'site') {
+  if (!empty($data['context']['backup_file']) && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being restored to a previous version'), $data['context']['backup_file_size']);
   }
@@ -216,7 +214,7 @@ function hosting_site_post_hosting_delete_task($task, $data) {
  * This is needed to be able to restore.
  */
 function hosting_site_post_hosting_backup_task($task, $data) {
-  if ($data['context']['backup_file'] && $task->ref->type == 'site') {
+  if (!empty($data['context']['backup_file']) && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
 
     $desc = $task->task_args['description'];
