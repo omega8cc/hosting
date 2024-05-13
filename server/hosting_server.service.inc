@@ -7,6 +7,11 @@
 class hostingService {
 
   public $server;
+  public $db_passwd;
+  public $db_user;
+  public $restart_cmd;
+  public $port;
+  public $ssl_port;
 
   // The full server node attached to this service.
   public $server_node;
