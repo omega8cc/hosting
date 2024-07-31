@@ -688,6 +688,12 @@ function hosting_task_restore_form_validate($form, &$form_state) {
 function hosting_task_confirm_form_submit($form, &$form_state) {
   $values = $form_state['values'];
   $parameters = isset($values['parameters']) ? $values['parameters'] : array();
+
+  if (!empty($form_state['values']['backup_mode'])) {
+    $selected_backup_mode = $form_state['values']['backup_mode'];
+    drush_set_option('selected_backup_mode', $selected_backup_mode);
+  }
+
   hosting_add_task($values['nid'], $values['task'], $parameters);
   $form_state['redirect'] = 'node/' . $values['nid'];
 
