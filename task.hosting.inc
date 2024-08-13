@@ -45,6 +45,10 @@ function _hosting_task_log_print($entry) {
  * @see drush_hosting_task()
  */
 function drush_hosting_task_validate($id, $type = NULL) {
+  if (!empty($form_state['values']['backup_mode'])) {
+    $selected_backup_mode = $form_state['values']['backup_mode'];
+    drush_set_option('selected_backup_mode', $selected_backup_mode);
+  }
   drush_set_option('user', 1);
   drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_LOGIN);
   if (is_numeric($id)) {

@@ -18,6 +18,19 @@ function hosting_task_backup_form($node) {
     '#description' => "Describe the reasons for creating this backup.",
   );
 
+  $form['backup_mode'] = array(
+    '#type' => 'radios',
+    '#required' => TRUE,
+    '#title' => t('Backup Mode'),
+    '#options' => array(
+      'backup_mysqldump_only' => t('Classic single file mysqldump only'),
+      'site_files_without_db_backup' => t('Site files without any DB'),
+      'site_files_with_mysqldump' => t('Site files with classic mysqldump DB'),
+    ),
+    '#default_value' => isset($form_state['values']['backup_mode']) ? $form_state['values']['backup_mode'] : 'backup_mysqldump_only',
+    '#description' => t("Select the components to include in this backup archive. Note that only the 'Site files with classic mysqldump DB' option can be used for the Site Restore task. This backup process will bypass the ~/static/control/MyQuick.info file but you can still use the Fast DB Backups provided by this file for other Aegir tasks. This allows you to choose an additional manual backup mode that fits your needs. After the backup is created, you can export it from the Backups tab on the site node and download it to your PC."),
+  );
+
   return $form;
 }
 
