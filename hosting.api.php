@@ -439,7 +439,7 @@ function hook_hosting_task_guarded_nodes_alter(&$nids) {}
 /**
  * Return a list of dangerous tasks.
  *
- * These tasks will be blocked on guarded noded.
+ * These tasks will be blocked on guarded nodes.
  * @see: hook_hosting_task_guarded_nodes().
  * @see: hook_hosting_task_dangerous_tasks_alter().
  */
