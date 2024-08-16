@@ -76,9 +76,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
 
   // Ensure the task object is loaded before proceeding.
   if ($task) {
-    // Check if the backup_mode field is present in the task context.
-    if (!empty($task->context['backup_mode'])) {
-      $selected_backup_mode = $task->context['backup_mode'];
+    // Extract the backup_mode from the task parameters if available.
+    if (!empty($task->parameters['backup_mode'])) {
+      $selected_backup_mode = $task->parameters['backup_mode'];
       drush_set_option('selected_backup_mode', $selected_backup_mode);
     }
 
@@ -95,8 +95,8 @@ function drush_hosting_task_validate($id, $type = NULL) {
       $task->args = array();
       $task->changed = REQUEST_TIME;
       $task->executed = REQUEST_TIME;
-
-      // Check if the task is already running or not queued.
+      /* if not already running, remove the task from the queue
+       * this is to avoid concurrent task runs */
       if ($task->task_status == HOSTING_TASK_PROCESSING && !drush_get_option('force', FALSE)) {
         return drush_set_error('HOSTING_TASK_RUNNING', dt("This task is already running, use --force"));
       }
@@ -122,13 +122,15 @@ function drush_hosting_task_validate($id, $type = NULL) {
       if (isset($tasks_info[$task->task_type])) {
         $task->task_info = $tasks_info[$task->task_type];
       }
-    } else {
+    }
+    else {
       drush_set_error('HOSTING_INVALID_TASK', t("Could not find or create a '!type' task for hosting context '!context'.", array(
         '!type' => $type,
         '!context' => $id,
       )));
     }
-  } else {
+  }
+  else {
     drush_set_error('HOSTING_TASK_LOAD_FAILED', t("Failed to load or create a task for ID '!id'.", array('!id' => $id)));
   }
 }
