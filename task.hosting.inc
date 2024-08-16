@@ -76,9 +76,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
 
   // Ensure the task object is loaded before proceeding.
   if ($task) {
-    // Extract the backup_mode from the task parameters if available.
-    if (!empty($task->parameters['backup_mode'])) {
-      $selected_backup_mode = $task->parameters['backup_mode'];
+    // Extract the backup_mode from the task arguments if available.
+    if (!empty($task->task_args['backup_mode'])) {
+      $selected_backup_mode = $task->task_args['backup_mode'];
       drush_set_option('selected_backup_mode', $selected_backup_mode);
     }
 
