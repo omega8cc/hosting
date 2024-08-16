@@ -66,7 +66,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection
       $arguments = func_get_args();
       $drush_args = array_splice($arguments, 2);
-      foreach ($drush_args as $arg) {
+      foreach ($drush_args as $i => $arg) {
         list($name, $value) = explode('=', $arg);
         $task_args[$name] = $value;
       }
