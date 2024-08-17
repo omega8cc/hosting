@@ -694,7 +694,7 @@ function hosting_task_confirm_form_submit($form, &$form_state) {
     $parameters['backup_mode'] = $values['backup_mode'];
   }
 
-  // Add the task to the queue with the parameters.
+  // Add the task to the queue with the parameters, including backup_mode.
   hosting_add_task($values['nid'], $values['task'], $parameters);
 
   // Redirect the user back to the originating node.

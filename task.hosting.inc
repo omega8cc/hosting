@@ -85,8 +85,8 @@ function drush_hosting_task_validate($id, $type = NULL) {
     // Now you can safely access task arguments.
     if (!empty($task->task_args['backup_mode'])) {
       $selected_backup_mode = $task->task_args['backup_mode'];
-      // Use the backup mode directly or set it for further use in the backend.
       drush_set_option('selected_backup_mode', $selected_backup_mode);
+      drush_log(dt("Early use drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
     }
 
     // Further validation and processing of the task.
@@ -125,10 +125,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // Extract the backup_mode from the task arguments if available.
       drush_log(dt("Extract the backup_mode from the task arguments if available") . ': ' . $id, 'queue');
       if (!empty($task->task_args['backup_mode'])) {
-        drush_log(dt("Show the backup_mode from task_args") . ': ' . $task->task_args['backup_mode'], 'queue');
         $selected_backup_mode = $task->task_args['backup_mode'];
-        drush_log(dt("Use drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
         drush_set_option('selected_backup_mode', $selected_backup_mode);
+        drush_log(dt("Use drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
       }
       else {
         drush_log(dt("The backup_mode from task_args is empty"), 'queue');
