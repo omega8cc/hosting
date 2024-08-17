@@ -689,9 +689,9 @@ function hosting_task_confirm_form_submit($form, &$form_state) {
   $values = $form_state['values'];
   $parameters = isset($values['parameters']) ? $values['parameters'] : array();
 
-  // Check if the backup_mode field is present in the form values.
-  if (!empty($form_state['values']['backup_mode'])) {
-    $parameters['backup_mode'] = $form_state['values']['backup_mode'];
+  // Add the backup_mode to the parameters if it exists.
+  if (!empty($values['backup_mode'])) {
+    $parameters['backup_mode'] = $values['backup_mode'];
   }
 
   // Add the task to the queue with the parameters, including backup_mode.
