@@ -54,11 +54,14 @@ function drush_hosting_task_validate($id, $type = NULL) {
   // Load the task by ID if it's numeric.
   if (is_numeric($id)) {
     $task = node_load($id);
+    drush_log(dt("Task is_numeric node to load is ") . ': ' . $id, 'queue');
   }
   // Create a new task based on context ID and task type.
   elseif (is_string($id) && isset($type)) {
+    drush_log(dt("Task is_string and type is ") . ': ' . $id . ': ' . $type, 'queue');
     $ref = hosting_context_load($id);
     if ($ref->nid) {
+      drush_log(dt("Task ref-nid is ") . ': ' . $ref->nid, 'queue');
       // Get additional arguments to the drush command and convert them to "task_args" as expected by the task node.
       $task_args = array();
 
@@ -69,6 +72,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
       foreach ($drush_args as $i => $arg) {
         list($name, $value) = explode('=', $arg);
         $task_args[$name] = $value;
+        drush_log(dt("Task argument and value is ") . ': ' . $name . ': ' . $value, 'queue');
       }
       $task = hosting_add_task($ref->nid, $type, $task_args);
     }
