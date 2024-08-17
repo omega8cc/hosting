@@ -80,6 +80,15 @@ function drush_hosting_task_validate($id, $type = NULL) {
 
   // Ensure the task object is loaded before proceeding.
   if ($task) {
+    drush_set_context('HOSTING_TASK', $task);
+
+    // Now you can safely access task arguments.
+    if (!empty($task->task_args['backup_mode'])) {
+      $selected_backup_mode = $task->task_args['backup_mode'];
+      // Use the backup mode directly or set it for further use in the backend.
+      drush_set_option('selected_backup_mode', $selected_backup_mode);
+    }
+
     // Further validation and processing of the task.
     if ($task->type == 'task') {
       $task->ref = node_load($task->rid);
