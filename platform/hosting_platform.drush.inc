@@ -66,7 +66,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
      * is deleted here for the same reason, because we don't allow a deleted platform
      * to be reverified.
      */
-    if ($node->platform_status != HOSTING_PLATFORM_LOCKED) {
+    if ($node->platform_status !== HOSTING_PLATFORM_LOCKED) {
       $node->platform_status = HOSTING_PLATFORM_ENABLED;
     }
     $node->no_verify = TRUE;

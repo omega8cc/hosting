@@ -101,7 +101,7 @@ function hosting_client_node_access($node, $op, $account) {
   }
 
   $type = is_string($node) ? $node : $node->type;
-  if ($type != 'client' ) {
+  if ($type !== 'client' ) {
     return NODE_ACCESS_IGNORE;
   }
 
@@ -306,7 +306,7 @@ function hosting_client_validate($node, $form, &$form_state) {
   // We don't allow duplicate client names.
   $title = $node->form_id == 'hosting_signup_form' ? 'client_name' : 'title';
   $node_nid = db_query("SELECT nid FROM {node} WHERE type = :type AND title = :title", array(':type' => 'client', ':title' => $node->title))->fetchField();
-  if ($node_nid && $node->nid != $node_nid) {
+  if ($node_nid && $node->nid !== $node_nid) {
     form_set_error($title, t("Client name already in use, try %suggestion.",
                               array('%suggestion' => hosting_client_validate_suggest($node->title))));
   }
@@ -320,7 +320,7 @@ function hosting_client_validate($node, $form, &$form_state) {
   }
   // @todo convert this statement to DBTNG syntax.
   $nid = db_query("SELECT nid FROM {hosting_client} WHERE uname = :uname", array(':uname' => $node->uname))->fetchField();
-  if ($nid && $node->nid != $nid) {
+  if ($nid && $node->nid !== $nid) {
     form_set_error('uname', t("Client internal name already in use, try %suggestion.",
                               array('%suggestion' => hosting_client_validate_suggest($node->uname, TRUE))));
   }
@@ -330,7 +330,7 @@ function hosting_client_validate($node, $form, &$form_state) {
     if ($user) {
       form_set_error('email', t("Email address already exists."));
     }
-    if ($node->email != $node->email_confirm) {
+    if ($node->email !== $node->email_confirm) {
       form_set_error('email_confirm', t("Email addresses do not match"));
     }
     if (!valid_email_address($node->email)) {
@@ -769,7 +769,7 @@ function hosting_client_menu() {
  */
 function _hosting_client_platform_access($node) {
   return $node->type == 'platform' &&
-         $node->platform_status != HOSTING_PLATFORM_DELETED &&
+         $node->platform_status !== HOSTING_PLATFORM_DELETED &&
          node_access('update', $node) &&
          user_access('administer clients');
 }
@@ -838,7 +838,7 @@ function theme_hosting_client_platform_access_form($variables) {
     $row = array();
 
     $row['data'][] = $form['names'][$client]['#value'];
-    if ($client != '_all' && user_access('administer clients')) {
+    if ($client !== '_all' && user_access('administer clients')) {
       $row['data'][] = drupal_render($form['clients'][$client]);
     }
     else {

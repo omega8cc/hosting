@@ -171,13 +171,13 @@ function hosting_server_permission() {
  * Implements hook_node_access().
  */
 function hosting_server_node_access($node, $op, $account) {
-  if (variable_get('hosting_server_use_hosting_client_access', TRUE) && hosting_feature('client') && $op != 'create') {
+  if (variable_get('hosting_server_use_hosting_client_access', TRUE) && hosting_feature('client') && $op !== 'create') {
     // We rely on hosting_client_node_grants() instead of global configuration.
     return NODE_ACCESS_IGNORE;
   }
 
   $type = is_string($node) ? $node : $node->type;
-  if ($type != 'server') {
+  if ($type !== 'server') {
     return NODE_ACCESS_IGNORE;
   }
 
@@ -492,7 +492,7 @@ function hosting_nodeapi_server_presave(&$node) {
  * Implements hook_validate().
  */
 function hosting_server_validate(&$node, &$form, &$form_state) {
-  if ($node->op != t('Delete')) {
+  if ($node->op !== t('Delete')) {
     // Make sure the server name is unique, to avoid context clashes.
     $result = db_query("SELECT n.title AS name
                           FROM {hosting_server} AS h

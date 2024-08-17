@@ -235,7 +235,7 @@ function hosting_ssl_nodeapi_site_validate($node, &$form) {
       else {
         $key = hosting_ssl_filter_key($node->ssl_key_new);
 
-        if (($node->ssl_key_new != $key) || !strlen($key)) {
+        if (($node->ssl_key_new !== $key) || !strlen($key)) {
           form_set_error('ssl_key_new', t("The encryption key field should only contain lower case alpha-numeric and '_', '-' or '.' characters."));
         }
 
@@ -300,7 +300,7 @@ function hosting_ssl_nodeapi_site_update($node) {
     hosting_ssl_nodeapi_site_insert($node);
   }
   else {
-    if ($node->site_status == HOSTING_SITE_DELETED || (!$node->ssl_enabled && $node->ssl_key != 0))  {
+    if ($node->site_status == HOSTING_SITE_DELETED || (!$node->ssl_enabled && $node->ssl_key !== 0))  {
       hosting_ssl_clean_keys($node);
     }
 
@@ -364,7 +364,7 @@ function hosting_ssl_save_key($node) {
     $result = db_query("SELECT * FROM {hosting_ssl_cert} WHERE ssl_key = :ssl_key", array(':ssl_key' => $ssl_key));
     if ($obj = $result->fetch()) {
       // update
-      if ($node->client != NULL) {
+      if ($node->client !== NULL) {
         $obj->client = $client->nid;
       }
       drupal_write_record("hosting_ssl_cert", $obj, 'cid');

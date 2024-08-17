@@ -190,13 +190,13 @@ function hosting_platform_permission() {
  * Implements hook_node_access().
  */
 function hosting_platform_node_access($node, $op, $account) {
-  if (hosting_feature('client') && $op != 'create') {
+  if (hosting_feature('client') && $op !== 'create') {
     // We rely on hosting_client_node_grants() instead of global configuration.
     return NODE_ACCESS_IGNORE;
   }
 
   $type = is_string($node) ? $node : $node->type;
-  if ($type != 'platform' ) {
+  if ($type !== 'platform' ) {
     return NODE_ACCESS_IGNORE;
   }
 
@@ -677,7 +677,7 @@ function hosting_platform_form_publish_path_validate($element, &$form_state, &$f
  * Implements hook_validate().
  */
 function hosting_platform_validate($node, &$form) {
-  if ($node->op != t('Delete')) {
+  if ($node->op !== t('Delete')) {
 
     // Make sure the platform name is unique, to avoid context clashes.
     $sql = "SELECT n.title as name

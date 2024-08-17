@@ -50,7 +50,7 @@ function hosting_server_drush_context_import($context, &$node) {
       if (isset($context->{$type . '_service_type'})) {
         $service_type = $context->{$type . '_service_type'};
         if (isset($node->services[$type])) {
-          if ($node->services[$type]->type != $service_type) {
+          if ($node->services[$type]->type !== $service_type) {
             unset($node->services[$type]);
           }
         }

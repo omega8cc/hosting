@@ -75,7 +75,7 @@ function hosting_task_migrate_form_validate($form, &$form_state) {
   $site = $form['parameters']['#node'];
 
   $url = hosting_site_get_domain($form_state['values']['parameters']['new_uri']);
-  if ($url != hosting_site_get_domain($site->title)) {
+  if ($url !== hosting_site_get_domain($site->title)) {
     $migrate_possible = TRUE;
     if (!_hosting_valid_fqdn($url)) {
       form_set_error('title', t("You have not specified a valid url for this site."));
@@ -89,12 +89,12 @@ function hosting_task_migrate_form_validate($form, &$form_state) {
     form_set_error('parameters][target_platform', t("You have no target platform specified."));
   }
 
-  if ($form_state['values']['parameters']['target_platform'] != $site->platform) {
+  if ($form_state['values']['parameters']['target_platform'] !== $site->platform) {
     $migrate_possible = TRUE;
   }
 
 
-  if ($form_state['values']['parameters']['new_db_server'] != $site->db_server) {
+  if ($form_state['values']['parameters']['new_db_server'] !== $site->db_server) {
     $migrate_possible = TRUE;
   }
 
@@ -181,7 +181,7 @@ function hosting_task_migrate_form($node) {
     $has_platform_available = TRUE;
   }
   foreach ($profile_platform_instances as $profile_instance) {
-    if (($profile_instance->rid != $node->platform) && (in_array($profile_instance->rid, $valid_options['platform']))) {
+    if (($profile_instance->rid !== $node->platform) && (in_array($profile_instance->rid, $valid_options['platform']))) {
       $status = hosting_package_comparison($node->nid, $profile_instance->iid);
 
       $description = t("Upgrades: !upgrades, Warnings: !missing, Errors: !errors | <a href='!url' class='hosting-package-comparison-link'>Compare platforms</a>",

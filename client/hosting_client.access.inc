@@ -277,7 +277,7 @@ function hosting_client_node_access_records($node) {
 
         if (!empty($node->clients)) {
           foreach ($node->clients as $cid => $client) {
-            if ($cid != HOSTING_ADMIN_CLIENT) {
+            if ($cid !== HOSTING_ADMIN_CLIENT) {
               $gids[] = $cid;
             }
           }
@@ -289,7 +289,7 @@ function hosting_client_node_access_records($node) {
       foreach ($databases as $nid => $dbname) {
         $node = node_load($nid);
         if (!empty($node->client)) {
-          if ($node->client != HOSTING_ADMIN_CLIENT) {
+          if ($node->client !== HOSTING_ADMIN_CLIENT) {
             $gids[] = $node->client;
           }
         }
@@ -306,7 +306,7 @@ function hosting_client_node_access_records($node) {
       $base_grant['gid'] = HOSTING_ADMIN_CLIENT;
       if (isset($node->clients)) {
         foreach ($node->clients as $cid => $client) {
-          if ($cid != HOSTING_ADMIN_CLIENT) {
+          if ($cid !== HOSTING_ADMIN_CLIENT) {
             $grants[] = array_merge($base_grant, array('gid' => $cid, 'grant_update' => 0));
           }
         }
@@ -322,7 +322,7 @@ function hosting_client_node_access_records($node) {
     $grants[] = $base_grant;
 
     // This should _always_ happen.
-    if ($base_grant['gid'] != HOSTING_ADMIN_CLIENT) {
+    if ($base_grant['gid'] !== HOSTING_ADMIN_CLIENT) {
       // Also give full access to the administrator user.
       $base_grant['gid'] = HOSTING_ADMIN_CLIENT;
       $grants[] = $base_grant;

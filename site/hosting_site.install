@@ -412,7 +412,7 @@ global \$user;
 \$node = menu_get_object();
 \$menu_item = menu_get_item();
 if (!empty(\$node)) && \$menu_item['number_parts'] == 2) {
-  return \$node->type == 'client' && $user->uid != 1;
+  return \$node->type == 'client' && $user->uid !== 1;
 }
 ?>");
   install_set_block('views', 'hosting_site_list-block_client', $theme, 'content_bottom', 0, 2, "<?php

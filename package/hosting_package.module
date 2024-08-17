@@ -65,7 +65,7 @@ function hosting_package_permission() {
  */
 function hosting_package_node_access($node, $op, $account) {
   $type = is_string($node) ? $node : $node->type;
-  if ($type != 'platform' ) {
+  if ($type !== 'platform' ) {
     return NODE_ACCESS_IGNORE;
   }
 
@@ -445,9 +445,9 @@ function hosting_package_sync(&$data) {
         // we only call node save when the title, description changes
         // or when it's a new package.
         if (!isset($package->nid) ||
-          (isset($package->title) && ($package->title != $name)) ||
-          (isset($file['info']['description']) && ($package->description != $file['info']['description'])) ||
-          (isset($file['info']['old_short_name']) && ($package->old_short_name != $file['info']['old_short_name']))) {
+          (isset($package->title) && ($package->title !== $name)) ||
+          (isset($file['info']['description']) && ($package->description !== $file['info']['description'])) ||
+          (isset($file['info']['old_short_name']) && ($package->old_short_name !== $file['info']['old_short_name']))) {
 
           $package->title = $name;
           $package->description = isset($file['info']['description']) ? $file['info']['description'] : '';
@@ -477,6 +477,6 @@ function hosting_package_views_api() {
 function hosting_package_block_visibility() {
   $node = menu_get_object();
   if (!empty($node)) {
-    return $node->type == 'package' && $node->package_type != 'profile';
+    return $node->type == 'package' && $node->package_type !== 'profile';
   }
 }

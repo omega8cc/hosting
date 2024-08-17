@@ -276,7 +276,7 @@ function hosting_task_menu_access($node, $task) {
       if (hosting_task_outstanding($node->nid, 'delete') || ($node->site_status == HOSTING_SITE_DELETED)) {
         return FALSE;
       }
-      if (($task == 'login-reset') && ($node->site_status != HOSTING_SITE_ENABLED)) {
+      if (($task == 'login-reset') && ($node->site_status !== HOSTING_SITE_ENABLED)) {
         return FALSE;
       }
       $safe_tasks = array('verify', 'enable');
@@ -399,7 +399,7 @@ function hosting_task_node_access($node, $op, $account) {
   }
 
   $type = is_string($node) ? $node : $node->type;
-  if ($type != 'task' ) {
+  if ($type !== 'task' ) {
     return NODE_ACCESS_IGNORE;
   }
 
@@ -529,7 +529,7 @@ function hosting_task_log($vid, $type, $message, $error = '', $timestamp = NULL)
  */
 function hosting_task_retry($task_id) {
   $node = node_load($task_id);
-  if ($node->task_status != HOSTING_TASK_QUEUED) {
+  if ($node->task_status !== HOSTING_TASK_QUEUED) {
     drupal_set_message(t("The task is being retried and has been added to the hosting queue again"));
     hosting_task_log($node->vid, 'queue', t("The task is being retried and has been added to the hosting queue again"));
     $node->nid = NULL;
@@ -1160,7 +1160,7 @@ function hosting_task_view($node, $view_mode, $langcode = NULL) {
     '#markup' => _hosting_node_link($node->rid),
   );
 
-  if ($node->task_status != HOSTING_TASK_QUEUED) {
+  if ($node->task_status !== HOSTING_TASK_QUEUED) {
     if ($node->task_status == HOSTING_TASK_PROCESSING) {
       $node->content['info']['started'] = array(
         '#type' => 'item',
@@ -1175,7 +1175,7 @@ function hosting_task_view($node, $view_mode, $langcode = NULL) {
         '#weight' => 2,
       );
     }
-    elseif ($node->executed != NULL) {
+    elseif ($node->executed !== NULL) {
       $node->content['info']['executed'] = array(
         '#type' => 'item',
         '#title' => t('Executed'),
@@ -1955,7 +1955,7 @@ function hosting_task_parse_log($vid) {
       $update = HOSTING_TASK_ERROR;
     }
     // Don't override a pre-existing error.
-    elseif ($update != HOSTING_TASK_ERROR && $status->type == 'warning') {
+    elseif ($update !== HOSTING_TASK_ERROR && $status->type == 'warning') {
       $update = HOSTING_TASK_WARNING;
     }
   }

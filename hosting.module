@@ -236,7 +236,7 @@ function hosting_menu_alter(&$items) {
  */
 function hosting_menu_access($type, $feature) {
   global $user;
-  return (($user->uid == 1) || user_access('create ' . $type)) && (hosting_feature($feature) != HOSTING_FEATURE_DISABLED);
+  return (($user->uid == 1) || user_access('create ' . $type)) && (hosting_feature($feature) !== HOSTING_FEATURE_DISABLED);
 }
 
 /**

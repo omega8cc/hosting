@@ -45,7 +45,7 @@ function drush_hosting_package_pre_hosting_task() {
       }
 
       $profile = node_load($task->ref->profile);
-      if ($task->task_type != 'import' && $task->task_type != 'delete' && $task->task_type != 'verify') {
+      if ($task->task_type !== 'import' && $task->task_type !== 'delete' && $task->task_type !== 'verify') {
         $task->options['profile'] = $profile->short_name;
       }
     }

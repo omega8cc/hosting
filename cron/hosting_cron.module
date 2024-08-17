@@ -160,7 +160,7 @@ function hosting_cron_node_load($nodes, $types) {
  */
 function hosting_cron_node_view($node, $view_mode, $langcode) {
   if ($node->type == 'site') {
-    if ($view_mode != 'teaser') {
+    if ($view_mode !== 'teaser') {
       $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
       if (!$node->cron_interval && $this_cron_interval) {
         $node->cron_interval = $this_cron_interval;
@@ -327,7 +327,7 @@ function hosting_cron_get_sites($count) {
       //
       if (!$site->last_cron) {
         $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $site->nid))->fetchField();
-        if ($this_cron_interval != ADV_CRON_TURNED_OFF) {
+        if ($this_cron_interval !== ADV_CRON_TURNED_OFF) {
           $sites[$site->nid] = node_load($site->nid);
           $counter++;
         }
@@ -344,7 +344,7 @@ function hosting_cron_get_sites($count) {
         // and the cron is enabled on this site, but cron interval
         // since last cron run has been exceeded.
         //
-        if ($this_cron_interval != ADV_CRON_TURNED_OFF) {
+        if ($this_cron_interval !== ADV_CRON_TURNED_OFF) {
           if ($site->last_cron + $this_cron_interval < time()) {
             $sites[$site->nid] = node_load($site->nid);
             $counter++;
