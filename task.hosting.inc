@@ -54,17 +54,16 @@ function drush_hosting_task_validate($id, $type = NULL) {
   // Load the task by ID if it's numeric.
   if (is_numeric($id)) {
     $task = node_load($id);
-    drush_log(dt("Task is_numeric node to load is ") . ': ' . $id, 'queue');
+    $is_numeric = $id;
   }
   // Create a new task based on context ID and task type.
   elseif (is_string($id) && isset($type)) {
-    drush_log(dt("Task is_string and type is ") . ': ' . $id . ': ' . $type, 'queue');
+    $is_string = $id . ' : ' . $type;
     $ref = hosting_context_load($id);
     if ($ref->nid) {
-      drush_log(dt("Task ref-nid is ") . ': ' . $ref->nid, 'queue');
+      $ref_nid = $ref->nid;
       // Get additional arguments to the drush command and convert them to "task_args" as expected by the task node.
       $task_args = array();
-
       // Parse task_arguments passed to drush in the format "name=value".
       // phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection
       $arguments = func_get_args();
@@ -72,7 +71,6 @@ function drush_hosting_task_validate($id, $type = NULL) {
       foreach ($drush_args as $i => $arg) {
         list($name, $value) = explode('=', $arg);
         $task_args[$name] = $value;
-        drush_log(dt("Task argument and value is ") . ': ' . $name . ': ' . $value, 'queue');
       }
       $task = hosting_add_task($ref->nid, $type, $task_args);
     }
@@ -80,15 +78,6 @@ function drush_hosting_task_validate($id, $type = NULL) {
 
   // Ensure the task object is loaded before proceeding.
   if ($task) {
-    drush_set_context('HOSTING_TASK', $task);
-
-    // Now you can safely access task arguments.
-    if (!empty($task->task_args['backup_mode'])) {
-      $selected_backup_mode = $task->task_args['backup_mode'];
-      drush_set_option('selected_backup_mode', $selected_backup_mode);
-      drush_log(dt("Early use drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
-    }
-
     // Further validation and processing of the task.
     if ($task->type == 'task') {
       $task->ref = node_load($task->rid);
@@ -111,6 +100,12 @@ function drush_hosting_task_validate($id, $type = NULL) {
         return drush_set_error('HOSTING_TASK_NOT_QUEUED', dt("This task is not queued, use --force"));
       }
 
+      // Now you can safely access task arguments.
+      if (!empty($task->task_args['backup_mode'])) {
+        $selected_backup_mode = $task->task_args['backup_mode'];
+        $bytes_written = file_put_contents(AEGIR_BACKUP_MODE_CTRL, $selected_backup_mode, LOCK_EX);
+      }
+
       $task->task_status = HOSTING_TASK_PROCESSING;
       $task->revision = TRUE;
 
@@ -122,12 +117,26 @@ function drush_hosting_task_validate($id, $type = NULL) {
       drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
       drush_log(dt("Task starts processing") . ': ' . $task->title, 'queue');
 
-      // Extract the backup_mode from the task arguments if available.
-      drush_log(dt("Extract the backup_mode from the task arguments if available") . ': ' . $id, 'queue');
       if (!empty($task->task_args['backup_mode'])) {
-        $selected_backup_mode = $task->task_args['backup_mode'];
+
+        // Extract the backup_mode from the task arguments if available.
+        drush_log(dt("Extracting the backup_mode from the task arguments if available") . ': ' . $id, 'queue');
+        drush_log(dt("Task is_numeric node to load was ") . ': ' . $is_numeric, 'queue');
+        drush_log(dt("Task is_string and type was ") . ': ' . $is_string, 'queue');
+        drush_log(dt("Task ref-nid was ") . ': ' . $ref_nid, 'queue');
+        drush_log(dt("Task add values were ") . ':: ' . $ref->nid . ' :: ' . $type . ' :: ' . $task_args[$name], 'queue');
+        drush_log(dt("Uses drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
+        drush_log(dt("AEGIR_BACKUP_MODE_CTRL was ") . ': ' . AEGIR_BACKUP_MODE_CTRL, 'queue');
+
         drush_set_option('selected_backup_mode', $selected_backup_mode);
-        drush_log(dt("Use drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
+
+        // Verify if the operation was successful.
+        if ($bytes_written === FALSE) {
+          drush_log(dt("Failed to write the backup mode to the control file"), 'queue');
+        }
+        else {
+          drush_log(dt("Backup mode successfully written to the control file"), 'queue');
+        }
       }
       else {
         drush_log(dt("The backup_mode from task_args is empty"), 'queue');

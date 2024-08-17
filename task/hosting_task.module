@@ -692,8 +692,6 @@ function hosting_task_confirm_form_submit($form, &$form_state) {
   // Add the backup_mode to the parameters if it exists.
   if (!empty($values['backup_mode'])) {
     $parameters['backup_mode'] = $values['backup_mode'];
-    // Write the backup_mode to the control file, overwriting it if it exists.
-    file_put_contents(AEGIR_BACKUP_MODE_CTRL, $values['backup_mode'], LOCK_EX);
   }
 
   // Add the task to the queue with the parameters, including backup_mode.
