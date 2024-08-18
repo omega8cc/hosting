@@ -216,7 +216,7 @@ function hosting_client_node_grants($account, $op) {
         // TODO: restrict access to certain op-type based on the user relationship to this client - see content of $client_relations
         $grants[$cache_id]['hosting ' . $type] = array_keys($account->client_id);
       }
-      elseif ($op === 'update' && user_access('edit ' . $type, $account)) {
+      elseif ($op == 'update' && user_access('edit ' . $type, $account)) {
         $grants[$cache_id]['hosting ' . $type] = array_keys($account->client_id);
       }
     }
@@ -241,7 +241,7 @@ function hosting_client_node_access_records($node) {
   );
 
   // Tasks inherit from their parent.
-  if ($node->type === 'task') {
+  if ($node->type == 'task') {
     $node = node_load($node->rid);
     $base_grant['grant_update'] = 0;
   }

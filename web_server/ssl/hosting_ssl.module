@@ -93,7 +93,7 @@ function hosting_ssl_get_profiles() {
  * Implements hook_form_alter().
  */
 function hosting_ssl_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id === 'site_node_form') {
+  if ($form_id == 'site_node_form') {
     hosting_ssl_site_form($form, $form_state, $form_id);
   }
 }
@@ -127,7 +127,7 @@ function hosting_ssl_cert_node_load($arg) {
     return FALSE;
   }
   if ($node = node_load($arg)) {
-    if ($node->type === 'server') {
+    if ($node->type == 'server') {
       return $node;
     }
   }

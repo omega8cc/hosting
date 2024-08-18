@@ -52,7 +52,7 @@
 
     // Work out if the user is scrolled to the bottom.
     var at_bottom = false;
-    if ($(window).scrollTop() + $(window).height() === $(document).height()) {
+    if ($(window).scrollTop() + $(window).height() == $(document).height()) {
       at_bottom = true;
     }
 
@@ -80,7 +80,7 @@
     setTimeout(function() {
       // Work out if the user is scrolled to the bottom.
       var at_bottom = false;
-      if ($(window).scrollTop() + $(window).height() === $(document).height()) {
+      if ($(window).scrollTop() + $(window).height() == $(document).height()) {
         at_bottom = true;
       }
       $(wrapper).trigger('hosting_table_ajax');

@@ -109,12 +109,12 @@ function hosting_ssl_hosting_site_options_alter(&$return, $node) {
     $return['ssl_key'] = array_keys($keys);
 
     // Properly default this value so things dont fall apart later.
-    if (count($return['ssl_key']) === 1) {
+    if (count($return['ssl_key']) == 1) {
       $node->ssl_key = HOSTING_SSL_CUSTOM_KEY;
     }
 
     // the user has chosen to enter a new key
-    if ($node->ssl_key === HOSTING_SSL_CUSTOM_KEY) {
+    if ($node->ssl_key == HOSTING_SSL_CUSTOM_KEY) {
       // default the new key to the site's domain name, after filtering.
       $default = hosting_ssl_filter_key($node->title);
       $return['ssl_key_new'] = (!empty($default)) ? $default : TRUE;
@@ -140,7 +140,7 @@ function hosting_ssl_nodeapi_site_view(&$node, $teaser = FALSE) {
     '#weight' => 6,
   );
 
-  if (isset($node->ssl_enabled) && $node->ssl_enabled === TRUE) {
+  if (isset($node->ssl_enabled) && $node->ssl_enabled == TRUE) {
     $node->content['info']['ssl_key'] = array(
       '#type' => 'item',
       '#title' => t('SSL key'),
@@ -228,7 +228,7 @@ function hosting_ssl_nodeapi_site_validate($node, &$form) {
     // TODO: find a way to avoid calling this function multiple times in hook_validate
     $valid_options = hosting_site_available_options($node);
 
-    if (!empty($node->ssl_key) && $node->ssl_key === HOSTING_SSL_CUSTOM_KEY) {
+    if (!empty($node->ssl_key) && $node->ssl_key == HOSTING_SSL_CUSTOM_KEY) {
       if (!strlen($node->ssl_key_new)) {
         form_set_error('ssl_key_new', t("The encryption key field is required to enable us to generate a new SSL certificate for your site."));
       }
@@ -243,7 +243,7 @@ function hosting_ssl_nodeapi_site_validate($node, &$form) {
           form_set_error('ssl_key_new', t("The encryption key field must start with an alpha-numeric character."));
         }
 
-        if ($key === HOSTING_SSL_CUSTOM_KEY) {
+        if ($key == HOSTING_SSL_CUSTOM_KEY) {
           form_set_error('ssl_key_new', t("This encryption key value is reserved for internal use, please choose another"));
         }
       }
@@ -257,7 +257,7 @@ function hosting_ssl_nodeapi_site_validate($node, &$form) {
     // if (!empty($node->platform)) {
       // $platform = node_load($node->platform);
       // $server = node_load($platform->web_server);
-      // $server->services['http']->type === 'apache_ssl' or nginx_ssl???
+      // $server->services['http']->type == 'apache_ssl' or nginx_ssl???
     // }
   }
 }
@@ -300,7 +300,7 @@ function hosting_ssl_nodeapi_site_update($node) {
     hosting_ssl_nodeapi_site_insert($node);
   }
   else {
-    if ($node->site_status === HOSTING_SITE_DELETED || (!$node->ssl_enabled && $node->ssl_key !== 0))  {
+    if ($node->site_status == HOSTING_SITE_DELETED || (!$node->ssl_enabled && $node->ssl_key !== 0))  {
       hosting_ssl_clean_keys($node);
     }
 
@@ -359,7 +359,7 @@ function hosting_ssl_save_key($node) {
 
   $client = hosting_get_client($node->client);
 
-  if ($node->ssl_key === HOSTING_SSL_CUSTOM_KEY && !empty($node->ssl_key_new)) {
+  if ($node->ssl_key == HOSTING_SSL_CUSTOM_KEY && !empty($node->ssl_key_new)) {
     $ssl_key = $node->ssl_key_new;
     $result = db_query("SELECT * FROM {hosting_ssl_cert} WHERE ssl_key = :ssl_key", array(':ssl_key' => $ssl_key));
     if ($obj = $result->fetch()) {
@@ -400,7 +400,7 @@ function hosting_ssl_save_key($node) {
 function hosting_ssl_get_keys($client = NULL, $ask_custom = FALSE) {
   $keys = array();
 
-  if ($ask_custom === TRUE) {
+  if ($ask_custom == TRUE) {
     $keys[HOSTING_SSL_CUSTOM_KEY] = t("Generate a new encryption key.");
   }
 

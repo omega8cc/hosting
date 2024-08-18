@@ -14,7 +14,7 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
 
   if (!isset($node->nid) || $editable) {
     // Create it.
-    if (($element['#type'] === 'radios') && !count($element['#options'])) {
+    if (($element['#type'] == 'radios') && !count($element['#options'])) {
       $form[$item] = array(
         '#type' => 'value',
         '#value' => !empty($element['#default_value']) ? $element['#default_value'] : NULL,
@@ -190,7 +190,7 @@ function hosting_site_available_options($node, $platform = NULL) {
         $platform = node_load($nid);
 
         if ($platform->platform_status !== HOSTING_PLATFORM_LOCKED || user_access('create sites on locked platforms')) {
-          if (!isset($platform->clients) || count(array_intersect(array_keys($user->client_id), $platform->clients)) || $user->uid === 1) {
+          if (!isset($platform->clients) || count(array_intersect(array_keys($user->client_id), $platform->clients)) || $user->uid == 1) {
             $options[] = $nid;
           }
         }
@@ -440,7 +440,7 @@ function hosting_site_validate($node, &$form) {
 function hosting_site_form_alter(&$form, &$form_state, $form_id) {
   // Remove delete button from site edit form, unless the site's already been
   // deleted via the Delete task.
-  if ($form_id === 'site_node_form') {
+  if ($form_id == 'site_node_form') {
     $node = $form['#node'];
     if (isset($node->site_status) && $node->site_status !== HOSTING_SITE_DELETED) {
       $form['actions']['delete']['#type'] = 'hidden';
@@ -452,7 +452,7 @@ function hosting_site_form_alter(&$form, &$form_state, $form_id) {
   }
 
   // On Delete task forms, if variable is set, set the --force option.
-  if ($form_id === 'hosting_task_confirm_form' && $form['task']['#value'] === 'delete' && variable_get('hosting_delete_force', FALSE)) {
+  if ($form_id == 'hosting_task_confirm_form' && $form['task']['#value'] == 'delete' && variable_get('hosting_delete_force', FALSE)) {
     $form['parameters']['force'] = array(
       '#type' => 'value',
       '#value' => 1,

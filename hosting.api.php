@@ -34,7 +34,7 @@
  */
 function hook_allow_domain($url, $params) {
   // Don't allow another drupal.org, it's special.
-  if ($url === 'drupal.org') {
+  if ($url == 'drupal.org') {
     return FALSE;
   }
   else {
@@ -70,7 +70,7 @@ function hook_allow_domain($url, $params) {
  */
 function hook_drush_context_import($context, &$node) {
   // From hosting_alias_drush_context_import().
-  if ($context->type === 'site') {
+  if ($context->type == 'site') {
     $node->aliases = $context->aliases;
     $node->redirection = $context->redirection;
   }
@@ -324,7 +324,7 @@ function hook_nodeapi_TYPE_OP(&$node, $a3, $a4) {
  */
 function hook_post_hosting_TASK_TYPE_task($task, $data) {
   // From hosting_site_post_hosting_backup_task().
-  if ($data['context']['backup_file'] && $task->ref->type === 'site') {
+  if ($data['context']['backup_file'] && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
 
     $desc = $task->task_args['description'];
@@ -395,7 +395,7 @@ function hook_hosting_task_update_status($task, $status) {
   $node = node_load($task->rid);
 
   // On error, output a new message.
-  if ($status === HOSTING_TASK_ERROR) {
+  if ($status == HOSTING_TASK_ERROR) {
     drush_log(dt("!title: !task task ended in an Error", array(
       '!task' => $task->task_type,
       '!title' => $node->title,

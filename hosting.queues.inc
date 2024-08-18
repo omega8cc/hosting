@@ -88,7 +88,7 @@ function hosting_get_queues($refresh = FALSE) {
       );
       $queue = array_merge($queue, $configured);
 
-      if ($queue['type'] === HOSTING_QUEUE_TYPE_BATCH) {
+      if ($queue['type'] == HOSTING_QUEUE_TYPE_BATCH) {
         $threads = $queue['total_items'] / $queue['threshold'];
         if ($threads <= $queue['min_threads']) {
           $threads = $queue['min_threads'];
@@ -100,7 +100,7 @@ function hosting_get_queues($refresh = FALSE) {
         $queue['calc_frequency'] = ceil($queue['frequency'] / $threads);
         $queue['calc_items'] = ceil($queue['total_items'] / $threads);
       }
-      elseif ($queue['type'] === HOSTING_QUEUE_TYPE_SPREAD) {
+      elseif ($queue['type'] == HOSTING_QUEUE_TYPE_SPREAD) {
         // If there are 0 items in the queue avoid a division by 0.
         if ($queue['total_items'] > 0) {
           // Process the queue as often as is needed to get through all the

@@ -169,7 +169,7 @@ function hosting_site_wildcard_load($arg) {
     return FALSE;
   }
   if ($node = node_load($arg)) {
-    if ($node->type === 'site') {
+    if ($node->type == 'site') {
       return $node;
     }
   }
@@ -247,23 +247,23 @@ function _hosting_site_url($node) {
 
   if ($server->services['http']->has_port()) {
     $port = $server->services['http']->port;
-    if ($port === 80) {
+    if ($port == 80) {
       $port = NULL;
     }
   }
 
   // This is part of the ssl feature, but is better to implement here.
   // The 2 is a bit of a magic number, because we cant rely on the constants being available yet.
-  // 2 === Only SSL is required, corresponding to HOSTING_SSL_REQUIRED and HOSTING_HTTPS_REQUIRED.
-  $hosting_ssl_required = (isset($node->ssl_enabled) && $node->ssl_enabled === 2);
-  $hosting_https_required = (isset($node->https_enabled) && $node->https_enabled === 2);
+  // 2 == Only SSL is required, corresponding to HOSTING_SSL_REQUIRED and HOSTING_HTTPS_REQUIRED.
+  $hosting_ssl_required = (isset($node->ssl_enabled) && $node->ssl_enabled == 2);
+  $hosting_https_required = (isset($node->https_enabled) && $node->https_enabled == 2);
 
   if ($hosting_ssl_required || $hosting_https_required) {
     $schema = 'https';
 
     if ($server->services['http']->has_port()) {
       $port = $server->services['http']->ssl_port;
-      if ($port === 443) {
+      if ($port == 443) {
         $port = NULL;
       }
     }
@@ -394,16 +394,16 @@ function hosting_site_node_access($node, $op, $account) {
     return NODE_ACCESS_IGNORE;
   }
 
-  if ($op === 'create' && user_access('create site', $account)) {
+  if ($op == 'create' && user_access('create site', $account)) {
     return NODE_ACCESS_ALLOW;
   }
-  if ($op === 'update' && user_access('edit site', $account)) {
+  if ($op == 'update' && user_access('edit site', $account)) {
     return NODE_ACCESS_ALLOW;
   }
-  if ($op === 'delete' && user_access('delete site', $account)) {
+  if ($op == 'delete' && user_access('delete site', $account)) {
     return NODE_ACCESS_ALLOW;
   }
-  if ($op === 'view' && user_access('view site', $account)) {
+  if ($op == 'view' && user_access('view site', $account)) {
     return NODE_ACCESS_ALLOW;
   }
 }
@@ -465,7 +465,7 @@ function hosting_site_op_login_reset($node) {
  * Access callback for Site add by platform.
  */
 function hosting_site_add_by_platform_access($node) {
-  return $node->type === 'platform' && $node->platform_status === HOSTING_PLATFORM_ENABLED && node_access('create', 'site');
+  return $node->type == 'platform' && $node->platform_status == HOSTING_PLATFORM_ENABLED && node_access('create', 'site');
 }
 
 /**
@@ -702,7 +702,7 @@ function hosting_site_task_status($nid) {
 function _hosting_site_list_class($node, $verified = NULL) {
   $status = (is_numeric($node)) ? $node : $node->site_status;
   $classes = hosting_site_status_codes('class');
-  if (($status === HOSTING_SITE_ENABLED) && ($verified <= 1)) {
+  if (($status == HOSTING_SITE_ENABLED) && ($verified <= 1)) {
     return 'hosting-warning';
   }
 
@@ -745,8 +745,8 @@ function hosting_site_client_list_block_visibility() {
   global $user;
   $node = menu_get_object();
   $menu_item = menu_get_item();
-  if (!empty($node) && $menu_item['number_parts'] === 2) {
-    return $node->type === 'client' && !user_access('administer clients', $user);
+  if (!empty($node) && $menu_item['number_parts'] == 2) {
+    return $node->type == 'client' && !user_access('administer clients', $user);
   }
   return FALSE;
 }
@@ -758,8 +758,8 @@ function hosting_site_client_admin_block_visibility() {
   global $user;
   $node = menu_get_object();
   $menu_item = menu_get_item();
-  if (!empty($node) && $menu_item['number_parts'] === 2) {
-    return $node->type === 'client' && user_access('administer clients', $user);
+  if (!empty($node) && $menu_item['number_parts'] == 2) {
+    return $node->type == 'client' && user_access('administer clients', $user);
   }
   return FALSE;
 }
@@ -770,8 +770,8 @@ function hosting_site_client_admin_block_visibility() {
 function hosting_site_profile_block_visibility() {
   $node = menu_get_object();
   $menu_item = menu_get_item();
-  if (!empty($node) && $menu_item['number_parts'] === 2) {
-    return $node->type === 'package' && $node->package_type === 'profile';
+  if (!empty($node) && $menu_item['number_parts'] == 2) {
+    return $node->type == 'package' && $node->package_type == 'profile';
   }
   return FALSE;
 }
@@ -786,8 +786,8 @@ function hosting_site_block_view_alter(&$data, $block) {
     if ($node = menu_get_object()) {
       // We only want to show a list of sites on a server with a database,
       // or on install profile package pages.
-      if (($node->type === 'server' && !array_key_exists('db', $node->services))
-       || ($node->type === 'package' && $node->package_type !== 'profile')) {
+      if (($node->type == 'server' && !array_key_exists('db', $node->services))
+       || ($node->type == 'package' && $node->package_type !== 'profile')) {
         unset($data['subject']);
         unset($data['content']);
       }

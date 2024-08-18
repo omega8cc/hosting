@@ -27,7 +27,7 @@ function hosting_hosting_platform_context_options(&$task) {
  * Implements hook_drush_context_import().
  */
 function hosting_platform_drush_context_import($context, &$node) {
-  if ($context->type === 'platform') {
+  if ($context->type == 'platform') {
     if (!isset($node->title)) {
       $node->title = str_replace('platform_', '', trim($context->name, '@'));
     }
@@ -48,12 +48,12 @@ function hosting_platform_drush_context_import($context, &$node) {
  */
 function hosting_platform_post_hosting_verify_task($task, $data) {
   $node = $task->ref;
-  if ($node->type === 'platform') {
+  if ($node->type == 'platform') {
     $context = !empty($data['context']) ? $data['context'] : array();
     $packages = !empty($context['packages']) ? $context['packages'] : array();
 
     // Lock platforms by default.
-    if ($node->verified === 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
+    if ($node->verified == 0 && variable_get('hosting_lock_platforms_by_default', FALSE)) {
       $node->platform_status = HOSTING_PLATFORM_LOCKED;
     }
 
@@ -108,7 +108,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
   }
 
   // When a server is verified, queue up a verify task for every platform.
-  if ($task->ref->type === 'server') {
+  if ($task->ref->type == 'server') {
     $query = db_query("SELECT nid FROM {hosting_platform} WHERE status = :status AND web_server = :web_server", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid));
     while ($nid = $query->fetch()) {
       hosting_add_task($nid->nid, 'verify');

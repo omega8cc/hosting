@@ -96,7 +96,7 @@ function hosting_task_TASK_TYPE_form_validate($form, &$form_state) {
   $site = $form['parameters']['#node'];
 
   $url = hosting_site_get_domain($form_state['values']['parameters']['new_uri']);
-  if ($url === hosting_site_get_domain($site->title)) {
+  if ($url == hosting_site_get_domain($site->title)) {
     form_set_error('new_uri', t("To clone a site you need to specify a new Domain name to clone it to."));
   }
   else {

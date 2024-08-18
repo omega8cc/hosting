@@ -78,7 +78,7 @@ Drupal.hosting.siteFormToggleOptions = function(settings) {
           $('input[name=' + key + ']:visible:first').attr('checked', 'checked');
         }
       }
-      else if (settings[key].length === 1) {
+      else if (settings[key].length == 1) {
         // There is only one valid option, so we select it and display it as text.
         var $input_id = $('input[name=' + key + '][value=' + settings[key][0] + ']');
         $input_id.attr("checked", "checked");
@@ -110,7 +110,7 @@ Drupal.hosting.siteFormToggleOptions = function(settings) {
     else if ($id.hasClass('hosting-site-field-textfield') || $id.hasClass('hosting-site-field-textarea')) {
       var $input_id = $('input[name=' + key + ']');
 
-      if (settings[key] === null) {
+      if (settings[key] == null) {
         // we do not want the user to be able to manipulate this value,
         // but we need to display the default value to the user.
         $id.hide();
@@ -121,7 +121,7 @@ Drupal.hosting.siteFormToggleOptions = function(settings) {
             replaceWith($.trim($input_id.val()));
         }
       }
-      else if ((settings[key].toString().length || (settings[key] === true)) && (settings[key] !== false)) {
+      else if ((settings[key].toString().length || (settings[key] == true)) && (settings[key] !== false)) {
         $id.show();
         $desc_id.hide();
 

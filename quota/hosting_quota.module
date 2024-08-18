@@ -300,10 +300,10 @@ function hosting_quota_get_all_info($client, $start = NULL, $end = NULL) {
  *  Implements hook_node_update().
  */
 function hosting_quota_node_update($node) {
-  if ($node->type === 'client') {
+  if ($node->type == 'client') {
     if (user_access('edit all quotas')) {
       foreach ($node as $field => $value) {
-        if (substr($field, 0, 6) === 'quota-') {
+        if (substr($field, 0, 6) == 'quota-') {
           $quota = substr($field, 6);
           // If no value was entered use the default value for this resource
           if (!$value) {
@@ -329,7 +329,7 @@ function hosting_quota_node_insert($node) {
 function hosting_quota_node_load($nodes, $types) {
   if (in_array('client', $types)) {
     foreach ($nodes as $nid => $node) {
-      if ($node->type === 'client') {
+      if ($node->type == 'client') {
         $nodes[$nid]->quota = hosting_quota_get_all_info($node->nid);
       }
     }
@@ -341,7 +341,7 @@ function hosting_quota_node_load($nodes, $types) {
  */
 function hosting_quota_node_view($node, $view_mode, $langcode) {
   global $user;
-  if ($node->type === 'client') {
+  if ($node->type == 'client') {
     $allowed_clients = array_keys(hosting_get_client_from_user($user->uid));
     if (user_access('view all quotas') || (in_array($node->nid, $allowed_clients) && user_access('view own quota'))) {
       $node->content['info']['quota'] = array(
@@ -358,7 +358,7 @@ function hosting_quota_node_view($node, $view_mode, $langcode) {
  * Insert edit controls for the hosting quotas into the client edit form
  */
 function hosting_quota_form_alter(&$form, &$form_state, $form_id) {
-  if (user_access('edit all quotas') && isset($form['type']) && isset($form['#node']) && 'client_node_form' === $form_id) {
+  if (user_access('edit all quotas') && isset($form['type']) && isset($form['#node']) && 'client_node_form' == $form_id) {
     $node = $form['#node'];
 
     if(!isset($node->quota)){
@@ -399,7 +399,7 @@ function hosting_quota_form_alter(&$form, &$form_state, $form_id) {
  */
 function hosting_quota_numeric_value($form, $form_state) {
   foreach ($form_state['values'] as $key => $value) {
-    if ((substr($key, 0, 5) === 'quota') && !(is_numeric($value))) {
+    if ((substr($key, 0, 5) == 'quota') && !(is_numeric($value))) {
       form_set_error($key, 'You must set a number as a quota value!');
     }
   }

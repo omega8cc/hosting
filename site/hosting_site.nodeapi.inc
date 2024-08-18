@@ -30,7 +30,7 @@ function hosting_site_view($node, $view_mode, $langcode = NULL) {
   hosting_set_breadcrumb($node);
   drupal_set_title(hosting_site_canonical_url($node));
   $node->content['info']['#prefix'] = '<div id="hosting-site-info" class="hosting-info-list">';
-  if ($node->site_status === HOSTING_SITE_ENABLED) {
+  if ($node->site_status == HOSTING_SITE_ENABLED) {
     $node->content['info']['link'] = array(
       '#markup' => _hosting_site_goto_link($node),
       '#weight' => -10,
@@ -339,7 +339,7 @@ function hosting_site_insert(&$node) {
  * Implements hook_node_insert().
  */
 function hosting_site_node_insert($node) {
-  if ($node->type === "site") {
+  if ($node->type == "site") {
     $node->title = hosting_site_clean_domain($node->title);
     if ((empty($node->old_vid))) {
       hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : $node->title);
@@ -364,7 +364,7 @@ function hosting_site_update(&$node) {
   else {
     $client = hosting_get_client($node->client);
     $node->client = $client->nid;
-    if ($node->site_status === HOSTING_SITE_DELETED) {
+    if ($node->site_status == HOSTING_SITE_DELETED) {
       $node->no_verify = TRUE;
     }
 
@@ -398,8 +398,8 @@ function hosting_site_update(&$node) {
  * Implements hook_node_update().
  */
 function hosting_site_node_update($node) {
-  if ($node->type === "site") {
-    if ((isset($node->no_verify) && $node->no_verify) === FALSE) {
+  if ($node->type == "site") {
+    if ((isset($node->no_verify) && $node->no_verify) == FALSE) {
       hosting_add_task($node->nid, 'verify');
     }
   }

@@ -109,8 +109,8 @@ function hosting_task_gc_count_sites() {
  * Implements hook_node_update().
  */
 function hosting_task_gc_node_update($node) {
-  if ($node->type === "site") {
-    if (isset($node->site_status) && $node->site_status === HOSTING_SITE_DELETED) {
+  if ($node->type == "site") {
+    if (isset($node->site_status) && $node->site_status == HOSTING_SITE_DELETED) {
       cache_clear_all('hosting_task_gc_count_sites', 'cache');
     }
   }

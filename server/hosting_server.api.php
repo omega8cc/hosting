@@ -36,8 +36,8 @@ function hook_hosting_servers_titles_alter(&$servers, $service) {
     $servers[$nid] .= 'SERVER';
   }
 
-  // Don't allow the user to use the server with $nid === 123, for the 'db' service
-  if ($service === 'db') {
+  // Don't allow the user to use the server with $nid == 123, for the 'db' service
+  if ($service == 'db') {
     unset($servers[123]);
   }
 }

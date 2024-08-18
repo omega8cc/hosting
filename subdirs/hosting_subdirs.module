@@ -9,7 +9,7 @@
  * Implements hook_form_alter().
  */
 function hosting_subdirs_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id === 'site_node_form') {
+  if ($form_id == 'site_node_form') {
     // Since our form changes should persist across failed validations, we need
     // to use '#after_build' here.
     // @see https://www.drupal.org/project/drupal/issues/671574#comment-3061880
@@ -78,7 +78,7 @@ function hosting_subdirs_validate_alias($site, $alias, $key) {
     return hosting_alias_validate_alias($site, $alias, $key);
   }
 
-  if (!hosting_alias_allow_domain($alias, array('nid' => $site->nid)) || $alias === $site->title) {
+  if (!hosting_alias_allow_domain($alias, array('nid' => $site->nid)) || $alias == $site->title) {
     form_set_error("aliases][$key", t('The domain name @alias is already in use', array('@alias' => $alias)));
   }
   if (!hosting_subdirs_valid_fqdn_subdir($alias)) {
@@ -106,7 +106,7 @@ function hosting_subdirs_node_presave($node) {
   // hosting_site. This is specifically so that $node->title here is still the
   // subdir domain.
   // @see: hosting_subdirs_install().
-  if ($node->type === 'site' && hosting_subdirs_is_a_subdir($node->title)) {
+  if ($node->type == 'site' && hosting_subdirs_is_a_subdir($node->title)) {
     // Add an alias and redirection to the subdir URL.
     $node->aliases[] = $node->redirection = $node->title;
   }

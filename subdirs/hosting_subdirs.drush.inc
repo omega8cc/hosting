@@ -9,7 +9,7 @@
  */
 function drush_hosting_subdirs_pre_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');
-  if ($task->ref->type === 'site' && $task->task_type === 'migrate') {
+  if ($task->ref->type == 'site' && $task->task_type == 'migrate') {
     $site = $task->ref;
 
     if (!_hosting_subdirs_is_a_subdir_site($site)) return;
@@ -27,7 +27,7 @@ function drush_hosting_subdirs_pre_hosting_task($task) {
  */
 function drush_hosting_subdirs_post_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');
-  if ($task->ref->type === 'site' && $task->task_type === 'migrate') {
+  if ($task->ref->type == 'site' && $task->task_type == 'migrate') {
     $site = $task->ref;
 
     if (!_hosting_subdirs_is_a_subdir_site($site)) return;

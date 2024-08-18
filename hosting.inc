@@ -127,7 +127,7 @@ function _hosting_valid_fqdn_ip($fqdn) {
  * @see format_interval()
  */
 function hosting_format_interval($ts) {
-  if ($ts === REQUEST_TIME) {
+  if ($ts == REQUEST_TIME) {
     return t('Now');
   }
   if ($ts <= 1) {

@@ -256,7 +256,7 @@ function _hosting_migrate_version_display($version, $schema = NULL, $status = NU
     $display = 'missing';
   }
   else {
-    $display = ($version === 0) ? t('Unknown') : $version;
+    $display = ($version == 0) ? t('Unknown') : $version;
   }
   if ($schema) {
     $display .= " (" . $schema . ")";
@@ -279,7 +279,7 @@ function theme_hosting_migrate_comparison($variables) {
       'data' => $instance->short_name,
       'class' => array('hosting-status'),
     );
-    $target_schema = ((int) $instance->target_schema === 0) ? $instance->current_schema : $instance->target_schema;
+    $target_schema = ((int) $instance->target_schema == 0) ? $instance->current_schema : $instance->target_schema;
     $row[] = _hosting_migrate_version_display($instance->current_version, $instance->current_schema);
     $row[] = _hosting_migrate_version_display($instance->target_version, $target_schema, $instance->status);
     $rows[] = array(
