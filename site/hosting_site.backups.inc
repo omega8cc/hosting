@@ -141,9 +141,9 @@ function hosting_task_backup_delete_form($node) {
  */
 function hosting_site_form_hosting_task_confirm_form_alter(&$form, &$form_state) {
   $node = $form_state['build_info']['args'][0];
-  if($node->type == 'site' && $form['task']['#value'] == 'delete') {
+  if($node->type === 'site' && $form['task']['#value'] === 'delete') {
     $backups = hosting_site_get_backups($node->nid);
-    if (!empty($backups) && variable_get('hosting_delete_backups', 'never') == 'prompt') {
+    if (!empty($backups) && variable_get('hosting_delete_backups', 'never') === 'prompt') {
       $form['delete_backups'] = array(
         '#type' => 'checkbox',
         '#title' => t('Delete site backups'),
@@ -153,7 +153,7 @@ function hosting_site_form_hosting_task_confirm_form_alter(&$form, &$form_state)
       // prior to the site itself. This results in keeping the pre-delete
       // backup.
     }
-    elseif (variable_get('hosting_delete_backups', 'never') == 'always') {
+    elseif (variable_get('hosting_delete_backups', 'never') === 'always') {
       $form['delete_backups'] = array(
         '#markup' => 'Note that all backups for this site will be deleted, except for the final pre-delete backup.',
       );
@@ -167,7 +167,7 @@ function hosting_site_form_hosting_task_confirm_form_alter(&$form, &$form_state)
  */
 function hosting_site_delete_site_task_submit($form, $form_state){
   $delete = isset($form_state['values']['delete_backups']) ? $form_state['values']['delete_backups'] : FALSE ;
-  if ($delete || variable_get('hosting_delete_backups', 'never') == 'always') {
+  if ($delete || variable_get('hosting_delete_backups', 'never') === 'always') {
     $nid = $form_state['values']['nid'];
     $backups = hosting_site_get_backups($nid);
     if (!empty($backups)) {

@@ -13,10 +13,10 @@ function hosting_migrate_platform($form, $form_state, $node) {
   $step = isset($form_state['storage']['step']) ? $form_state['storage']['step'] : 1;
 
   // Step 1 - choose target platform
-  if ($step == 1) {
+  if ($step === 1) {
     $result = db_query("SELECT count(nid) as site_count FROM {hosting_site} WHERE status = :status AND verified > :verified AND platform = :platform", array(':status' => HOSTING_SITE_ENABLED, ':verified' => 0, ':platform' => $node->nid))->fetch();
 
-    if ($result->site_count == 0) {
+    if ($result->site_count === 0) {
       $form['no_sites'] = array(
         '#markup' => t('This platform does not have any sites that can be migrated.'),
       );
@@ -59,7 +59,7 @@ function hosting_migrate_platform($form, $form_state, $node) {
   }
 
   // Step 2 - review sites that pass or fail the requirements to be migrated
-  if ($step == 2) {
+  if ($step === 2) {
     $title = array(
       'passed' => t("The following sites will be migrated"),
       'failed' => t("The following sites will not be migrated"),
@@ -110,7 +110,7 @@ function hosting_migrate_platform($form, $form_state, $node) {
   }
 
   // Step 3 - All migrate tasks have been created, close the modal if needed.
-  if ($step == 3) {
+  if ($step === 3) {
     if (!empty($GLOBALS['modalframe_page_template'])) {
       if (module_exists('overlay')) {
         overlay_close_dialog();

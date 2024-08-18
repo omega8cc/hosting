@@ -236,7 +236,7 @@ function hosting_menu_alter(&$items) {
  */
 function hosting_menu_access($type, $feature) {
   global $user;
-  return (($user->uid == 1) || user_access('create ' . $type)) && (hosting_feature($feature) !== HOSTING_FEATURE_DISABLED);
+  return (($user->uid === 1) || user_access('create ' . $type)) && (hosting_feature($feature) !== HOSTING_FEATURE_DISABLED);
 }
 
 /**
@@ -369,10 +369,10 @@ function hosting_node_validate($node, $form, &$form_state) {
  */
 function hosting_node_view($node, $view_mode, $langcode) {
   // Redispatch through our custom nodeapi implementation.
-  if ($view_mode == 'teaser') {
+  if ($view_mode === 'teaser') {
     hosting_nodeapi($node, 'view', TRUE, FALSE);
   }
-  elseif ($view_mode == 'full') {
+  elseif ($view_mode === 'full') {
     hosting_nodeapi($node, 'view', FALSE, TRUE);
   }
 }
@@ -533,7 +533,7 @@ function _hosting_node_link($nid, $title = NULL) {
   if (!isset($title)) {
     $title = isset($node->title) ? $node->title : NULL;
     // Override with the redirect target, when available.
-    $title = $node->type == 'site' ? hosting_site_canonical_url($node) : $title;
+    $title = $node->type === 'site' ? hosting_site_canonical_url($node) : $title;
     // Override with the human-readable name, when available.
     $title = isset($node->human_name) && strlen($node->human_name) ? $node->human_name : $title;
   }
@@ -595,10 +595,10 @@ function hosting_queue_summary_block() {
         'total_items' => t('Items in queue'),
         'last_run' => t('Last run'),
       ) as $key => $title) {
-        if ($key == 'last_run') {
+        if ($key === 'last_run') {
           $info[$key] = hosting_format_interval($info[$key]);
         }
-        elseif ($key == 'frequency') {
+        elseif ($key === 'frequency') {
           $info[$key] = t('every @interval', array('@interval' => format_interval($info[$key])));
         }
         $disp[] = $title . ": " . $info[$key];
@@ -683,7 +683,7 @@ function drush_hosting_setup() {
     variable_set('hosting_dispatch_enabled', FALSE);
     $return = implode("\n", $return);
     $data = unserialize($return);
-    if ($code == DRUSH_SUCCESS) {
+    if ($code === DRUSH_SUCCESS) {
       variable_set('hosting_dispatch_enabled', TRUE);
       drush_log(t("Dispatch command was run successfully"), 'success');
       _hosting_setup_cron();
@@ -890,7 +890,7 @@ function hosting_queues_configure($form, &$form_state) {
     $form[$queue]['frequency']['#prefix'] = "<div class='hosting-queue-frequency'>";
     $form[$queue]['frequency']['#suffix'] = "</div>";
 
-    if ($info['type'] == HOSTING_QUEUE_TYPE_BATCH) {
+    if ($info['type'] === HOSTING_QUEUE_TYPE_BATCH) {
       $form[$queue]['frequency']['items'] = array(
         '#markup' => t('%count %items every', array(
           "%count" => $info['total_items'],
@@ -900,7 +900,7 @@ function hosting_queues_configure($form, &$form_state) {
         '#suffix' => "</div>",
       );
     }
-    elseif ($info['type'] == HOSTING_QUEUE_TYPE_SPREAD) {
+    elseif ($info['type'] === HOSTING_QUEUE_TYPE_SPREAD) {
       $form[$queue]['frequency']['items'] = array(
         '#markup' => t('%count %items every', array(
           "%count" => $info['total_items'],
@@ -1021,7 +1021,7 @@ function hosting_queues_configure_submit($form, &$form_state) {
     if ($form_state['values'][$queue]) {
       variable_set("hosting_queue_" . $queue . "_enabled", $form_state['values'][$queue]['enabled']);
       variable_set("hosting_queue_" . $queue . "_frequency", $form_state['values'][$queue]['frequency']['ticks'] * $form_state['values'][$queue]['frequency']['unit']);
-      if ($info['type'] == HOSTING_QUEUE_TYPE_SERIAL) {
+      if ($info['type'] === HOSTING_QUEUE_TYPE_SERIAL) {
         variable_set("hosting_queue_" . $queue . "_items", $form_state['values'][$queue]['frequency']['items']);
       }
     }
@@ -1034,14 +1034,14 @@ function hosting_queues_configure_submit($form, &$form_state) {
  */
 function hosting_form_alter(&$form, &$form_state, $form_id) {
   // Do not allow package or task nodes to be edited through the interface.
-  if ($form_id == 'package_node_form' || $form_id == 'task_node_form') {
+  if ($form_id === 'package_node_form' || $form_id === 'task_node_form') {
     drupal_access_denied();
     exit;
   }
 
   // Alter the 'Add User' form to remind users that this is not the New Client
   // form.
-  if ($form_id == 'user_register') {
+  if ($form_id === 'user_register') {
     $form['user_registration_help'] = array(
       '#type' => 'item',
       '#description' => t('<strong>Adding a system user account does not make the user a Client that can add sites.</strong><br />
@@ -1054,7 +1054,7 @@ function hosting_form_alter(&$form, &$form_state, $form_id) {
   // Remove additional UI added by core modules, it conflicts with the our UI.
   $node_types = array('site', 'platform', 'server', 'client');
   foreach ($node_types as $type) {
-    if ($form_id == $type . '_node_form') {
+    if ($form_id === $type . '_node_form') {
       $form['options']['#access'] = FALSE;
       $form['revision_information']['#access'] = FALSE;
       $form['author']['#access'] = FALSE;
@@ -1089,7 +1089,7 @@ function hosting_form_submit_messages($form, $form_state) {
       $t['!message'] = t('It will be available once the task is completed.');
 
       // If node is a site, task is "install".
-      if ($form_state['node']->type == 'site') {
+      if ($form_state['node']->type === 'site') {
         $t['%task'] = t('Install');
       }
     }

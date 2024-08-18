@@ -39,14 +39,14 @@ function hosting_package_instance_sync($rid, $type) {
   $type = array_shift($args);
 
   // Figure out the platform nid
-  if ($type == 'platform') {
+  if ($type === 'platform') {
     $platform = $rid;
   }
-  elseif ($type == 'site') {
+  elseif ($type === 'site') {
     $node = node_load($rid);
     $platform = $node->platform;
   }
-  elseif ($type == 'profile') {
+  elseif ($type === 'profile') {
     $sql = 'SELECT rid
             FROM {hosting_package_instance}
             WHERE iid = :rid';

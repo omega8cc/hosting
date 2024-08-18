@@ -38,7 +38,7 @@ function hosting_subdirs_update_7001() {
   $servers = hosting_get_servers('http');
   $nodes = node_load_multiple(array_keys($servers));
   foreach ($nodes as $nid => $node) {
-    if ($node->services['http']->type == 'nginx') {
+    if ($node->services['http']->type === 'nginx') {
       hosting_add_task($nid, 'verify');
     }
   }

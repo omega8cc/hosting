@@ -79,7 +79,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
   // Ensure the task object is loaded before proceeding.
   if ($task) {
     // Further validation and processing of the task.
-    if ($task->type == 'task') {
+    if ($task->type === 'task') {
       $task->ref = node_load($task->rid);
       $task->options = array();
       $task->context_options = array(
@@ -93,7 +93,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
       $task->executed = REQUEST_TIME;
       /* if not already running, remove the task from the queue
        * this is to avoid concurrent task runs */
-      if ($task->task_status == HOSTING_TASK_PROCESSING && !drush_get_option('force', FALSE)) {
+      if ($task->task_status === HOSTING_TASK_PROCESSING && !drush_get_option('force', FALSE)) {
         return drush_set_error('HOSTING_TASK_RUNNING', dt("This task is already running, use --force"));
       }
       if ($task->task_status !== HOSTING_TASK_QUEUED && !drush_get_option('force', FALSE)) {
@@ -194,8 +194,8 @@ function drush_hosting_task() {
     drush_invoke_process('@none', 'provision-save', array('@' . $task->ref->hosting_name), $task->context_options, array('method' => $mode, 'integrate' => TRUE));
   }
 
-  if (($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
-    || ($task->ref->type == 'platform' && $task->ref->platform_status == HOSTING_PLATFORM_DELETED)) {
+  if (($task->ref->type === 'site' && $task->ref->site_status === HOSTING_SITE_DELETED)
+    || ($task->ref->type === 'platform' && $task->ref->platform_status === HOSTING_PLATFORM_DELETED)) {
 
     // We're performing a task on a site that has been deleted...
     // d() will not be returning a site object.

@@ -35,7 +35,7 @@ function drush_example_provision_install() {
    * function without any arguments to retrieve the object representing
    * the current context.
    */
-  if (d()->type == 'site') {
+  if (d()->type === 'site') {
     // only run this code on site objects.
 
     /**

@@ -50,7 +50,7 @@ function hosting_db_server_update_6000() {
   $ret = array();
   $result = db_query("SELECT nid, vid, title FROM {node} WHERE type='db_server'");
   while ($record = db_fetch_object($result)) {
-    if ($record->title == 'localhost') {
+    if ($record->title === 'localhost') {
       $db_server = db_fetch_object(db_query("SELECT * FROM {hosting_db_server} WHERE nid=%d", $record->nid));
 
       // Remove old data to remove collision opportunities.

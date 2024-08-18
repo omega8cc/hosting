@@ -21,7 +21,7 @@ function hosting_site_data_hosting_site_context_options(&$task) {
  * Implements hook_drush_context_import().
  */
 function hosting_site_data_drush_context_import($context, &$node) {
-  if ($context->type == 'site') {
+  if ($context->type === 'site') {
     if (isset($context->site_data) && !empty($context->site_data)) {
       $node->site_data = $context->site_data;
     }

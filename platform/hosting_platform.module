@@ -95,7 +95,7 @@ function hosting_platform_edit_form_on_site_page($site) {
  * Wrapper for node_page_edit, for the "Edit Platform" tab.
  */
 function hosting_platform_edit_form_on_site_page_access($op, $site) {
-  if ($site->type == 'site' && !empty($site->platform)) {
+  if ($site->type === 'site' && !empty($site->platform)) {
     $platform = node_load($site->platform);
     return node_access($op, $platform);
   }
@@ -597,7 +597,7 @@ function hosting_platform_update($node) {
     hosting_platform_insert($node);
   }
   else {
-    if ($node->platform_status == HOSTING_PLATFORM_DELETED) {
+    if ($node->platform_status === HOSTING_PLATFORM_DELETED) {
       $node->no_verify = TRUE;
     }
     db_update('hosting_platform')
@@ -799,7 +799,7 @@ function hosting_platform_wildcard_load($arg) {
     return FALSE;
   }
   if ($node = node_load($arg)) {
-    if ($node->type == 'platform') {
+    if ($node->type === 'platform') {
       return $node;
     }
   }
@@ -862,7 +862,7 @@ function hosting_platform_view($node, $view_mode, $langcode = NULL) {
   }
 
   // Task list.
-  if ($view_mode == 'full' && $node->nid) {
+  if ($view_mode === 'full' && $node->nid) {
     $node->content['tasks_view'] = array(
       '#type' => 'item',
       '#markup' => hosting_task_table($node),

@@ -47,12 +47,12 @@ function hook_hosting_site_options_alter(&$return, $node) {
     $return['ssl_key'] = array_keys($keys);
 
     // properly default this value so things dont fall apart later.
-    if (count($return['ssl_key']) == 1) {
+    if (count($return['ssl_key']) === 1) {
       $node->ssl_key = HOSTING_SSL_CUSTOM_KEY;
     }
 
     // the user has chosen to enter a new key
-    if ($node->ssl_key == HOSTING_SSL_CUSTOM_KEY) {
+    if ($node->ssl_key === HOSTING_SSL_CUSTOM_KEY) {
       // default the new key to the site's domain name, after filtering.
       $default = hosting_ssl_filter_key($node->title);
       $return['ssl_key_new'] = (!empty($default)) ? $default : TRUE;

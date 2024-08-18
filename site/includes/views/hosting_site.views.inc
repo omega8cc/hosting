@@ -264,7 +264,7 @@ function hosting_site_views_data() {
  * Implements hook_views_pre_build().
  */
 function hosting_site_views_pre_build(&$view) {
-  if ($view->name == 'hosting_site_list') {
+  if ($view->name === 'hosting_site_list') {
     switch ($view->current_display) {
       case 'page_sites':
         // Only allow VBO for admins.
@@ -305,7 +305,7 @@ function hosting_site_views_pre_build(&$view) {
  * Implements hook_preprocess_views_view().
  */
 function hosting_site_preprocess_views_view(&$vars) {
-  if ($vars['view']->name == 'hosting_site_list') {
+  if ($vars['view']->name === 'hosting_site_list') {
     // Wrap exposed filters in a fieldset.
     if ($vars['exposed']) {
       // Ensure required css and js libs are added

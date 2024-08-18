@@ -261,17 +261,17 @@ function hosting_package_views_access($type, $display, $account = NULL) {
         }
         switch ($display) {
           case 'page_packages_site':
-            return $node->type == 'site' && $node->site_status !== -2;
+            return $node->type === 'site' && $node->site_status !== -2;
             break;
           case 'page_packages_platform':
-            return $node->type == 'platform' && $node->platform_status !== -2;
+            return $node->type === 'platform' && $node->platform_status !== -2;
             break;
         }
       }
       break;
     case 'block':
       if ($node = menu_get_object()) {
-        return $node->type == 'package' && $node->package_type !== 'profile';
+        return $node->type === 'package' && $node->package_type !== 'profile';
       }
       break;
     default:
@@ -286,8 +286,8 @@ function hosting_package_views_access($type, $display, $account = NULL) {
  */
 function hosting_package_form_views_exposed_form_alter(&$form, &$form_state) {
   // The status filter doesn't make sense on platforms.
-  if ($form_state['view']->name == 'hosting_package_list' && is_numeric(arg(1)) && $node = node_load(arg(1))) {
-    if ($node->type == 'platform') {
+  if ($form_state['view']->name === 'hosting_package_list' && is_numeric(arg(1)) && $node = node_load(arg(1))) {
+    if ($node->type === 'platform') {
       $form['status']['#access'] = FALSE;
       unset($form['#info']['filter-status']);
     }
@@ -299,8 +299,8 @@ function hosting_package_form_views_exposed_form_alter(&$form, &$form_state) {
  */
 function hosting_package_views_pre_build(&$view) {
   // The site_count field doesn't make sense for sites.
-  if ($view->name == 'hosting_package_list' && is_numeric(arg(1)) && $node = node_load(arg(1))) {
-    if ($node->type == 'site') {
+  if ($view->name === 'hosting_package_list' && is_numeric(arg(1)) && $node = node_load(arg(1))) {
+    if ($node->type === 'site') {
       unset($view->field['site_count']);
       unset($view->display_handler->handlers['field']['site_count']);
     }

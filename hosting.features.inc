@@ -35,7 +35,7 @@ function hosting_feature($feature) {
   if (!count($features)) {
     $features = hosting_get_features();
   }
-  if (isset($features[$feature]['status']) && ($features[$feature]['status'] == HOSTING_FEATURE_REQUIRED)) {
+  if (isset($features[$feature]['status']) && ($features[$feature]['status'] === HOSTING_FEATURE_REQUIRED)) {
     $return = module_exists($features[$feature]['module']) ? HOSTING_FEATURE_REQUIRED : HOSTING_FEATURE_DISABLED;
   }
   elseif (isset($features[$feature]['module'])) {
@@ -144,7 +144,7 @@ function hosting_features_form($form, &$form_state) {
 
     // Disable checkbox for required features.
     $locked = FALSE;
-    if ($info['status'] == HOSTING_FEATURE_REQUIRED) {
+    if ($info['status'] === HOSTING_FEATURE_REQUIRED) {
       $locked = TRUE;
     }
     elseif (isset($required_by) && $required_by) {
@@ -157,8 +157,8 @@ function hosting_features_form($form, &$form_state) {
       '#type' => 'checkbox',
       '#title' => check_plain($info['title']),
       '#description' => $description,
-      '#default_value' => $info['status'] == HOSTING_FEATURE_REQUIRED ? 1 : hosting_feature($feature),
-      '#required' => hosting_feature($feature) == HOSTING_FEATURE_REQUIRED,
+      '#default_value' => $info['status'] === HOSTING_FEATURE_REQUIRED ? 1 : hosting_feature($feature),
+      '#required' => hosting_feature($feature) === HOSTING_FEATURE_REQUIRED,
       '#disabled' => $locked,
     );
 
@@ -173,19 +173,19 @@ function hosting_features_form($form, &$form_state) {
       );
     }
     if ($package) {
-      if ($info['group'] == 'required') {
+      if ($info['group'] === 'required') {
         if (!isset($required[$info['package']])) {
           $required[$info['package']] = $package;
         }
         $required[$info['package']]['hosting_feature_' . $feature] = $element;
       }
-      elseif ($info['group'] == 'optional') {
+      elseif ($info['group'] === 'optional') {
         if (!isset($optional[$info['package']])) {
           $optional[$info['package']] = $package;
         }
         $optional[$info['package']]['hosting_feature_' . $feature] = $element;
       }
-      elseif ($info['group'] == 'advanced') {
+      elseif ($info['group'] === 'advanced') {
         if (!isset($advanced[$info['package']])) {
           $advanced[$info['package']] = $package;
         }
@@ -200,13 +200,13 @@ function hosting_features_form($form, &$form_state) {
     }
     // This feature is in the 'Hosting' module package.
     else {
-      if (isset($info['group']) && $info['group'] == 'required') {
+      if (isset($info['group']) && $info['group'] === 'required') {
         $required['hosting_feature_' . $feature] = $element;
       }
-      elseif (isset($info['group']) && $info['group'] == 'optional') {
+      elseif (isset($info['group']) && $info['group'] === 'optional') {
         $optional['hosting_feature_' . $feature] = $element;
       }
-      elseif (isset($info['group']) && $info['group'] == 'advanced') {
+      elseif (isset($info['group']) && $info['group'] === 'advanced') {
         $advanced['hosting_feature_' . $feature] = $element;
       }
       else {
@@ -360,7 +360,7 @@ function theme_hosting_feature_dependencies($vars) {
     $return .= " (<span class=\"admin-$enabled\">";
     $return .= $enabled;
     $return .= '</span>)';
-    $return .= $require == $last ? '.</div>' : ',';
+    $return .= $require === $last ? '.</div>' : ',';
   }
   return $return;
 }

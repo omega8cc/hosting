@@ -41,7 +41,7 @@ function hosting_hosting_server_context_options(&$task) {
  * Implements hook_drush_context_import().
  */
 function hosting_server_drush_context_import($context, &$node) {
-  if ($context->type == 'server') {
+  if ($context->type === 'server') {
     if (!isset($node->title)) {
       $node->title = strtolower($context->remote_host);
     }
@@ -69,7 +69,7 @@ function hosting_server_drush_context_import($context, &$node) {
  * Resave the target node to trigger reverifications.
  */
 function hosting_server_post_hosting_verify_task($task, $data) {
-  if ($task->ref->type == 'server') {
+  if ($task->ref->type === 'server') {
     $task->ref->no_verify = TRUE;
 
     // Set verified flag on server, to let it know it has been checked.

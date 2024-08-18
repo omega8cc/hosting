@@ -23,7 +23,7 @@ function hosting_site_hosting_quota_resource() {
  * Implements hook_hosting_quota_get_usage().
  */
 function hosting_site_hosting_quota_get_usage($client, $resource, $start = NULL, $end = NULL) {
-  if (hosting_get_client($client) && $resource == 'sites') {
+  if (hosting_get_client($client) && $resource === 'sites') {
     return db_query("SELECT count(*) FROM {hosting_site} WHERE client = :client AND status <> :status", array(':client' => $client, ':status' => HOSTING_SITE_DELETED))->fetchField();
   }
 }

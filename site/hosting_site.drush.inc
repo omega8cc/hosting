@@ -38,7 +38,7 @@ function hosting_hosting_site_context_options(&$task) {
  * Implements hook_drush_context_import().
  */
 function hosting_site_drush_context_import($context, &$node) {
-  if ($context->type == 'site') {
+  if ($context->type === 'site') {
     if (!isset($node->title)) {
       $node->title = hosting_site_get_domain($context->uri); // force lowercase for existing uri
     }
@@ -55,7 +55,7 @@ function hosting_site_drush_context_import($context, &$node) {
 
     if (!$profile) {
       // For D6 to D7 upgrades, try changing default to standard.
-      if (!empty($context->profile) && $context->profile == 'default') {
+      if (!empty($context->profile) && $context->profile === 'default') {
         $profile = hosting_package_instance_load(array(
           'i.rid' => $node->platform,
           'p.short_name' => 'standard',
@@ -87,12 +87,12 @@ function hosting_site_drush_context_import($context, &$node) {
 function drush_hosting_site_pre_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');
 
-  if ($task->task_type == 'restore') {
+  if ($task->task_type === 'restore') {
     $backup = hosting_site_get_backup($task->task_args['bid']);
     $task->args[1] = $backup['filename'];
   }
 
-  if ($task->task_type == 'backup-delete') {
+  if ($task->task_type === 'backup-delete') {
     foreach ($task->task_args as $bid => $filename) {
       if ($filename !== '0') {
         $backups[] = $filename;
@@ -108,7 +108,7 @@ function drush_hosting_site_pre_hosting_task($task) {
  * implementation of the hosting_post_install hook
  */
 function hosting_site_post_hosting_install_task($task, $data) {
-  if ($task->ref->type == 'site') {
+  if ($task->ref->type === 'site') {
     $context = $data['context'];
     $packages = $context['packages'];
     hosting_package_sync($packages);
@@ -156,7 +156,7 @@ function hosting_site_hosting_install_task_rollback($task, $data) {
  * Implements hook_hosting_post_disable().
  */
 function hosting_site_post_hosting_disable_task($task, $data) {
-  if (!empty($data['context']['backup_file']) && $data->ref->type == 'site') {
+  if (!empty($data['context']['backup_file']) && $data->ref->type === 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being disabled'), $data['context']['backup_file_size']);
   }
@@ -173,7 +173,7 @@ function hosting_site_post_hosting_disable_task($task, $data) {
  * Implements hook_hosting_post_restore().
  */
 function hosting_site_post_hosting_restore_task($task, $data) {
-  if (!empty($data['context']['backup_file']) && $task->ref->type == 'site') {
+  if (!empty($data['context']['backup_file']) && $task->ref->type === 'site') {
     $platform = node_load($task->ref->platform);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being restored to a previous version'), $data['context']['backup_file_size']);
   }
@@ -192,7 +192,7 @@ function hosting_site_post_hosting_enable_task($task, $data) {
  * Implements hook_hosting_post_DELETE().
  */
 function hosting_site_post_hosting_delete_task($task, $data) {
-  if ($task->ref->type == 'site') {
+  if ($task->ref->type === 'site') {
     $task->ref->site_status = HOSTING_SITE_DELETED;
     $task->ref->no_verify = TRUE;
     hosting_context_delete($task->ref->nid);
@@ -214,7 +214,7 @@ function hosting_site_post_hosting_delete_task($task, $data) {
  * This is needed to be able to restore.
  */
 function hosting_site_post_hosting_backup_task($task, $data) {
-  if (!empty($data['context']['backup_file']) && $task->ref->type == 'site') {
+  if (!empty($data['context']['backup_file']) && $task->ref->type === 'site') {
     $platform = node_load($task->ref->platform);
 
     $desc = $task->task_args['description'];
@@ -244,7 +244,7 @@ function hosting_site_post_hosting_import_task($task, $data) {
  * Implements hook_post_hosting_verify_task().
  */
 function hosting_site_post_hosting_verify_task($task, $data) {
-  if ($task->ref->type == 'site') {
+  if ($task->ref->type === 'site') {
     $task->ref->verified = REQUEST_TIME;
     $task->ref->no_verify = TRUE;
     $task->ref->db_name = $data['self']['db_name'];
@@ -264,7 +264,7 @@ function hosting_site_post_hosting_verify_task($task, $data) {
  * Implements the hosting_failed_install hook
  */
 function hosting_site_hosting_verify_task_rollback($task, $data) {
-  if ($task->ref->type == 'site') {
+  if ($task->ref->type === 'site') {
     $task->ref->no_verify = TRUE;
     $task->ref->verified = 0;
     node_save($task->ref);
@@ -275,7 +275,7 @@ function hosting_site_hosting_verify_task_rollback($task, $data) {
  * Implements hook_hosting_import_task_rollback().
  */
 function hosting_site_hosting_import_task_rollback($task, $data) {
-  if ($task->ref->type == 'site') {
+  if ($task->ref->type === 'site') {
     $task->ref->no_verify = TRUE;
     $task->ref->verified = 0;
     $task->ref->site_status = HOSTING_SITE_DISABLED;
@@ -287,7 +287,7 @@ function hosting_site_hosting_import_task_rollback($task, $data) {
  * Implements hook_post_hosting_login_reset_task().
  */
 function hosting_site_post_hosting_login_reset_task($task, $data) {
-  if ($task->ref->type == 'site') {
+  if ($task->ref->type === 'site') {
     $task->ref->no_verify = TRUE;
     node_save($task->ref);
 
@@ -308,7 +308,7 @@ function hosting_site_post_hosting_login_reset_task($task, $data) {
  * Implements the hosting_post_backup_delete hook
  */
 function hosting_site_post_hosting_backup_delete_task($task, $data) {
-  if ($task->ref->type == 'site') {
+  if ($task->ref->type === 'site') {
     foreach ($task->task_args as $bid => $filename) {
       if ($filename !== '0') {
         hosting_site_delete_backup($bid);
