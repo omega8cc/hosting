@@ -9,7 +9,7 @@ hostingTaskRefreshList = function() {
     // If the node has been modified, reload the whole page.
     if (Drupal.settings.hostingTaskRefresh.changed < data.changed) {
       // only reload if there is no modal frame currently open
-      if ($(document).data('hostingOpenModalFrame') !== true) {
+      if ($(document).data('hostingOpenModalFrame') != true) {
         // If a specific URL was specified, go there.
         if (data.navigate_url) {
           document.location = data.navigate_url;
@@ -39,7 +39,7 @@ function hostingTaskAddOverlay(elem) {
 
 
 hostingTaskRefreshQueueBlock = function() {
-  if (Drupal.settings.hostingTaskRefresh.queueBlock !== 1) {
+  if (Drupal.settings.hostingTaskRefresh.queueBlock != 1) {
     return null;
   }
 

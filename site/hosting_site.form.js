@@ -53,7 +53,7 @@ Drupal.hosting.siteFormToggleOptions = function(settings) {
 
     if ($id.hasClass('hosting-site-field-radios')) {
       // show and hide the visible radio options.
-      if (typeof(settings[key]) !== 'object') {
+      if (typeof(settings[key]) != 'object') {
         $id.hide();
         $desc_id.hide();
       }
@@ -87,7 +87,7 @@ Drupal.hosting.siteFormToggleOptions = function(settings) {
 
         // we have a special case for radios that do not want their description
         // shown. These options have the index value 'null'.
-        if (settings[key][0] !== 'null') {
+        if (settings[key][0] != 'null') {
           $desc_id.show()
             .find('div.placeholder')
             .removeClass('error')
@@ -121,7 +121,7 @@ Drupal.hosting.siteFormToggleOptions = function(settings) {
             replaceWith($.trim($input_id.val()));
         }
       }
-      else if ((settings[key].toString().length || (settings[key] == true)) && (settings[key] !== false)) {
+      else if ((settings[key].toString().length || (settings[key] == true)) && (settings[key] != false)) {
         $id.show();
         $desc_id.hide();
 

@@ -261,17 +261,17 @@ function hosting_package_views_access($type, $display, $account = NULL) {
         }
         switch ($display) {
           case 'page_packages_site':
-            return $node->type == 'site' && $node->site_status !== -2;
+            return $node->type == 'site' && $node->site_status != -2;
             break;
           case 'page_packages_platform':
-            return $node->type == 'platform' && $node->platform_status !== -2;
+            return $node->type == 'platform' && $node->platform_status != -2;
             break;
         }
       }
       break;
     case 'block':
       if ($node = menu_get_object()) {
-        return $node->type == 'package' && $node->package_type !== 'profile';
+        return $node->type == 'package' && $node->package_type != 'profile';
       }
       break;
     default:

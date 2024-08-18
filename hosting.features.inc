@@ -164,7 +164,7 @@ function hosting_features_form($form, &$form_state) {
 
     // Add another fieldset based on contrib module package.
     $package = FALSE;
-    if ($info['package'] !== 'Hosting') {
+    if ($info['package'] != 'Hosting') {
       $package = array(
         '#type' => 'fieldset',
         '#title' => $info['package'],

@@ -494,7 +494,7 @@ function hosting_package_update_6200() {
 <?php\n
 \$node = menu_get_object();\n
 if (!empty(\$node)) {\n
-  return \$node->type == 'package' && \$node->package_type !== 'profile';\n
+  return \$node->type == 'package' && \$node->package_type != 'profile';\n
 }\n
 ?>");
 

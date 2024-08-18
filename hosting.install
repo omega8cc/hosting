@@ -477,7 +477,7 @@ function hosting_update_6203() {
 
   $features = hosting_get_features(TRUE);
   foreach ($features as $feature => $info) {
-    if (variable_get($feature, FALSE) !== FALSE) {
+    if (variable_get($feature, FALSE) != FALSE) {
       variable_del($feature);
     }
   }

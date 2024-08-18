@@ -96,7 +96,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
       if ($task->task_status == HOSTING_TASK_PROCESSING && !drush_get_option('force', FALSE)) {
         return drush_set_error('HOSTING_TASK_RUNNING', dt("This task is already running, use --force"));
       }
-      if ($task->task_status !== HOSTING_TASK_QUEUED && !drush_get_option('force', FALSE)) {
+      if ($task->task_status != HOSTING_TASK_QUEUED && !drush_get_option('force', FALSE)) {
         return drush_set_error('HOSTING_TASK_NOT_QUEUED', dt("This task is not queued, use --force"));
       }
 

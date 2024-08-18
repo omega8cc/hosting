@@ -569,14 +569,14 @@ function hosting_alias_hosting_automatic_aliases_alter(&$aliases, $context) {
   if (!preg_match('/^www\./', $url) && variable_get('hosting_alias_automatic_www', FALSE)) {
     $auto_alias = "www." . $url;
     // Lookup DNS, only add if we get an IP back.
-    if (gethostbyname($auto_alias) !== $auto_alias) {
+    if (gethostbyname($auto_alias) != $auto_alias) {
       $aliases[] = $auto_alias;
     }
   }
   elseif (preg_match('/^www\./', $url) && variable_get('hosting_alias_automatic_no_www', FALSE)) {
     $auto_alias = str_replace("www.", "", $url);
     // Lookup DNS, only add if we get an IP back.
-    if (gethostbyname($auto_alias) !== $auto_alias) {
+    if (gethostbyname($auto_alias) != $auto_alias) {
       $aliases[] = $auto_alias;
     }
   }

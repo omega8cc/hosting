@@ -12,11 +12,11 @@ function drush_hosting_migrate_pre_hosting_task($task) {
 
     $site = $task->ref;
 
-    if (hosting_site_get_domain($site->title) !== hosting_site_get_domain($task->task_args['new_uri'])) {
+    if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
       $task->args[3] = '@' . hosting_site_get_domain($task->task_args['new_uri']);
     }
 
-    if ($site->db_server !== $task->task_args['new_db_server']) {
+    if ($site->db_server != $task->task_args['new_db_server']) {
       $task->options['new_db_server'] = hosting_context_name($task->task_args['new_db_server']);
     }
 
@@ -62,12 +62,12 @@ function hosting_migrate_post_hosting_migrate_task($task, $data) {
     $target = $task->task_args['target_platform'];
     $site = $task->ref;
 
-    if (hosting_site_get_domain($site->title) !== hosting_site_get_domain($task->task_args['new_uri'])) {
+    if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
       $site->title = hosting_site_clean_domain($task->task_args['new_uri']);
       hosting_context_register($site->nid, hosting_site_get_domain($site->title));
     }
 
-    if ($site->db_server !== $task->task_args['new_db_server']) {
+    if ($site->db_server != $task->task_args['new_db_server']) {
       $site->db_server = $task->task_args['new_db_server'];
     }
     $site->db_name = $data['context']['db_name'];
