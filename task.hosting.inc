@@ -120,13 +120,27 @@ function drush_hosting_task_validate($id, $type = NULL) {
       if (!empty($task->task_args['backup_mode'])) {
 
         // Extract the backup_mode from the task arguments if available.
-        drush_log(dt("Extracting the backup_mode from the task arguments if available") . ': ' . $id, 'queue');
-        drush_log(dt("Task is_numeric node to load was ") . ': ' . $is_numeric, 'queue');
-        drush_log(dt("Task is_string and type was ") . ': ' . $is_string, 'queue');
-        drush_log(dt("Task ref-nid was ") . ': ' . $ref_nid, 'queue');
-        drush_log(dt("Task add values were ") . ':: ' . $ref->nid . ' :: ' . $type . ' :: ' . $task_args[$name], 'queue');
-        drush_log(dt("Uses drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
-        drush_log(dt("AEGIR_BACKUP_MODE_CTRL was ") . ': ' . AEGIR_BACKUP_MODE_CTRL, 'queue');
+        if (isset($id)) {
+          drush_log(dt("Extracting the backup_mode from the task arguments if available") . ': ' . $id, 'queue');
+        }
+        if (isset($is_numeric)) {
+          drush_log(dt("Task is_numeric node to load was ") . ': ' . $is_numeric, 'queue');
+        }
+        if (isset($is_string)) {
+          drush_log(dt("Task is_string and type was ") . ': ' . $is_string, 'queue');
+        }
+        if (isset($ref_nid)) {
+          drush_log(dt("Task ref-nid was ") . ': ' . $ref_nid, 'queue');
+        }
+        if (isset($type)) {
+          drush_log(dt("Task add values were ") . ':: ' . $ref->nid . ' :: ' . $type . ' :: ' . $task_args[$name], 'queue');
+        }
+        if (isset($selected_backup_mode)) {
+          drush_log(dt("Uses drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
+        }
+        if (isset(AEGIR_BACKUP_MODE_CTRL)) {
+          drush_log(dt("AEGIR_BACKUP_MODE_CTRL was ") . ': ' . AEGIR_BACKUP_MODE_CTRL, 'queue');
+        }
 
         drush_set_option('selected_backup_mode', $selected_backup_mode);
 
