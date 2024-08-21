@@ -138,7 +138,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
         if (isset($selected_backup_mode)) {
           drush_log(dt("Uses drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
         }
-        if (isset(AEGIR_BACKUP_MODE_CTRL)) {
+        if (defined(AEGIR_BACKUP_MODE_CTRL)) {
           drush_log(dt("AEGIR_BACKUP_MODE_CTRL was ") . ': ' . AEGIR_BACKUP_MODE_CTRL, 'queue');
         }
 
