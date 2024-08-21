@@ -689,12 +689,15 @@ function hosting_task_confirm_form_submit($form, &$form_state) {
   $values = $form_state['values'];
   $parameters = isset($values['parameters']) ? $values['parameters'] : array();
 
-  if (!empty($form_state['values']['backup_mode'])) {
-    $selected_backup_mode = $form_state['values']['backup_mode'];
-    drush_set_option('selected_backup_mode', $selected_backup_mode);
+  // Add the backup_mode to the parameters if it exists.
+  if (!empty($values['backup_mode'])) {
+    $parameters['backup_mode'] = $values['backup_mode'];
   }
 
+  // Add the task to the queue with the parameters, including backup_mode.
   hosting_add_task($values['nid'], $values['task'], $parameters);
+
+  // Redirect the user back to the originating node.
   $form_state['redirect'] = 'node/' . $values['nid'];
 
   if (module_exists('overlay')) {

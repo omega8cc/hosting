@@ -38,30 +38,33 @@ function _hosting_task_log_print($entry) {
 /**
  * Validate hook for the hosting-task Drush command.
  *
- * We do some magic in this command to allow the user to run either a specifc
+ * We do some magic in this command to allow the user to run either a specific
  * task by specifying a node id or chosen task type by specifying the type of
  * task, e.g. 'verify' or 'migrate'.
  *
  * @see drush_hosting_task()
  */
 function drush_hosting_task_validate($id, $type = NULL) {
-  if (!empty($form_state['values']['backup_mode'])) {
-    $selected_backup_mode = $form_state['values']['backup_mode'];
-    drush_set_option('selected_backup_mode', $selected_backup_mode);
-  }
   drush_set_option('user', 1);
   drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_LOGIN);
+
+  // Initialize the task object.
+  $task = NULL;
+
+  // Load the task by ID if it's numeric.
   if (is_numeric($id)) {
     $task = node_load($id);
+    $is_numeric = $id;
   }
+  // Create a new task based on context ID and task type.
   elseif (is_string($id) && isset($type)) {
+    $is_string = $id . ' : ' . $type;
     $ref = hosting_context_load($id);
     if ($ref->nid) {
-
+      $ref_nid = $ref->nid;
       // Get additional arguments to the drush command and convert them to "task_args" as expected by the task node.
       $task_args = array();
-
-      // Parse task_arguments passed to drush in the format "name=value"
+      // Parse task_arguments passed to drush in the format "name=value".
       // phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection
       $arguments = func_get_args();
       $drush_args = array_splice($arguments, 2);
@@ -73,49 +76,104 @@ function drush_hosting_task_validate($id, $type = NULL) {
     }
   }
 
-  if ($task->type == 'task') {
-    $task->ref = node_load($task->rid);
-    $task->options = array();
-    $task->context_options = array(
-      'context_type' => $task->ref->type,
-      'master_url' => url('', array('absolute' => TRUE)),
-      'root' => NULL,
-      'uri' => NULL,
-    );
-    $task->args = array();
-    $task->changed = REQUEST_TIME;
-    $task->executed = REQUEST_TIME;
-    /* if not already running, remove the task from the queue
-     * this is to avoid concurrent task runs */
-    if ($task->task_status == HOSTING_TASK_PROCESSING && !drush_get_option('force', FALSE)) {
-      return drush_set_error('HOSTING_TASK_RUNNING', dt("This task is already running, use --force"));
+  // Ensure the task object is loaded before proceeding.
+  if ($task) {
+    // Further validation and processing of the task.
+    if ($task->type == 'task') {
+      $task->ref = node_load($task->rid);
+      $task->options = array();
+      $task->context_options = array(
+        'context_type' => $task->ref->type,
+        'master_url' => url('', array('absolute' => TRUE)),
+        'root' => NULL,
+        'uri' => NULL,
+      );
+      $task->args = array();
+      $task->changed = REQUEST_TIME;
+      $task->executed = REQUEST_TIME;
+      /* if not already running, remove the task from the queue
+       * this is to avoid concurrent task runs */
+      if ($task->task_status == HOSTING_TASK_PROCESSING && !drush_get_option('force', FALSE)) {
+        return drush_set_error('HOSTING_TASK_RUNNING', dt("This task is already running, use --force"));
+      }
+      if ($task->task_status != HOSTING_TASK_QUEUED && !drush_get_option('force', FALSE)) {
+        return drush_set_error('HOSTING_TASK_NOT_QUEUED', dt("This task is not queued, use --force"));
+      }
+
+      // Now you can safely access task arguments.
+      if (!empty($task->task_args['backup_mode'])) {
+        $selected_backup_mode = $task->task_args['backup_mode'];
+        $bytes_written = file_put_contents(AEGIR_BACKUP_MODE_CTRL, $selected_backup_mode, LOCK_EX);
+      }
+
+      $task->task_status = HOSTING_TASK_PROCESSING;
+      $task->revision = TRUE;
+
+      // Save the task node after setting its status.
+      node_save($task);
+
+      // Set the Drush contexts.
+      drush_set_context('HOSTING_TASK', $task);
+      drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
+      drush_log(dt("Task starts processing") . ': ' . $task->title, 'queue');
+
+      if (!empty($task->task_args['backup_mode'])) {
+
+        // Extract the backup_mode from the task arguments if available.
+        if (isset($id)) {
+          drush_log(dt("Extracting the backup_mode from the task arguments if available") . ': ' . $id, 'queue');
+        }
+        if (isset($is_numeric)) {
+          drush_log(dt("Task is_numeric node to load was ") . ': ' . $is_numeric, 'queue');
+        }
+        if (isset($is_string)) {
+          drush_log(dt("Task is_string and type was ") . ': ' . $is_string, 'queue');
+        }
+        if (isset($ref_nid)) {
+          drush_log(dt("Task ref-nid was ") . ': ' . $ref_nid, 'queue');
+        }
+        if (isset($type)) {
+          drush_log(dt("Task add values were ") . ':: ' . $ref->nid . ' :: ' . $type . ' :: ' . $task_args[$name], 'queue');
+        }
+        if (isset($selected_backup_mode)) {
+          drush_log(dt("Uses drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
+        }
+        if (isset(AEGIR_BACKUP_MODE_CTRL)) {
+          drush_log(dt("AEGIR_BACKUP_MODE_CTRL was ") . ': ' . AEGIR_BACKUP_MODE_CTRL, 'queue');
+        }
+
+        drush_set_option('selected_backup_mode', $selected_backup_mode);
+
+        // Verify if the operation was successful.
+        if ($bytes_written === FALSE) {
+          drush_log(dt("Failed to write the backup mode to the control file"), 'queue');
+        }
+        else {
+          drush_log(dt("Backup mode successfully written to the control file"), 'queue');
+        }
+      }
+      else {
+        drush_log(dt("The backup_mode from task_args is empty"), 'queue');
+      }
+
+      // Load Task Info.
+      $tasks_info = hosting_available_tasks($task->ref->type);
+
+      // Find task type and pass through if it needs provision_save.
+      if (isset($tasks_info[$task->task_type])) {
+        $task->task_info = $tasks_info[$task->task_type];
+      }
     }
-    if ($task->task_status != HOSTING_TASK_QUEUED && !drush_get_option('force', FALSE)) {
-      return drush_set_error('HOSTING_TASK_NOT_QUEUED', dt("This task is not queued, use --force"));
-    }
-    $task->task_status = HOSTING_TASK_PROCESSING;
-    $task->revision = TRUE;
-
-    node_save($task);
-    drush_set_context('HOSTING_TASK', $task);
-    drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
-    drush_log(dt("Task starts processing") . ': ' . $task->title, 'queue');
-
-    // Load Task Info.
-    $tasks_info = hosting_available_tasks($task->ref->type);
-
-    // Find task type and pass through if it needs provision_save.
-    if (isset($tasks_info[$task->task_type])) {
-      $task->task_info = $tasks_info[$task->task_type];
+    else {
+      drush_set_error('HOSTING_INVALID_TASK', t("Could not find or create a '!type' task for hosting context '!context'.", array(
+        '!type' => $type,
+        '!context' => $id,
+      )));
     }
   }
   else {
-    drush_set_error('HOSTING_INVALID_TASK', t("Could not find or create a '!type' task for hosting context '!context'.", array(
-      '!type' => $type,
-      '!context' => $id,
-    )));
+    drush_set_error('HOSTING_TASK_LOAD_FAILED', t("Failed to load or create a task for ID '!id'.", array('!id' => $id)));
   }
-
 }
 
 /**
