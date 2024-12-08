@@ -126,6 +126,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
       ->condition('nid', $site->nid)
       ->execute();
     // A small trick to avoid high load when still too many crons are started at once.
+    unset($site_name, $this_name, $this_host, $this_cuid, $this_clog, $profile, $platform, $this_tmp, $this_platform_root, $url);
     sleep(3);
   }
 }
