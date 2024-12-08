@@ -71,6 +71,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
     $this_name = ltrim($site_name, '@');
     $this_host = '-H "Host: ' . $this_name . '"';
     $this_cuid = '.cron.' . md5($this_name . '.' . $site->nid) . '.pid';
+    $this_clog = $this_tmp . '/' . $this_cuid . '.log';
     $profile = node_load($site->profile);
     $platform = node_load($site->platform);
     if ($profile->short_name == 'hostmaster') {
@@ -114,7 +115,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
       }
       else {
         system('touch ' . $this_tmp . $this_cuid);
-        system('curl -L --max-redirs 5 -k -s --retry 1 --retry-delay 10 --max-time 300 -A iCabProXy ' . $this_host . ' ' . $url . ' > /dev/null');
+        system('curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $this_host . ' ' . $url . ' >> ' . $this_clog);
         system('rm -f ' . $this_tmp . $this_cuid);
       }
     }
