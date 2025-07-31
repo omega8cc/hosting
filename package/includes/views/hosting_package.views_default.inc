@@ -17,7 +17,7 @@ function hosting_package_views_default_views() {
   $view->tag = 'hosting_package';
   $view->base_table = 'hosting_package_instance';
   $view->human_name = 'Hosting Package List';
-  $view->core = 6;
+  $view->core = 7;
   $view->api_version = '3.0';
   $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
 

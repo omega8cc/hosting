@@ -17,7 +17,7 @@ function hosting_task_views_default_views() {
   $view->tag = 'hosting_task';
   $view->base_table = 'node';
   $view->human_name = 'Hosting Task list';
-  $view->core = 6;
+  $view->core = 7;
   $view->api_version = '3.0';
   $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
 
