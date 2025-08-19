@@ -41,9 +41,20 @@ function _hosting_valid_fqdn($fqdn) {
   if (function_exists('idna_convert_encode')) {
     $fqdn = idna_convert_encode($fqdn);
   }
-  if (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $fqdn)) {
-    return (preg_match("/^[a-z0-9]+[a-z0-9-.]*[a-z0-9]+\.((?:m|v|o)[1-9]{1}|(?:a|b|m|v|o)[0-9]{1,12})([a-z0-9]*)?\./", $fqdn) &&
-           !preg_match("/[-.]{2,}/", $fqdn));
+  if (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/i", $fqdn)) {
+    // Allow any number of subdomain labels before the node label,
+    // require one node label (o/m/v/a/b + digits) somewhere before the tail,
+    // allow more labels after it, then the fixed tail.
+    return (
+      preg_match(
+        "/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)*" .
+        "((?:m|v|o)[1-9]|(?:a|b|m|v|o)[0-9]{1,12})([a-z0-9]*)?" .
+        "(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*" .
+        "\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/i",
+        $fqdn
+      )
+      && !preg_match("/[-.]{2,}/", $fqdn)
+    );
   }
   else {
     if (!preg_match("/^([a-z0-9]+\.)?xn--/", $fqdn) && preg_match("/[-]{2,}/", $fqdn)) {
@@ -80,9 +91,20 @@ function _hosting_valid_fqdn_wildcard($fqdn) {
   if (function_exists('idna_convert_encode')) {
     $fqdn = idna_convert_encode($fqdn);
   }
-  if (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $fqdn)) {
-    return (preg_match("/^[a-z0-9]+[a-z0-9-.]*[a-z0-9]+\.((?:m|v|o)[1-9]{1}|(?:a|b|m|v|o)[0-9]{1,12})([a-z0-9]*)?\./", $fqdn) &&
-           !preg_match("/[-.]{2,}/", $fqdn));
+  if (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/i", $fqdn)) {
+    // Allow any number of subdomain labels before the node label,
+    // require one node label (o/m/v/a/b + digits) somewhere before the tail,
+    // allow more labels after it, then the fixed tail.
+    return (
+      preg_match(
+        "/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)*" .
+        "((?:m|v|o)[1-9]|(?:a|b|m|v|o)[0-9]{1,12})([a-z0-9]*)?" .
+        "(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*" .
+        "\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/i",
+        $fqdn
+      )
+      && !preg_match("/[-.]{2,}/", $fqdn)
+    );
   }
   else {
     if (!preg_match("/^([a-z0-9]+\.)?xn--/", $fqdn) && preg_match("/[-]{2,}/", $fqdn)) {
