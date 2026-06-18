@@ -65,6 +65,19 @@ function hosting_migrate_post_hosting_migrate_task($task, $data) {
     if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
       $site->title = hosting_site_clean_domain($task->task_args['new_uri']);
       hosting_context_register($site->nid, hosting_site_get_domain($site->title));
+
+      // Auto-disable Encryption when the site's main machine-name changes.
+      // SSL keys/certificates are bound to the machine-name and are invalid for
+      // the new name; leaving encryption enabled would make the renamed site
+      // reuse the old name's certificate on the verify queued below. The
+      // operator re-enables encryption for the new domain deliberately. This is
+      // the encryption analogue of the cron safety behaviour.
+      if (defined('HOSTING_SSL_DISABLED') && !empty($site->ssl_enabled)
+          && !(function_exists('hosting_get_hostmaster_nid') && $site->nid == hosting_get_hostmaster_nid())) {
+        $site->ssl_enabled = HOSTING_SSL_DISABLED;
+        $site->ssl_key = 0;
+        drush_log(dt('[migrate] Auto-disabled Encryption on renamed site @uri', array('@uri' => $site->title)), 'info');
+      }
     }
 
     if ($site->db_server != $task->task_args['new_db_server']) {

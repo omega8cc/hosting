@@ -69,6 +69,17 @@ function hosting_clone_post_hosting_clone_task($task, $data) {
       $clone->profile = $profile->package_id;
     }
 
+    // Auto-disable Encryption on the freshly cloned site.
+    // The SSL key/certificate is bound to the source site's machine-name and
+    // must never be reused by the clone. The operator can re-enable encryption
+    // for the new domain deliberately afterwards. This mirrors the cron safety
+    // behaviour, where a cloned site also starts with cron disabled.
+    if (defined('HOSTING_SSL_DISABLED')) {
+      $clone->ssl_enabled = HOSTING_SSL_DISABLED;
+      $clone->ssl_key = 0;
+      drush_log(dt('[clone] Auto-disabled Encryption on cloned site @uri', array('@uri' => $clone->title)), 'info');
+    }
+
     node_save($clone);
 
     // Record the backup created during clone.
