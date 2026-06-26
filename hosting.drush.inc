@@ -6,7 +6,12 @@
  */
 
 define('HOSTING_QUEUE_DEFAULT_LOCK_WAIT', 30);
-define('HOSTING_QUEUE_LOCK_TIMEOUT', 3600.0);
+// Both the dispatch and queue semaphores are held only for the brief fork-and-
+// dispatch (hosting_tasks_queue forks each task and returns), so this is purely
+// the recovery bound for a holder that died mid-dispatch. The old 3600s (1h)
+// left a single crashed run blocking the queue for an hour; 900s (15m) is a
+// generous margin over the real sub-minute hold while recovering far sooner.
+define('HOSTING_QUEUE_LOCK_TIMEOUT', 900.0);
 
 /**
  * Implements hook_drush_command().
