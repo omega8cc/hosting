@@ -840,11 +840,19 @@ function hosting_task_count() {
  * Return the amount of items running in the queue.
  */
 function hosting_task_count_running() {
+  // A task stuck in PROCESSING (e.g. its forked runner was killed) keeps counting
+  // as "running" for this window and so caps the dispatcher (calc_items -
+  // running_items). The old 28800s (8h) meant one crashed task could starve the
+  // whole queue for eight hours; one hour covers all but pathologically long
+  // tasks and is tunable for sites that genuinely run longer ones. Concurrency is
+  // still bounded by calc_items and the per-queue lock, and a stuck task is never
+  // re-run (only QUEUED tasks are dispatched), so a shorter window is safe.
+  $window = variable_get('hosting_task_running_window', 3600);
   return db_query("SELECT COUNT(t.nid) FROM {node} n INNER JOIN {hosting_task} t ON n.vid = t.vid WHERE type = :type AND t.task_status = :task_status AND t.executed > (UNIX_TIMESTAMP() - :timeout)",
     array(
       ':type' => 'task',
       ':task_status' => HOSTING_TASK_PROCESSING,
-      ':timeout' => 28800,
+      ':timeout' => $window,
     )
   )->fetchField();
 }
