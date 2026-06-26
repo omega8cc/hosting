@@ -44,12 +44,30 @@ function drush_hosting_dispatch() {
         if (!isset($info['running_items'])) {
           $info['running_items'] = 0;
         }
-        if (($now - $info["last"]) >= $info["calc_frequency"] || drush_get_option('force', FALSE)) {
+        // Re-read last_run while we hold the dispatch semaphore. $info["last"] was
+        // snapshotted by hosting_get_queues() BEFORE this lock, and the forked
+        // hosting-<queue> only stamps last_run seconds later, so two dispatch runs
+        // racing here both saw the stale timestamp, both passed the frequency gate,
+        // and each forked a full batch -- up to 2x the configured limit. The
+        // re-read plus the synchronous stamp below make this semaphore actually
+        // serialize: a run behind it sees the fresh timestamp and is gated out.
+        // Drupal 7 loads the whole variable table into $conf once at bootstrap, so
+        // a sibling dispatcher's variable_set() is invisible to variable_get()
+        // until we reload from the DB -- without this the re-read returns our own
+        // stale bootstrap value and the serialization is a no-op (same idiom as
+        // queued/hosting_queued.drush.inc).
+        global $conf;
+        $conf = variable_initialize();
+        $last = variable_get("hosting_queue_{$queue}_last_run", $info["last"]);
+        if (($now - $last) >= $info["calc_frequency"] || drush_get_option('force', FALSE)) {
           $count = $info['calc_items'] - $info['running_items'];
           if ($count <= 0) {
             drush_log(dt("Maximum number of tasks (@count) already running.", array('@count' => $info['running_items'])));
           }
           else {
+            // Stamp the run now, before forking, so a dispatch serialized behind
+            // this semaphore is gated out instead of launching a second batch.
+            variable_set("hosting_queue_{$queue}_last_run", $now);
             drush_log(dt("Found @running running tasks, starting @count out of @max items.",
                     array(
                       '@running' => $info['running_items'],
