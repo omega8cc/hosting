@@ -676,6 +676,10 @@ function hosting_domain_allowed($url, $params = array()) {
  */
 function drush_hosting_setup() {
   if (drush_confirm("This command will replace your crontab for this user. continue?")) {
+    // Remember whether dispatch was already enabled, so a transient self-test
+    // failure (e.g. during an upgrade) does not silently disable a queue that
+    // was working before this run.
+    $was_enabled = variable_get('hosting_dispatch_enabled', FALSE);
     variable_set('hosting_dispatch_enabled', FALSE);
     // Attempt to run the dispatch command, to make sure it runs without the
     // queue being enabled.
@@ -691,6 +695,12 @@ function drush_hosting_setup() {
       _hosting_setup_cron();
     }
     else {
+      if ($was_enabled) {
+        // The self-test failed, but dispatch was already enabled before this
+        // run; preserve that state instead of disabling a working queue.
+        variable_set('hosting_dispatch_enabled', TRUE);
+        drush_log(t("Dispatch self-test failed, but dispatch was already enabled; leaving it enabled."), 'warning');
+      }
       drush_set_error('DRUSH_FRAMEWORK_ERROR', dt("Dispatch command could not be run. Returned: \n@return", array('@return' => $return)));
     }
     if (drush_get_error()) {
