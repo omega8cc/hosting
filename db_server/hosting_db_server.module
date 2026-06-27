@@ -65,11 +65,14 @@ function hosting_get_sites_on_db_server($db_server_id) {
  * Implements hook_nodeapi_TYPE_OP().
  */
 function hosting_db_server_nodeapi_server_presave(&$node) {
-  if (empty($node->db_passwd) && !empty($node->nid)) {
+  if ((empty($node->db_passwd) || empty($node->db_user)) && !empty($node->nid)) {
     $old = node_load($node->nid);
 
-    if (isset($old->db_passwd)) {
+    if (empty($node->db_passwd) && isset($old->db_passwd)) {
       $node->db_passwd = $old->db_passwd;
+    }
+    if (empty($node->db_user) && isset($old->db_user)) {
+      $node->db_user = $old->db_user;
     }
   }
 }

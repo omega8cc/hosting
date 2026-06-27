@@ -56,25 +56,53 @@ class hostingService_db_mysql extends hostingService_db {
 
   function insert() {
     parent::insert();
-    $id = db_insert('hosting_db_server')
-      ->fields(array(
-        'vid' => $this->server->vid,
-        'nid' => $this->server->nid,
-        'db_user' => $this->db_user,
-        'db_passwd' => $this->db_passwd,
-      ))
-      ->execute();
+    $this->save_db_credentials();
   }
 
   function update() {
-    if (!empty($this->db_passwd)) {
-      parent::update();
+    // Refresh the generic hosting_service revision row via the parent, then
+    // upsert the credentials row separately. We intentionally do NOT use the
+    // inherited delete-then-insert for the credentials (see save_db_credentials).
+    parent::delete_revision();
+    parent::insert();
+    $this->save_db_credentials();
+  }
+
+  /**
+   * Persist the database credentials for the current server revision.
+   *
+   * Written as an atomic upsert (db_merge) instead of the inherited
+   * delete-then-insert: a failure part-way through — e.g. during a hostmaster
+   * migrate — can no longer leave the row deleted. It also refuses to store
+   * blank credentials, carrying the last known-good values forward instead.
+   * Together these prevent the failure where an empty master_db wiped a
+   * server's stored credentials, leaving every verify failing with
+   * "Access denied for user ''@'localhost' (using password: NO)".
+   */
+  protected function save_db_credentials() {
+    if (empty($this->db_user) || empty($this->db_passwd)) {
+      $existing = db_query('SELECT db_user, db_passwd FROM {hosting_db_server} WHERE vid = :vid', array(':vid' => $this->server->vid))->fetchObject();
+      if (empty($existing) || (empty($existing->db_user) && empty($existing->db_passwd))) {
+        $existing = db_query_range('SELECT db_user, db_passwd FROM {hosting_db_server} WHERE nid = :nid ORDER BY vid DESC', 0, 1, array(':nid' => $this->server->nid))->fetchObject();
+      }
+      if (!empty($existing)) {
+        if (empty($this->db_user) && !empty($existing->db_user)) {
+          $this->db_user = $existing->db_user;
+        }
+        if (empty($this->db_passwd) && !empty($existing->db_passwd)) {
+          $this->db_passwd = $existing->db_passwd;
+        }
+      }
     }
-    else {
-      // only do the parent's update routine.
-      parent::delete_revision();
-      parent::insert();
-    }
+
+    db_merge('hosting_db_server')
+      ->key(array('vid' => $this->server->vid))
+      ->fields(array(
+        'nid' => $this->server->nid,
+        'db_user' => isset($this->db_user) ? $this->db_user : '',
+        'db_passwd' => isset($this->db_passwd) ? $this->db_passwd : '',
+      ))
+      ->execute();
   }
 
   function delete_revision() {
@@ -133,7 +161,14 @@ class hostingService_db_mysql extends hostingService_db {
 
     $matches = array();
     preg_match("+^mysql://(.*):(.*)@.*$+", stripslashes($context->master_db), $matches);
-    $this->db_user = urldecode($matches[1]);
-    $this->db_passwd = urldecode($matches[2]);
+    // Only adopt parsed credentials when they are non-empty: a degenerate
+    // master_db (e.g. mysql://:@localhost) must never overwrite and wipe the
+    // stored credentials.
+    if (!empty($matches[1])) {
+      $this->db_user = urldecode($matches[1]);
+    }
+    if (!empty($matches[2])) {
+      $this->db_passwd = urldecode($matches[2]);
+    }
   }
 }
