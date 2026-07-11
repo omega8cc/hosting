@@ -1,0 +1,161 @@
+<?php
+/**
+ * @file
+ * Backdrop CMS platform support for the Aegir frontend.
+ *
+ * The frontend is version-agnostic: no node column records "Drupal vs Backdrop".
+ * The backend (provision-backdrop) reports the Backdrop signal on platform
+ * verify as $data['backdrop'] = the Backdrop version string. This module stores
+ * that marker per platform, then uses it to (a) keep Backdrop and Drupal
+ * platforms from being offered together at site creation and (b) route Backdrop
+ * site installs through the Backdrop install path via context_options.
+ *
+ * PHP 5.6 floor: this file is loaded under the Drush-8 backend and must stay
+ * 5.6-parseable and 5.6-runtime-correct (no ??, arrow fns, scalar hints, match).
+ */
+
+/**
+ * Variable-name prefix for the per-platform Backdrop version marker.
+ *
+ * Keyed by platform nid; the value is the reported Backdrop version string.
+ * Table-free storage (the {variable} table) keeps this a pure submodule with no
+ * schema change to the shared hosting_platform table.
+ */
+define('HOSTING_BACKDROP_PLATFORM_VAR', 'hosting_backdrop_platform_version_');
+
+/**
+ * The install_method value provision-backdrop expects for Backdrop site nodes.
+ */
+define('HOSTING_BACKDROP_INSTALL_METHOD', 'backdrop');
+
+/**
+ * Determine whether a platform node is a verified Backdrop platform.
+ *
+ * @param int $platform_nid
+ *   The platform node id.
+ *
+ * @return bool
+ *   TRUE if the backend reported a Backdrop version for this platform.
+ */
+function hosting_backdrop_platform_is_backdrop($platform_nid) {
+  if (empty($platform_nid)) {
+    return FALSE;
+  }
+  $version = variable_get(HOSTING_BACKDROP_PLATFORM_VAR . $platform_nid, '');
+  return $version !== '';
+}
+
+/**
+ * Return the stored Backdrop version string for a platform, or ''.
+ */
+function hosting_backdrop_platform_version($platform_nid) {
+  if (empty($platform_nid)) {
+    return '';
+  }
+  return variable_get(HOSTING_BACKDROP_PLATFORM_VAR . $platform_nid, '');
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Stores (or clears) the per-platform Backdrop marker from the verify result.
+ * The backend contract: provision-backdrop's platform verify adds
+ * $data['backdrop'] = the Backdrop version string alongside the standard
+ * packages/profiles/sites keys. Presence of that key is the Backdrop signal.
+ */
+function hosting_backdrop_post_hosting_verify_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'platform') {
+    return;
+  }
+  $name = HOSTING_BACKDROP_PLATFORM_VAR . $task->ref->nid;
+
+  // Read the reported version; tolerate it arriving nested under 'context'.
+  $version = '';
+  if (isset($data['backdrop']) && is_string($data['backdrop'])) {
+    $version = trim($data['backdrop']);
+  }
+  elseif (isset($data['context']['backdrop']) && is_string($data['context']['backdrop'])) {
+    $version = trim($data['context']['backdrop']);
+  }
+
+  if ($version !== '') {
+    // Only write on change to avoid needless variable-cache invalidation.
+    if (variable_get($name, '') !== $version) {
+      variable_set($name, $version);
+    }
+  }
+  else {
+    // Re-verified as a non-Backdrop platform: drop any stale marker. Guard the
+    // delete so a normal Drupal verify never clears the bootstrap cache.
+    if (variable_get($name, NULL) !== NULL) {
+      variable_del($name);
+    }
+  }
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Cleans up the per-platform marker when a platform is deleted.
+ */
+function hosting_backdrop_post_hosting_delete_task($task, $data) {
+  if (isset($task->ref) && $task->ref->type == 'platform') {
+    $name = HOSTING_BACKDROP_PLATFORM_VAR . $task->ref->nid;
+    if (variable_get($name, NULL) !== NULL) {
+      variable_del($name);
+    }
+  }
+}
+
+/**
+ * Implements hook_hosting_site_options_alter().
+ *
+ * Partition the platform options so Backdrop and Drupal platforms are never
+ * offered together. The reference is the platform currently selected on the
+ * node; hosting_site_available_options() guarantees it is a member of the list.
+ * Interim measure until Phase-2 migrate-target filtering exists.
+ */
+function hosting_backdrop_hosting_site_options_alter(&$return, &$node) {
+  if (empty($return['platform']) || !is_array($return['platform'])) {
+    return;
+  }
+
+  $reference = isset($node->platform) ? $node->platform : reset($return['platform']);
+  if (empty($reference)) {
+    return;
+  }
+  $reference_is_backdrop = hosting_backdrop_platform_is_backdrop($reference);
+
+  $filtered = array();
+  foreach ($return['platform'] as $nid) {
+    if (hosting_backdrop_platform_is_backdrop($nid) == $reference_is_backdrop) {
+      $filtered[] = $nid;
+    }
+  }
+
+  // Never present an empty platform list; only apply a non-empty partition.
+  if (!empty($filtered)) {
+    $return['platform'] = $filtered;
+  }
+}
+
+/**
+ * Implements hook_hosting_TASK_OBJECT_context_options().
+ *
+ * For a site on a Backdrop platform, tell the backend to install through the
+ * Backdrop path. The generic seam (hosting_site.drush.inc) only forwards an
+ * install_method already present on the node; there is no persistent
+ * install_method column, so derive it here from the platform's Backdrop marker.
+ * Respect an install_method another module may already have set.
+ */
+function hosting_backdrop_hosting_site_context_options(&$task) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  if (!empty($task->context_options['install_method'])) {
+    return;
+  }
+  if (isset($task->ref->platform) && hosting_backdrop_platform_is_backdrop($task->ref->platform)) {
+    $task->context_options['install_method'] = HOSTING_BACKDROP_INSTALL_METHOD;
+  }
+}
