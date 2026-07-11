@@ -288,8 +288,11 @@ function hosting_site_insert(&$node) {
       }
 
       // If platform title has not been set, generate one from the site title.
+      // Use the shared sanitiser so this matches the context name registered in
+      // hosting_platform_insert() (preserves dots/dashes -- see
+      // _hosting_platform_context_name()).
       if (empty($node->platform_node->title)) {
-        $node->platform_node->title = 'platform_' . preg_replace("/[!\W]/", "", $node->title);
+        $node->platform_node->title = 'platform_' . _hosting_platform_context_name($node->title);
       }
 
       // If platform UID has not been set, use site UID.
