@@ -500,6 +500,20 @@ function hosting_backdrop_post_hosting_backdrop_upgrade_task($task, $data) {
   }
   $target = $task->task_args['target_platform'];
 
+  // A platform verify running concurrently (the queue forks tasks) can
+  // discover the freshly built site dir and adopt it before this hook runs;
+  // inserting a second node would then fail on the duplicate context and
+  // mark an otherwise fully successful upgrade Failed. Keep the adopted
+  // node and only record the backup.
+  $existing = hosting_get_site_by_url(hosting_site_get_domain($task->task_args['new_uri']), FALSE);
+  if ($existing) {
+    drush_log(dt('[backdrop-upgrade] The upgraded copy @uri was already registered as node @nid (adopted by a platform verify); keeping it.',
+      array('@uri' => $task->task_args['new_uri'], '@nid' => $existing)), 'ok');
+    $task->task_args['description'] = t('Pre-upgrade backup');
+    hosting_site_post_hosting_backup_task($task, $data);
+    return;
+  }
+
   $upgrade = new stdClass();
   // Copy carry-over settings from the source node. Deliberately NOT copied:
   // profile (a D7 package id is wrong for the Backdrop copy — re-resolved
@@ -568,6 +582,17 @@ function hosting_backdrop_post_hosting_backdrop_d6_upgrade_task($task, $data) {
     return;
   }
   $target = $task->task_args['target_platform'];
+
+  // Same adoption race as the Backdrop upgrade post-task: a concurrent
+  // platform verify may have adopted the freshly built copy already.
+  $existing = hosting_get_site_by_url(hosting_site_get_domain($task->task_args['new_uri']), FALSE);
+  if ($existing) {
+    drush_log(dt('[backdrop-d6-upgrade] The Drupal 7 copy @uri was already registered as node @nid (adopted by a platform verify); keeping it.',
+      array('@uri' => $task->task_args['new_uri'], '@nid' => $existing)), 'ok');
+    $task->task_args['description'] = t('Pre-upgrade backup');
+    hosting_site_post_hosting_backup_task($task, $data);
+    return;
+  }
 
   $upgrade = new stdClass();
   // Copy carry-over settings from the source node. Deliberately NOT copied:
