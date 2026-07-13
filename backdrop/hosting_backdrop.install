@@ -5,6 +5,31 @@
  */
 
 /**
+ * Implements hook_enable().
+ *
+ * Marker backfill sweep. The per-platform Backdrop marker derives from the
+ * verify result ($data['backdrop']) and is written only while this module is
+ * enabled — a Backdrop platform verified before (first) enablement, or during
+ * a disabled gap, carries no marker and would read as Drupal to the platform
+ * partition and the upgrade-target list. The marker cannot be synthesized at
+ * enable time, so queue a verify for every live platform; verifies are
+ * idempotent and Drupal platforms simply confirm their (absent) marker.
+ */
+function hosting_backdrop_enable() {
+  $queued = 0;
+  foreach (_hosting_get_platforms() as $nid => $title) {
+    if (hosting_task_outstanding($nid, 'verify')) {
+      continue;
+    }
+    hosting_add_task($nid, 'verify');
+    $queued++;
+  }
+  if ($queued) {
+    drupal_set_message(t('Hosting Backdrop queued a verify for @count platform(s) to refresh the Backdrop platform markers.', array('@count' => $queued)));
+  }
+}
+
+/**
  * Implements hook_uninstall().
  *
  * Drop the per-platform Backdrop version markers this module stored in the
