@@ -77,6 +77,15 @@ function hosting_site_drush_context_import($context, &$node) {
       $client = hosting_import_client($context->client_name);
     }
     $node->client = $client->nid;
+
+    // An imported site the backend already reports as installed + enabled should
+    // land ENABLED, not the default QUEUED. QUEUED reads as "awaiting install"
+    // in the UI and hides the clone/backup/migrate task actions, so a perfectly
+    // good imported site looks unusable until manually enabled. Only promote a
+    // site the context confirms is enabled; leave anything else at its default.
+    if (!empty($context->site_enabled) || drush_get_option('installed')) {
+      $node->site_status = HOSTING_SITE_ENABLED;
+    }
   }
 
 }
