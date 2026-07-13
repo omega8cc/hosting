@@ -649,6 +649,40 @@ function hosting_backdrop_post_hosting_backdrop_d6_upgrade_task($task, $data) {
 }
 
 /**
+ * Implements hook_preprocess_node().
+ *
+ * Badge Backdrop platforms and their sites in the admin theme: a small
+ * title-suffix label plus node classes (platform-backdrop / site-backdrop)
+ * that the eldir theme styles. The markup rides the stock
+ * title_prefix/suffix print in node.tpl.php, so no template override is
+ * needed; a theme without the CSS just shows the plain label.
+ */
+function hosting_backdrop_preprocess_node(&$variables) {
+  if (empty($variables['node']) || !is_object($variables['node'])) {
+    return;
+  }
+  $node = $variables['node'];
+  $version = '';
+  $class = '';
+  if ($node->type == 'platform' && hosting_backdrop_platform_is_backdrop($node->nid)) {
+    $version = hosting_backdrop_platform_version($node->nid);
+    $class = 'platform-backdrop';
+  }
+  elseif ($node->type == 'site' && isset($node->platform) && hosting_backdrop_platform_is_backdrop($node->platform)) {
+    $version = hosting_backdrop_platform_version($node->platform);
+    $class = 'site-backdrop';
+  }
+  if ($class === '') {
+    return;
+  }
+  $variables['classes_array'][] = $class;
+  $label = $version !== '' ? t('Backdrop @version', array('@version' => $version)) : t('Backdrop');
+  $variables['title_suffix']['backdrop_badge'] = array(
+    '#markup' => ' <span class="backdrop-badge">' . $label . '</span>',
+  );
+}
+
+/**
  * Implements hook_hosting_TASK_OBJECT_context_options().
  *
  * For a site on a Backdrop platform, tell the backend to install through the
