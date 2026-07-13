@@ -21,7 +21,8 @@
  */
 function drush_hosting_backdrop_pre_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');
-  if ($task->ref->type != 'site' || $task->task_type != 'backdrop_upgrade') {
+  if ($task->ref->type != 'site'
+    || ($task->task_type != 'backdrop_upgrade' && $task->task_type != 'backdrop_d6_upgrade')) {
     return;
   }
 
@@ -34,8 +35,12 @@ function drush_hosting_backdrop_pre_hosting_task($task) {
   // exists on the target). The old_short_name fallback used by stock migrate
   // is deliberately not consulted: relating D7 names to Backdrop profile
   // packages would surface Backdrop platforms as stock-migrate targets.
+  // D6 nuance (backdrop_d6_upgrade): the D6 'default' profile is renamed to
+  // 'standard' by the D7 core conversion, so 'default' maps to the backend
+  // default silently — only a custom D6 profile is looked up on the target.
   $profile = node_load($task->ref->profile);
-  if (is_object($profile) && !empty($profile->short_name)) {
+  if (is_object($profile) && !empty($profile->short_name)
+    && !($task->task_type == 'backdrop_d6_upgrade' && $profile->short_name == 'default')) {
     $instance = hosting_package_instance_load(array(
       'i.rid' => $platform->nid,
       'p.short_name' => $profile->short_name,

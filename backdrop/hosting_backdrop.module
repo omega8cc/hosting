@@ -155,6 +155,9 @@ function hosting_backdrop_permission() {
     'create backdrop_upgrade task' => array(
       'title' => t('create backdrop_upgrade task'),
     ),
+    'create backdrop_d6_upgrade task' => array(
+      'title' => t('create backdrop_d6_upgrade task'),
+    ),
   );
 }
 
@@ -175,6 +178,14 @@ function hosting_backdrop_hosting_tasks() {
     'command' => 'provision-backdrop-upgrade',
     'dialog' => TRUE,
     'access callback' => 'hosting_backdrop_upgrade_task_access',
+  );
+
+  $tasks['site']['backdrop_d6_upgrade'] = array(
+    'title' => t('Upgrade to Drupal 7 (Backdrop step 1)'),
+    'description' => t('Copy this Drupal 6 site onto a Drupal 7 platform at a NEW domain name and convert the copy — core schema AND the CCK field data (the field-data migration is a hard gate: a field left without its module aborts the whole task and the copy is discarded). The original site keeps serving throughout; the copy starts with Encryption and cron disabled. Inspect the Drupal 7 copy, then run "Upgrade to Backdrop" on it as step 2. Requires a PHP 7.4-pinned instance and the staged D6 upgrade kit.'),
+    'command' => 'provision-backdrop-d6-upgrade',
+    'dialog' => TRUE,
+    'access callback' => 'hosting_backdrop_d6_upgrade_task_access',
   );
 
   return $tasks;
@@ -330,6 +341,148 @@ function hosting_task_backdrop_upgrade_form_validate($form, &$form_state) {
 }
 
 /**
+ * Return the available D6-upgrade targets: verified Drupal 7 platforms.
+ *
+ * No per-platform "Drupal 7" marker exists (the Backdrop marker is
+ * backend-reported; nothing equivalent marks D7), so the list is derived from
+ * the platform's core release version: enabled, unlocked platforms whose
+ * release version starts with "7." and that carry no Backdrop marker. The
+ * backend validate re-checks the target with a positive filesystem test, so
+ * a platform mis-versioned here fails closed there.
+ */
+function _hosting_backdrop_d6_upgrade_targets() {
+  $targets = array();
+  foreach (_hosting_get_platforms(0, TRUE) as $nid => $title) {
+    if (hosting_backdrop_platform_is_backdrop($nid)) {
+      continue;
+    }
+    $platform = node_load($nid);
+    if (!is_object($platform) || empty($platform->release->version)) {
+      continue;
+    }
+    if (strpos($platform->release->version, '7.') === 0) {
+      $targets[$nid] = check_plain($title);
+    }
+  }
+  return $targets;
+}
+
+/**
+ * Access callback for the backdrop_d6_upgrade task.
+ *
+ * Same two-context posture as hosting_backdrop_upgrade_task_access (no URL
+ * token). Deliberately version-agnostic on the source, like clone/migrate:
+ * a frontend "is this Drupal 6" guard would need fleet-wide assumptions
+ * about core package naming; the backend fail-closes non-D6 sources with a
+ * clear message. Only Backdrop-platform sites (which cannot be D6) hide it.
+ */
+function hosting_backdrop_d6_upgrade_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || hosting_backdrop_platform_is_backdrop($node->platform)) {
+    return FALSE;
+  }
+  if (!count(_hosting_backdrop_d6_upgrade_targets())) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the backdrop_d6_upgrade task confirmation form.
+ */
+function hosting_task_backdrop_d6_upgrade_form($node) {
+  $form = array();
+
+  $form['new_uri'] = array(
+    '#type' => 'textfield',
+    '#title' => t('New domain name'),
+    '#description' => t('The Drupal 7 copy is created at this new domain. The original site keeps serving at its current domain; run "Upgrade to Backdrop" on the copy as step 2.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+  );
+
+  $targets = _hosting_backdrop_d6_upgrade_targets();
+  if (count($targets)) {
+    $form['target_platform'] = array(
+      '#type' => 'radios',
+      '#title' => t('Target Drupal 7 platform'),
+      '#required' => TRUE,
+      '#options' => $targets,
+      '#default_value' => count($targets) == 1 ? key($targets) : NULL,
+    );
+  }
+  else {
+    $form['no_target'] = array(
+      '#type' => 'item',
+      '#title' => t('Target Drupal 7 platform'),
+      '#markup' => t('No verified Drupal 7 platform is available. Add a Drupal 7 platform and verify it first.'),
+    );
+  }
+
+  $db_servers = hosting_get_servers('db');
+  if (count($db_servers) > 1) {
+    $form['new_db_server'] = array(
+      '#type' => 'radios',
+      '#title' => t('Database server'),
+      '#required' => TRUE,
+      '#description' => t('The database server hosting the copy database.'),
+      '#options' => $db_servers,
+      '#default_value' => $node->db_server,
+    );
+  }
+  else {
+    $form['new_db_server'] = array(
+      '#type' => 'hidden',
+      '#value' => $node->db_server,
+    );
+  }
+
+  $form['kit_report'] = array(
+    '#type' => 'item',
+    '#title' => t('Module coverage'),
+    '#markup' => t('The conversion enables only the Drupal 7 counterparts of modules this site actually uses (from the pinned upgrade kit), plus the CCK field-data migration. Coverage is reported in the task log during validation, before any copy is created; modules without a kit mapping are left disabled on the copy with their data tables kept. The CCK field-data migration itself is a hard gate — it never silently skips a field.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the backdrop_d6_upgrade task confirmation form.
+ */
+function hosting_task_backdrop_d6_upgrade_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  if (isset($site->platform) && hosting_backdrop_platform_is_backdrop($site->platform)) {
+    form_set_error('parameters][target_platform', t('This site runs on a Backdrop platform; the Drupal 6 upgrade does not apply.'));
+  }
+
+  $url = hosting_site_get_domain($params['new_uri']);
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][new_uri', t('The Drupal 7 copy needs a new domain name; the original site keeps serving at @domain.', array('@domain' => hosting_site_get_domain($site->title))));
+  }
+  else {
+    if (!_hosting_valid_fqdn($url)) {
+      form_set_error('parameters][new_uri', t('You have not specified a valid domain name.'));
+    }
+    if (!hosting_domain_allowed($url)) {
+      form_set_error('parameters][new_uri', t('The domain name you have specified is not unique or not allowed.'));
+    }
+  }
+
+  $targets = _hosting_backdrop_d6_upgrade_targets();
+  if (empty($params['target_platform'])) {
+    form_set_error('parameters][target_platform', t('You must choose a Drupal 7 target platform.'));
+  }
+  elseif (!isset($targets[$params['target_platform']])) {
+    form_set_error('parameters][target_platform', t('The chosen target platform is not an available Drupal 7 platform.'));
+  }
+}
+
+/**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
  * Creates the frontend node for the upgraded copy, mirroring the clone
@@ -389,6 +542,75 @@ function hosting_backdrop_post_hosting_backdrop_upgrade_task($task, $data) {
     $upgrade->ssl_enabled = HOSTING_SSL_DISABLED;
     $upgrade->ssl_key = 0;
     drush_log(dt('[backdrop-upgrade] Encryption explicitly disabled on the upgraded copy @uri', array('@uri' => $upgrade->title)), 'info');
+  }
+  if (defined('ADV_CRON_TURNED_OFF')) {
+    $upgrade->cron_interval = ADV_CRON_TURNED_OFF;
+  }
+
+  node_save($upgrade);
+
+  // Record the pre-upgrade backup taken on the source.
+  $task->task_args['description'] = t('Pre-upgrade backup');
+  hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Creates the frontend node for the DARK Drupal 7 intermediate produced by
+ * the backdrop_d6_upgrade task (D-026: an inspectable hostmaster node with
+ * clone/import posture). Same explicit dark states as the Backdrop upgrade
+ * post-task: SSL/LE disabled, cron off, import=1 so the queued import flips
+ * the node ENABLED once the backend context reports the site installed.
+ */
+function hosting_backdrop_post_hosting_backdrop_d6_upgrade_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  $target = $task->task_args['target_platform'];
+
+  $upgrade = new stdClass();
+  // Copy carry-over settings from the source node. Deliberately NOT copied:
+  // profile (a D6 package id is wrong for the D7 copy — re-resolved below),
+  // site_status (the queued import proves ENABLED honestly), cron_interval
+  // and ssl_* (forced dark below).
+  foreach (array('type', 'status', 'uid', 'comment', 'promote', 'moderate', 'sticky', 'name', 'format', 'client', 'db_server', 'site_language') as $field) {
+    if (isset($task->ref->$field)) {
+      $upgrade->$field = $task->ref->$field;
+    }
+  }
+  $upgrade->title = hosting_site_clean_domain($task->task_args['new_uri']);
+  $upgrade->hosting_name = hosting_site_get_domain($upgrade->title);
+  $upgrade->platform = $target;
+  $upgrade->import = 1;
+  $upgrade->verified = 0;
+  // The backend saved the new alias with aliases=array() and redirection=0.
+  $upgrade->aliases = array();
+  $upgrade->redirection = FALSE;
+
+  if (isset($task->task_args['new_db_server']) && $task->task_args['new_db_server'] && $upgrade->db_server != $task->task_args['new_db_server']) {
+    $upgrade->db_server = $task->task_args['new_db_server'];
+  }
+
+  // Resolve the profile by short_name on the TARGET platform only (the
+  // backend context records the validated D7 profile — the D6 'default'
+  // profile becomes 'standard' during the core conversion). Unresolvable ->
+  // leave unset; the queued import re-resolves from the backend context,
+  // which also carries the default->standard fallback.
+  if (isset($data['context']['profile'])) {
+    $profile = hosting_package_instance_load(array(
+      'i.rid' => $target,
+      'p.short_name' => $data['context']['profile'],
+    ));
+    if ($profile) {
+      $upgrade->profile = $profile->package_id;
+    }
+  }
+
+  if (defined('HOSTING_SSL_DISABLED')) {
+    $upgrade->ssl_enabled = HOSTING_SSL_DISABLED;
+    $upgrade->ssl_key = 0;
+    drush_log(dt('[backdrop-d6-upgrade] Encryption explicitly disabled on the Drupal 7 copy @uri', array('@uri' => $upgrade->title)), 'info');
   }
   if (defined('ADV_CRON_TURNED_OFF')) {
     $upgrade->cron_interval = ADV_CRON_TURNED_OFF;
