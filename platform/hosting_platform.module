@@ -337,14 +337,14 @@ function _hosting_get_enabled_platforms() {
                       FROM {node} n
                       LEFT JOIN {hosting_platform} h
                       ON n.nid = h.nid
-                      WHERE n.type = :n.type
-                      AND n.status = :n.status
-                      AND h.status <> :h.status
+                      WHERE n.type = :type
+                      AND n.status = :nstatus
+                      AND h.status <> :hstatus
                       ORDER BY n.title
                      ", array(
-                       ':n.type' => 'platform',
-                       ':n.status' => 1, //@todo: remove magic number?
-                       ':h.status' => HOSTING_PLATFORM_LOCKED,
+                       ':type' => 'platform',
+                       ':nstatus' => 1, //@todo: remove magic number?
+                       ':hstatus' => HOSTING_PLATFORM_LOCKED,
                      )
                    );
   while ($platform = $result->fetch()) {
@@ -581,8 +581,27 @@ function hosting_platform_insert($node) {
     ))
     ->execute();
   if (!isset($node->old_vid)) {
-    hosting_context_register($node->nid, 'platform_' . preg_replace("/[!\W]/", "", $node->title));
+    hosting_context_register($node->nid, 'platform_' . _hosting_platform_context_name($node->title));
   }
+}
+
+/**
+ * Sanitize a platform title into the tail of its hosting context name.
+ *
+ * Keeps word characters PLUS dots and dashes, rather than stripping everything
+ * non-word. Version-style platform names (e.g. "backdrop-1.34.2-dev",
+ * "drupal-7.90") then round-trip cleanly: the context/drush-alias name stays
+ * "platform_backdrop-1.34.2-dev" instead of collapsing to
+ * "platform_backdrop1342dev". That collapse is what made a platform whose
+ * provision alias kept the dots/dashes fail to match its own stored context on
+ * a site import -- the import could not resolve the platform, re-registered it,
+ * and hit a duplicate-key (1062) on hosting_context.name. Dots and dashes are
+ * valid in drush alias names, path aliases and filenames, so preserving them is
+ * safe. Only NEW platforms are affected (this runs on insert); existing
+ * platforms keep whatever name they were registered with.
+ */
+function _hosting_platform_context_name($title) {
+  return preg_replace("/[^\w.-]/", "", $title);
 }
 
 /**

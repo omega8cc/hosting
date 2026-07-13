@@ -1,0 +1,98 @@
+<?php
+/**
+ * @file
+ * Install, uninstall and requirements hooks for hosting_backdrop.
+ */
+
+/**
+ * Implements hook_enable().
+ *
+ * Marker backfill sweep. The per-platform Backdrop marker derives from the
+ * verify result ($data['backdrop']) and is written only while this module is
+ * enabled — a Backdrop platform verified before (first) enablement, or during
+ * a disabled gap, carries no marker and would read as Drupal to the platform
+ * partition and the upgrade-target list. The marker cannot be synthesized at
+ * enable time, so queue a verify for every live platform; verifies are
+ * idempotent and Drupal platforms simply confirm their (absent) marker.
+ */
+function hosting_backdrop_enable() {
+  $queued = 0;
+  foreach (_hosting_get_platforms() as $nid => $title) {
+    if (hosting_task_outstanding($nid, 'verify')) {
+      continue;
+    }
+    hosting_add_task($nid, 'verify');
+    $queued++;
+  }
+  if ($queued) {
+    drupal_set_message(t('Hosting Backdrop queued a verify for @count platform(s) to refresh the Backdrop platform markers.', array('@count' => $queued)));
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ * Drop the per-platform Backdrop version markers this module stored in the
+ * {variable} table (keyed by platform nid).
+ */
+function hosting_backdrop_uninstall() {
+  // db_like() escapes the underscores in the prefix so LIKE matches literally.
+  $prefix = db_like('hosting_backdrop_platform_version_') . '%';
+  db_delete('variable')
+    ->condition('name', $prefix, 'LIKE')
+    ->execute();
+  cache_clear_all('variables', 'cache_bootstrap');
+}
+
+/**
+ * Implements hook_requirements().
+ *
+ * Best-effort probe: warn (never error) when the backdrop-drush-extension is not
+ * found on the backend Drush command path. Backdrop platform verify and site
+ * install tasks need it; BOA deploys it at ${_ROOT}/.drush/usr/backdrop.
+ */
+function hosting_backdrop_requirements($phase) {
+  $requirements = array();
+  if ($phase != 'runtime') {
+    return $requirements;
+  }
+
+  // Hostmaster runs as the aegir user, whose home is BOA's ${_ROOT}.
+  $home = '';
+  if (function_exists('posix_geteuid') && function_exists('posix_getpwuid')) {
+    $info = posix_getpwuid(posix_geteuid());
+    if (!empty($info['dir'])) {
+      $home = $info['dir'];
+    }
+  }
+  if (empty($home)) {
+    $home = getenv('HOME');
+  }
+
+  $found = FALSE;
+  $expected = '${_ROOT}/.drush/usr/backdrop';
+  if (!empty($home)) {
+    $expected = $home . '/.drush/usr/backdrop';
+    if (is_readable($expected . '/backdrop.drush.inc')) {
+      $found = TRUE;
+    }
+  }
+
+  if ($found) {
+    $requirements['hosting_backdrop_extension'] = array(
+      'title' => t('Backdrop Drush extension'),
+      'value' => t('Installed (@path)', array('@path' => $expected)),
+      'severity' => REQUIREMENT_OK,
+    );
+  }
+  else {
+    $requirements['hosting_backdrop_extension'] = array(
+      'title' => t('Backdrop Drush extension'),
+      'value' => t('Not detected'),
+      'description' => t('The backdrop-drush-extension was not found under the backend Drush command path (expected at @path). Backdrop platform verify and site install tasks require it. Ensure BOA has deployed it via the _BACKDROP_SUPPORT system-tools path.', array('@path' => $expected)),
+      'severity' => REQUIREMENT_WARNING,
+    );
+  }
+
+  return $requirements;
+}
