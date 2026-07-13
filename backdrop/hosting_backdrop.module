@@ -500,6 +500,20 @@ function hosting_backdrop_post_hosting_backdrop_upgrade_task($task, $data) {
   }
   $target = $task->task_args['target_platform'];
 
+  // A platform verify running concurrently (the queue forks tasks) can
+  // discover the freshly built site dir and adopt it before this hook runs;
+  // inserting a second node would then fail on the duplicate context and
+  // mark an otherwise fully successful upgrade Failed. Keep the adopted
+  // node and only record the backup.
+  $existing = hosting_get_site_by_url(hosting_site_get_domain($task->task_args['new_uri']), FALSE);
+  if ($existing) {
+    drush_log(dt('[backdrop-upgrade] The upgraded copy @uri was already registered as node @nid (adopted by a platform verify); keeping it.',
+      array('@uri' => $task->task_args['new_uri'], '@nid' => $existing)), 'ok');
+    $task->task_args['description'] = t('Pre-upgrade backup');
+    hosting_site_post_hosting_backup_task($task, $data);
+    return;
+  }
+
   $upgrade = new stdClass();
   // Copy carry-over settings from the source node. Deliberately NOT copied:
   // profile (a D7 package id is wrong for the Backdrop copy — re-resolved
@@ -569,6 +583,17 @@ function hosting_backdrop_post_hosting_backdrop_d6_upgrade_task($task, $data) {
   }
   $target = $task->task_args['target_platform'];
 
+  // Same adoption race as the Backdrop upgrade post-task: a concurrent
+  // platform verify may have adopted the freshly built copy already.
+  $existing = hosting_get_site_by_url(hosting_site_get_domain($task->task_args['new_uri']), FALSE);
+  if ($existing) {
+    drush_log(dt('[backdrop-d6-upgrade] The Drupal 7 copy @uri was already registered as node @nid (adopted by a platform verify); keeping it.',
+      array('@uri' => $task->task_args['new_uri'], '@nid' => $existing)), 'ok');
+    $task->task_args['description'] = t('Pre-upgrade backup');
+    hosting_site_post_hosting_backup_task($task, $data);
+    return;
+  }
+
   $upgrade = new stdClass();
   // Copy carry-over settings from the source node. Deliberately NOT copied:
   // profile (a D6 package id is wrong for the D7 copy — re-resolved below),
@@ -621,6 +646,40 @@ function hosting_backdrop_post_hosting_backdrop_d6_upgrade_task($task, $data) {
   // Record the pre-upgrade backup taken on the source.
   $task->task_args['description'] = t('Pre-upgrade backup');
   hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_preprocess_node().
+ *
+ * Badge Backdrop platforms and their sites in the admin theme: a small
+ * title-suffix label plus node classes (platform-backdrop / site-backdrop)
+ * that the eldir theme styles. The markup rides the stock
+ * title_prefix/suffix print in node.tpl.php, so no template override is
+ * needed; a theme without the CSS just shows the plain label.
+ */
+function hosting_backdrop_preprocess_node(&$variables) {
+  if (empty($variables['node']) || !is_object($variables['node'])) {
+    return;
+  }
+  $node = $variables['node'];
+  $version = '';
+  $class = '';
+  if ($node->type == 'platform' && hosting_backdrop_platform_is_backdrop($node->nid)) {
+    $version = hosting_backdrop_platform_version($node->nid);
+    $class = 'platform-backdrop';
+  }
+  elseif ($node->type == 'site' && isset($node->platform) && hosting_backdrop_platform_is_backdrop($node->platform)) {
+    $version = hosting_backdrop_platform_version($node->platform);
+    $class = 'site-backdrop';
+  }
+  if ($class === '') {
+    return;
+  }
+  $variables['classes_array'][] = $class;
+  $label = $version !== '' ? t('Backdrop @version', array('@version' => $version)) : t('Backdrop');
+  $variables['title_suffix']['backdrop_badge'] = array(
+    '#markup' => ' <span class="backdrop-badge">' . $label . '</span>',
+  );
 }
 
 /**
