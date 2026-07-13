@@ -158,6 +158,9 @@ function hosting_backdrop_permission() {
     'create backdrop_d6_upgrade task' => array(
       'title' => t('create backdrop_d6_upgrade task'),
     ),
+    'create backdrop_cutover task' => array(
+      'title' => t('create backdrop_cutover task'),
+    ),
   );
 }
 
@@ -186,6 +189,14 @@ function hosting_backdrop_hosting_tasks() {
     'command' => 'provision-backdrop-d6-upgrade',
     'dialog' => TRUE,
     'access callback' => 'hosting_backdrop_d6_upgrade_task_access',
+  );
+
+  $tasks['site']['backdrop_cutover'] = array(
+    'title' => t('Cutover (take over a domain)'),
+    'description' => t('Make this Backdrop site answer at a domain currently held by another site — typically the original domain of the site it was upgraded from. The site holding that domain is backed up and then deleted; this site is then renamed to the freed domain. Encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards. The domain is unserved while the rename completes: minutes that scale with the size of this site.'),
+    'command' => 'provision-backdrop-cutover',
+    'dialog' => TRUE,
+    'access callback' => 'hosting_backdrop_cutover_task_access',
   );
 
   return $tasks;
@@ -479,6 +490,97 @@ function hosting_task_backdrop_d6_upgrade_form_validate($form, &$form_state) {
   }
   elseif (!isset($targets[$params['target_platform']])) {
     form_set_error('parameters][target_platform', t('The chosen target platform is not an available Drupal 7 platform.'));
+  }
+}
+
+/**
+ * Access callback for the backdrop_cutover task.
+ *
+ * Same two-context posture as hosting_backdrop_upgrade_task_access (no URL
+ * token). Only an ENABLED site on a marker-verified Backdrop platform can
+ * take over a domain this way — the backend chain ends in the Backdrop
+ * migrate rename leg, and renaming a disabled or not-yet-imported copy is a
+ * dead end (the import after the upgrade enables the copy).
+ */
+function hosting_backdrop_cutover_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_backdrop_platform_is_backdrop($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the backdrop_cutover task confirmation form.
+ */
+function hosting_task_backdrop_cutover_form($node) {
+  $form = array();
+
+  $form['target_domain'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Domain to take over'),
+    '#description' => t('Usually the original domain of the site this copy was upgraded from. The site currently at that domain is backed up and then deleted; this site is renamed to it. If no site holds the domain (for example after a previous cutover attempt), the rename runs alone.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+  );
+
+  $form['cutover_report'] = array(
+    '#type' => 'item',
+    '#title' => t('What happens'),
+    '#markup' => t('The current holder of the domain is re-checked when the task runs; its full backup is taken by the delete step and stays restorable. Encryption ends up disabled for the new name (certificates are name-bound) — re-enable it on this site afterwards. Custom aliases of the old site are not carried over. The domain is unserved while the rename completes: minutes that scale with the size of this site.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the backdrop_cutover task confirmation form.
+ *
+ * The pre-task drush hook re-resolves the domain holder at execution time
+ * and the backend validates fail-closed; this front check exists so operator
+ * mistakes surface in the form, not minutes later in a red task log.
+ */
+function hosting_task_backdrop_cutover_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  $url = hosting_site_get_domain($params['target_domain']);
+  if (!_hosting_valid_fqdn($url)) {
+    form_set_error('parameters][target_domain', t('You have not specified a valid domain name.'));
+    return;
+  }
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][target_domain', t('This site already answers at @domain.', array('@domain' => $url)));
+    return;
+  }
+
+  $holder = hosting_get_site_by_url($url);
+  if (is_object($holder)) {
+    if ($holder->nid == $site->nid) {
+      form_set_error('parameters][target_domain', t('@domain already belongs to this site (as an alias).', array('@domain' => $url)));
+    }
+    elseif ($holder->nid == hosting_get_hostmaster_site_nid()) {
+      form_set_error('parameters][target_domain', t('@domain is the hosting front-end; it cannot be taken over.', array('@domain' => $url)));
+    }
+    elseif (hosting_site_get_domain($holder->title) != $url) {
+      form_set_error('parameters][target_domain', t('@domain is an alias of @site, not its main domain. Remove the alias there, or cut over to the main domain instead.', array('@domain' => $url, '@site' => hosting_site_get_domain($holder->title))));
+    }
+    elseif (!hosting_task_dangerous_task_is_allowed('delete', $holder->nid)) {
+      form_set_error('parameters][target_domain', t('@site is guarded against deletion; cutover would need to delete it.', array('@site' => hosting_site_get_domain($holder->title))));
+    }
+  }
+  else {
+    // Nobody holds the domain: cutover degrades to a plain rename, but the
+    // name must still be allowed (not held by a non-site record).
+    if (!hosting_domain_allowed($url)) {
+      form_set_error('parameters][target_domain', t('No site holds @domain but the name is not allowed.', array('@domain' => $url)));
+    }
   }
 }
 

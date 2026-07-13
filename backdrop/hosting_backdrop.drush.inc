@@ -14,15 +14,22 @@
 /**
  * Implements drush_HOOK_pre_hosting_task().
  *
- * Populates the backend invocation for the backdrop_upgrade task. The
- * command runs on the SOURCE site context; positional args are the new
- * Backdrop site alias and the target platform context name, mirroring the
- * clone task's arg shape.
+ * Populates the backend invocation for the backdrop_upgrade,
+ * backdrop_d6_upgrade and backdrop_cutover tasks. The upgrade commands run
+ * on the SOURCE site context; positional args are the new site alias and
+ * the target platform context name, mirroring the clone task's arg shape.
+ * Cutover runs on the Backdrop copy and is populated by its own helper.
  */
 function drush_hosting_backdrop_pre_hosting_task($task) {
   $task = &drush_get_context('HOSTING_TASK');
-  if ($task->ref->type != 'site'
-    || ($task->task_type != 'backdrop_upgrade' && $task->task_type != 'backdrop_d6_upgrade')) {
+  if ($task->ref->type != 'site') {
+    return;
+  }
+  if ($task->task_type == 'backdrop_cutover') {
+    _hosting_backdrop_pre_cutover_task($task);
+    return;
+  }
+  if ($task->task_type != 'backdrop_upgrade' && $task->task_type != 'backdrop_d6_upgrade') {
     return;
   }
 
@@ -56,4 +63,66 @@ function drush_hosting_backdrop_pre_hosting_task($task) {
   if (isset($task->task_args['new_db_server']) && $task->task_args['new_db_server'] && $task->ref->db_server != $task->task_args['new_db_server']) {
     $task->options['new_db_server'] = hosting_context_name($task->task_args['new_db_server']);
   }
+}
+
+/**
+ * Populate the backend invocation for the backdrop_cutover task.
+ *
+ * The current holder of the target domain is resolved HERE, at execution
+ * time — not at form time — so a holder that changed since the form was
+ * submitted is what actually gets retired (or refused). The backend
+ * re-validates fail-closed; these checks make operator mistakes fail the
+ * task before its destructive delete leg is even dispatched. The platform
+ * and db-server node ids ride as options so the backend can hand them to
+ * the chained migrate task (whose task_args are frontend nids).
+ */
+function _hosting_backdrop_pre_cutover_task($task) {
+  $site = $task->ref;
+  $domain = isset($task->task_args['target_domain'])
+    ? hosting_site_get_domain($task->task_args['target_domain']) : '';
+
+  if ($domain == '' || $domain == hosting_site_get_domain($site->title)) {
+    drush_set_error('HOSTING_BACKDROP_CUTOVER_NOOP',
+      dt('This site already answers at @domain; nothing to cut over.', array('@domain' => $domain)));
+    return;
+  }
+
+  $holder = hosting_get_site_by_url($domain);
+  if (is_object($holder)) {
+    if ($holder->nid == $site->nid) {
+      drush_set_error('HOSTING_BACKDROP_CUTOVER_SELF',
+        dt('@domain already belongs to this site (as an alias).', array('@domain' => $domain)));
+      return;
+    }
+    if ($holder->nid == hosting_get_hostmaster_site_nid()) {
+      drush_set_error('HOSTING_BACKDROP_CUTOVER_HOSTMASTER',
+        dt('@domain is the hosting front-end; it cannot be taken over.', array('@domain' => $domain)));
+      return;
+    }
+    if (hosting_site_get_domain($holder->title) != $domain) {
+      drush_set_error('HOSTING_BACKDROP_CUTOVER_ALIAS',
+        dt('@domain is an alias of @site, not its main domain. Remove the alias there, or cut over to the main domain instead.',
+        array('@domain' => $domain, '@site' => hosting_site_get_domain($holder->title))));
+      return;
+    }
+    if (!hosting_task_dangerous_task_is_allowed('delete', $holder->nid)) {
+      drush_set_error('HOSTING_BACKDROP_CUTOVER_GUARDED',
+        dt('@site is guarded against deletion; cutover would need to delete it.',
+        array('@site' => hosting_site_get_domain($holder->title))));
+      return;
+    }
+    $task->options['cutover_source'] = hosting_context_name($holder->nid);
+  }
+  else {
+    if (!hosting_domain_allowed($domain)) {
+      drush_set_error('HOSTING_BACKDROP_CUTOVER_TAKEN',
+        dt('No site holds @domain but the name is not allowed (held by another record?).', array('@domain' => $domain)));
+      return;
+    }
+    drush_log(dt('No site currently holds @domain — cutover degrades to a plain rename.', array('@domain' => $domain)), 'info');
+  }
+
+  $task->args[2] = $domain;
+  $task->options['cutover_platform_nid'] = $site->platform;
+  $task->options['cutover_db_server_nid'] = $site->db_server;
 }
