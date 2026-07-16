@@ -75,12 +75,31 @@ function hosting_task_migrate_form_validate($form, &$form_state) {
   $site = $form['parameters']['#node'];
 
   $url = hosting_site_get_domain($form_state['values']['parameters']['new_uri']);
-  if ($url != hosting_site_get_domain($site->title)) {
+  $current = hosting_site_get_domain($site->title);
+  if ($url != $current) {
     $migrate_possible = TRUE;
     if (!_hosting_valid_fqdn($url)) {
       form_set_error('title', t("You have not specified a valid url for this site."));
     }
-    if (!hosting_domain_allowed($url)) {
+    // A migrate rename keeps the same site node, so its own automatic
+    // www/non-www companion alias must not veto the new name; the backend
+    // rewrites the alias set for every rename direction between the two
+    // variants. Scoped tightly: only the real migrate task (clone and any
+    // other task delegating here creates a NEW site while the source keeps
+    // serving, so the source's own aliases are genuine conflicts), only the
+    // exact www/non-www companion of the current domain, and only when that
+    // companion is persisted as an AUTOMATIC alias — a custom alias row
+    // equal to the new name would survive the rename and leave the new main
+    // domain duplicated in the alias set.
+    $params = array();
+    if (isset($form_state['values']['task']) && $form_state['values']['task'] == 'migrate'
+      && isset($site->nid)
+      && ($url == 'www.' . $current || $current == 'www.' . $url)
+      && isset($site->aliases_automatic) && is_array($site->aliases_automatic)
+      && in_array($url, $site->aliases_automatic)) {
+      $params = array('nid' => $site->nid);
+    }
+    if (!hosting_domain_allowed($url, $params)) {
       form_set_error('title', t("The domain name you have specified is not unique or not allowed."));
     }
   }
@@ -129,7 +148,14 @@ function hosting_task_migrate_form($node) {
     '#type' => 'textfield',
     '#required' => TRUE,
     '#weight' => '-1',
-    '#default_value' => hosting_site_canonical_url($node),
+    // Pre-fill with the site's actual primary name, never the redirection
+    // target: any submitted value that differs from the title is treated as
+    // a rename request, so a canonical-www site (title example.com,
+    // redirection www.example.com) pre-filled with its redirect target
+    // would turn an untouched platform-only migrate into a silent rename.
+    // clean_domain, not get_domain: the alter chain would display a subdirs
+    // title in its rewritten internal form.
+    '#default_value' => hosting_site_clean_domain($node->title),
   );
 
   $db_servers = hosting_get_servers('db');

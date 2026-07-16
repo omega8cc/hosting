@@ -91,7 +91,7 @@ function _hosting_backdrop_pre_cutover_task($task) {
   if (is_object($holder)) {
     if ($holder->nid == $site->nid) {
       drush_set_error('HOSTING_BACKDROP_CUTOVER_SELF',
-        dt('@domain already belongs to this site (as an alias).', array('@domain' => $domain)));
+        dt('@domain already belongs to this site (as an alias). To make it the main domain use Migrate: an automatic www/non-www companion renames in one step; any other alias must first be removed from the site.', array('@domain' => $domain)));
       return;
     }
     if ($holder->nid == hosting_get_hostmaster_site_nid()) {
