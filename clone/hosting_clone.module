@@ -46,26 +46,11 @@ function hosting_task_clone_form_validate($form, &$form_state) {
 }
 
 /**
- * Implements hook_theme().
- */
-function hosting_clone_theme($existing, $type, $theme, $path) {
-  return array('hosting_task_clone_form' => array('render element' => 'form'));
-}
-
-/**
  * Implements hook_hosting_task_TASK_TYPE_form().
  */
 function hosting_task_clone_form($node) {
   $form = hosting_task_migrate_form($node);
   $form['new_uri']['#description'] = t('The new domain name of the clone site.');
   return $form;
-}
-
-/**
- * Render the clone task form.
- */
-function theme_hosting_task_clone_form($variables) {
-  $form = $variables['form'];
-  return theme_hosting_task_migrate_form($form);
 }
 
