@@ -184,7 +184,7 @@ function hosting_backdrop_hosting_tasks() {
   );
 
   $tasks['site']['backdrop_d6_upgrade'] = array(
-    'title' => t('Upgrade to Drupal 7 (Backdrop step 1)'),
+    'title' => t('Upgrade to Drupal 7'),
     'description' => t('Copy this Drupal 6 site onto a Drupal 7 platform at a NEW domain name and convert the copy — core schema AND the CCK field data (the field-data migration is a hard gate: a field left without its module aborts the whole task and the copy is discarded). The original site keeps serving throughout; the copy starts with Encryption and cron disabled. Inspect the Drupal 7 copy, then run "Upgrade to Backdrop" on it as step 2. Requires a PHP 7.4-pinned instance and the staged D6 upgrade kit.'),
     'command' => 'provision-backdrop-d6-upgrade',
     'dialog' => TRUE,
@@ -192,7 +192,7 @@ function hosting_backdrop_hosting_tasks() {
   );
 
   $tasks['site']['backdrop_cutover'] = array(
-    'title' => t('Cutover (take over a domain)'),
+    'title' => t('Cutover'),
     'description' => t('Make this Backdrop site answer at a domain currently held by another site — typically the original domain of the site it was upgraded from. The site holding that domain is backed up and then deleted; this site is then renamed to the freed domain. Encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards. The domain is unserved while the rename completes: minutes that scale with the size of this site.'),
     'command' => 'provision-backdrop-cutover',
     'dialog' => TRUE,
@@ -238,6 +238,16 @@ function hosting_backdrop_upgrade_task_access($node, $task) {
   // Only Drupal-lineage sources can be upgraded; hide the task on sites that
   // already sit on a (marker-verified) Backdrop platform.
   if (!isset($node->platform) || hosting_backdrop_platform_is_backdrop($node->platform)) {
+    return FALSE;
+  }
+  // Hide the button when the source platform's core release version
+  // positively identifies a non-D7 major — offering "Upgrade to Backdrop"
+  // on a D6 or D10+ site is noise. A missing/empty version stays fail-open
+  // (button shows, the backend refuses non-D7 sources with a clear
+  // message), so a stale package row can never make a site un-upgradeable.
+  $platform = node_load($node->platform);
+  if (is_object($platform) && !empty($platform->release->version)
+    && strpos($platform->release->version, '7.') !== 0) {
     return FALSE;
   }
   // No verified Backdrop platform yet: hide the task rather than offering a
@@ -382,16 +392,22 @@ function _hosting_backdrop_d6_upgrade_targets() {
  * Access callback for the backdrop_d6_upgrade task.
  *
  * Same two-context posture as hosting_backdrop_upgrade_task_access (no URL
- * token). Deliberately version-agnostic on the source, like clone/migrate:
- * a frontend "is this Drupal 6" guard would need fleet-wide assumptions
- * about core package naming; the backend fail-closes non-D6 sources with a
- * clear message. Only Backdrop-platform sites (which cannot be D6) hide it.
+ * token). The button is hidden when the source platform's core release
+ * version positively identifies a non-D6 major — "Upgrade to Drupal 7" on
+ * a site that already runs Drupal 7 is noise. A missing/empty version
+ * stays fail-open (button shows, the backend refuses non-D6 sources with
+ * a clear message). Backdrop-platform sites (which cannot be D6) hide it.
  */
 function hosting_backdrop_d6_upgrade_task_access($node, $task) {
   if (!hosting_task_menu_access($node, $task)) {
     return FALSE;
   }
   if (!isset($node->platform) || hosting_backdrop_platform_is_backdrop($node->platform)) {
+    return FALSE;
+  }
+  $platform = node_load($node->platform);
+  if (is_object($platform) && !empty($platform->release->version)
+    && strpos($platform->release->version, '6.') !== 0) {
     return FALSE;
   }
   if (!count(_hosting_backdrop_d6_upgrade_targets())) {
