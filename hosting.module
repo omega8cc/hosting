@@ -1220,6 +1220,50 @@ function hosting_context_name($nid) {
   return '@' . $node->hosting_name;
 }
 
+/**
+ * Determine whether a directory/site name is a revert-artifact leftover name.
+ *
+ * The .restore suffix is the deploy swap-staging path (deploy.provision.inc,
+ * Drupal and Backdrop layers alike); .original is matched as the historical
+ * sibling of the same artifact class. Deliberately broad (case-insensitive
+ * suffix only): this is the "never adopt as a site" predicate (D-035).
+ *
+ * @param string $name
+ *   The candidate name.
+ *
+ * @return bool
+ *   TRUE when the name carries a revert-artifact suffix.
+ */
+function hosting_leftover_name_is_artifact($name) {
+  return is_string($name) && (bool) preg_match('/\.(restore|original)$/i', $name);
+}
+
+/**
+ * Determine whether a leftover name is manageable via the leftover tasks.
+ *
+ * Mirror of the backend command gate (_provision_leftover_valid_name in
+ * provision.inc — keep the two in sync): strictly lowercase domain-shaped
+ * basename plus the artifact suffix, no traversal characters. A name that is
+ * an artifact but NOT manageable is still skipped by the auto-import loop,
+ * only the expose/purge UI refuses it (the backend would too — fail-closed
+ * on both sides rather than stranding an un-purgeable pseudo-site).
+ *
+ * @param string $name
+ *   The candidate name.
+ *
+ * @return bool
+ *   TRUE when the leftover tasks can operate on the name.
+ */
+function hosting_leftover_name_is_manageable($name) {
+  if (!is_string($name) || $name === '' || strlen($name) > 200) {
+    return FALSE;
+  }
+  if (strpos($name, '..') !== FALSE) {
+    return FALSE;
+  }
+  return (bool) preg_match('/^[a-z0-9][a-z0-9.-]*\.(restore|original)$/', $name);
+}
+
 
 /**
  * Lookup the node ID for a hosting context name.

@@ -357,3 +357,34 @@ function hosting_task_update_7301() {
     db_add_index('hosting_task_arguments', 'hosting_task_arguments_vid_idx', array('vid'));
   }
 }
+
+/**
+ * Grant the revert-artifact leftover task permissions (D-035).
+ *
+ * The task feature's role_permissions only apply at feature-enable time;
+ * existing instances get the same grants here: both leftover permissions to
+ * 'aegir administrator' and 'aegir platform manager', the purge to
+ * 'aegir client' (an oN.ftp client has no shell write access, so leftover
+ * cleanup needs a UI button).
+ */
+function hosting_task_update_7302() {
+  $map = array(
+    'aegir administrator' => array(
+      'create leftover_import task',
+      'create leftover_purge task',
+    ),
+    'aegir platform manager' => array(
+      'create leftover_import task',
+      'create leftover_purge task',
+    ),
+    'aegir client' => array(
+      'create leftover_purge task',
+    ),
+  );
+  foreach ($map as $role_name => $perms) {
+    $role = user_role_load_by_name($role_name);
+    if ($role) {
+      user_role_grant_permissions($role->rid, $perms);
+    }
+  }
+}

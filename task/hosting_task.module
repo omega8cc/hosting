@@ -287,6 +287,15 @@ function hosting_task_menu_access($node, $task) {
         }
       }
 
+      // Leftover pseudo-sites (exposed revert artifacts, D-035) support
+      // exactly ONE action: their purge task. Enable would dispatch against
+      // a backend context that does not exist and the standard delete is the
+      // wrong remover — hosting_site's leftover_purge access callback owns
+      // the pseudo-site path instead.
+      if (function_exists('hosting_site_is_leftover') && hosting_site_is_leftover($node->nid)) {
+        return FALSE;
+      }
+
       $site_enabled = (hosting_task_outstanding($node->nid, 'enable') || ($node->site_status == HOSTING_SITE_ENABLED));
       $deletable = ($task == "delete");
       $enabable = ($task == "enable");
@@ -317,13 +326,15 @@ function hosting_task_menu_access($node, $task) {
         return FALSE;
       }
       // If the platform's been locked, we can unlock it, delete, batch migrate existing sites or verify.
+      // leftover_import (exposing a stranded revert artifact, D-035) is
+      // housekeeping and stays available in both states.
       if ($node->platform_status == HOSTING_PLATFORM_LOCKED) {
-        $platform_tasks = array('verify', 'unlock', 'delete', 'migrate', 'dlock', 'dunlock');
+        $platform_tasks = array('verify', 'unlock', 'delete', 'migrate', 'dlock', 'dunlock', 'leftover_import');
         return (in_array($task, $platform_tasks));
       }
       else {
         // If the platform's unlocked, we can lock it, delete it or batch migrate sites
-        $platform_tasks = array('verify', 'lock', 'delete', 'migrate', 'dlock', 'dunlock');
+        $platform_tasks = array('verify', 'lock', 'delete', 'migrate', 'dlock', 'dunlock', 'leftover_import');
       }
       return (in_array($task, $platform_tasks));
     }
@@ -445,6 +456,12 @@ function hosting_task_permission() {
     ),
     'create backup-delete task' => array(
       'title' => t('create backup-delete task'),
+    ),
+    'create leftover_import task' => array(
+      'title' => t('create leftover_import task'),
+    ),
+    'create leftover_purge task' => array(
+      'title' => t('create leftover_purge task'),
     ),
     'view own tasks' => array(
       'title' => t('view own tasks'),

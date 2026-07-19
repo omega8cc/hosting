@@ -354,7 +354,157 @@ function hosting_site_hosting_tasks() {
     'hidden' => TRUE,
   );
 
+  $tasks['site']['leftover_purge'] = array(
+    'title' => t('Purge leftover'),
+    'description' => t('Permanently delete this leftover artifact from the server: its stranded directory and — when it is provably unused — the orphan copy database it points at. This cannot be undone. Live sites are never touched: the database is only dropped when no site references it.'),
+    'command' => 'provision-leftover-purge',
+    'dialog' => TRUE,
+    'access callback' => 'hosting_site_leftover_purge_task_access',
+  );
+
   return $tasks;
+}
+
+/**
+ * Determine whether a site node is a leftover pseudo-site (D-035).
+ *
+ * A pseudo-site is an exposed revert artifact (sites/<site>.restore stranded
+ * by an interrupted task), registered by the platform leftover_import task so
+ * it becomes visible and purgeable in the UI. It is not a live site: its only
+ * supported action is the leftover_purge task
+ * (hosting_task_menu_access() hides everything else).
+ *
+ * @param int $nid
+ *   The site node id.
+ *
+ * @return bool
+ *   TRUE when the node was created by the leftover_import task.
+ */
+function hosting_site_is_leftover($nid) {
+  if (empty($nid)) {
+    return FALSE;
+  }
+  return is_array(variable_get('hosting_leftover_site_' . $nid, NULL));
+}
+
+/**
+ * Return the recorded metadata of a leftover pseudo-site, or array().
+ *
+ * Keys: platform (nid), leftover (dir name), db_name, db_host (as parsed
+ * from the artifact settings.php at expose time), exposed (timestamp).
+ */
+function hosting_site_leftover_info($nid) {
+  if (empty($nid)) {
+    return array();
+  }
+  $info = variable_get('hosting_leftover_site_' . $nid, array());
+  return is_array($info) ? $info : array();
+}
+
+/**
+ * Access callback for the leftover_purge task (pseudo-site nodes).
+ *
+ * Deliberately NOT delegated to hosting_task_menu_access(): its site branch
+ * returns FALSE for every task on a leftover pseudo-site (that guard is what
+ * hides the stock buttons). The checks that matter here: the permission, the
+ * node being a leftover pseudo-site, it not being retired already, and —
+ * tenant binding — node access on the pseudo-site, so a client can only
+ * purge artifacts belonging to their own sites (hosting_client node grants
+ * scope site visibility per client). Same no-token two-context posture as
+ * the other dialog task access callbacks.
+ */
+function hosting_site_leftover_purge_task_access($node, $task) {
+  if (!is_object($node) || $node->type != 'site') {
+    return FALSE;
+  }
+  if (!user_access('create ' . $task . ' task')) {
+    return FALSE;
+  }
+  if (!hosting_site_is_leftover($node->nid)) {
+    return FALSE;
+  }
+  if ($node->site_status == HOSTING_SITE_DELETED) {
+    return FALSE;
+  }
+  if (!node_access('view', $node)) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the leftover_purge task confirmation form.
+ *
+ * Display-only: everything the purge needs is recorded on the pseudo-site;
+ * the form spells out exactly what will be removed.
+ */
+function hosting_task_leftover_purge_form($node) {
+  $form = array();
+  $info = hosting_site_leftover_info($node->nid);
+  $platform = !empty($info['platform']) ? node_load($info['platform']) : FALSE;
+  $path = t('(unknown platform)');
+  if (is_object($platform) && !empty($platform->publish_path)) {
+    $path = $platform->publish_path . '/sites/' . (isset($info['leftover']) ? $info['leftover'] : $node->title);
+  }
+  $form['leftover_path'] = array(
+    '#type' => 'item',
+    '#title' => t('Directory to delete'),
+    '#markup' => check_plain($path),
+  );
+  $form['leftover_db'] = array(
+    '#type' => 'item',
+    '#title' => t('Orphan copy database'),
+    '#markup' => empty($info['db_name'])
+      ? t('None recorded — only the directory is removed.')
+      : t('@db — dropped only if it still matches the leftover and no site references it; otherwise it is left in place with the reason in the task log.', array('@db' => $info['db_name'])),
+  );
+  $form['leftover_warning'] = array(
+    '#type' => 'item',
+    '#markup' => t('This cannot be undone. Live sites are never touched.'),
+  );
+  return $form;
+}
+
+/**
+ * Implements hook_node_view().
+ *
+ * Stamp leftover pseudo-sites with an unmissable marker so nobody mistakes
+ * the record for a live site.
+ */
+function hosting_site_node_view($node, $view_mode, $langcode) {
+  if ($node->type != 'site' || $view_mode != 'full') {
+    return;
+  }
+  if (!hosting_site_is_leftover($node->nid) || $node->site_status == HOSTING_SITE_DELETED) {
+    return;
+  }
+  $node->content['leftover_notice'] = array(
+    '#weight' => -100,
+    '#markup' => '<div class="messages warning">'
+      . t('This is a leftover artifact stranded by an interrupted task — not a live site. It serves nothing and cannot be enabled. Use the <em>Purge leftover</em> task to remove its directory (and orphan copy database, when safe) from the server.')
+      . '</div>',
+  );
+}
+
+/**
+ * Implements hook_preprocess_node().
+ *
+ * Badge leftover pseudo-sites in the node title, riding the stock
+ * title_prefix/suffix print in node.tpl.php (a theme without CSS for the
+ * class just shows the plain label).
+ */
+function hosting_site_preprocess_node(&$variables) {
+  if (empty($variables['node']) || !is_object($variables['node'])) {
+    return;
+  }
+  $node = $variables['node'];
+  if ($node->type != 'site' || !hosting_site_is_leftover($node->nid)) {
+    return;
+  }
+  $variables['classes_array'][] = 'site-leftover';
+  $variables['title_suffix']['leftover_badge'] = array(
+    '#markup' => ' <span class="leftover-badge">' . t('Leftover artifact') . '</span>',
+  );
 }
 
 /**
