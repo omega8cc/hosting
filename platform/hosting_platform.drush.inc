@@ -177,9 +177,31 @@ function hosting_platform_post_hosting_delete_task($task, $data) {
     ->execute();
   // Clean up package instances.
   hosting_package_instance_sync($task->ref->nid, 'platform');
-  // Drop the recorded revert-artifact leftover list (D-035).
+  // Drop the recorded revert-artifact leftover list (D-035), and retire any
+  // leftover pseudo-sites still exposed on this platform: their purge task
+  // dispatches against the platform context, which no longer exists, so a
+  // surviving pseudo-site would be a permanently un-retirable dead-end. The
+  // platform tree is gone with the platform -- nothing is left to purge.
   if (variable_get('hosting_leftover_platform_' . $task->ref->nid, NULL) !== NULL) {
     variable_del('hosting_leftover_platform_' . $task->ref->nid);
+  }
+  if (function_exists('hosting_site_is_leftover')) {
+    $result = db_query("SELECT nid FROM {hosting_site} WHERE platform = :pid AND status <> :deleted",
+      array(':pid' => $task->ref->nid, ':deleted' => HOSTING_SITE_DELETED));
+    foreach ($result as $row) {
+      if (!hosting_site_is_leftover($row->nid)) {
+        continue;
+      }
+      $pseudo = node_load($row->nid);
+      if (is_object($pseudo)) {
+        $pseudo->site_status = HOSTING_SITE_DELETED;
+        $pseudo->no_verify = TRUE;
+        hosting_context_delete($pseudo->nid);
+        node_save($pseudo);
+      }
+      variable_del('hosting_leftover_site_' . $row->nid);
+      drush_log(dt('Retired leftover pseudo-site !nid with its deleted platform.', array('!nid' => $row->nid)), 'info');
+    }
   }
 }
 
