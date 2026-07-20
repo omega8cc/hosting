@@ -28,6 +28,8 @@ function hosting_task_hosting_feature() {
         'view task',
         'create dlock task',
         'create dunlock task',
+        'create leftover_import task',
+        'create leftover_purge task',
       ),
       'aegir client' => array(
         'create backup task',
@@ -41,6 +43,9 @@ function hosting_task_hosting_feature() {
         'view own tasks',
         'view task',
         'cancel own tasks',
+        // Leftover pseudo-sites (D-035): clients can purge exposed artifacts
+        // belonging to their own sites from the UI (no shell write access).
+        'create leftover_purge task',
       ),
     ),
 

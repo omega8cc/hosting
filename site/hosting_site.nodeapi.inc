@@ -346,7 +346,12 @@ function hosting_site_node_insert($node) {
     $node->title = hosting_site_clean_domain($node->title);
     if ((empty($node->old_vid))) {
       hosting_context_register($node->nid, isset($node->hosting_name) ? $node->hosting_name : $node->title);
-      if (isset($node->import)) {
+      if (!empty($node->no_auto_task)) {
+        // The caller manages its own follow-up (e.g. hosting_backdrop leftover
+        // pseudo-sites, which must never get an install or import queued):
+        // register the context above but queue nothing here.
+      }
+      elseif (isset($node->import)) {
         hosting_add_task($node->nid, 'import');
       }
       else {
