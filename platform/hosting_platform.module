@@ -146,8 +146,132 @@ function hosting_platform_hosting_tasks() {
     'description' => t('Unlock this platform Local Drush.'),
     'weight' => 10,
   );
+  $tasks['platform']['leftover_import'] = array(
+    'title' => t('Import leftover'),
+    'description' => t('Expose a leftover directory stranded on this platform by an interrupted task (sites/&lt;site&gt;.restore) as a pseudo-site record — clearly marked as an artifact, not a live site — so it becomes visible here and can be purged from the UI. Nothing on the server is changed by this task.'),
+    'command' => 'provision-leftover-import',
+    'weight' => 15,
+    'dialog' => TRUE,
+    'access callback' => 'hosting_platform_leftover_import_task_access',
+  );
 
   return $tasks;
+}
+
+/**
+ * Return the recorded revert-artifact leftover list for a platform (D-035).
+ *
+ * Recorded by hosting_platform_post_hosting_verify_task() from the backend
+ * sites scan; the auto-import loop skips these names instead of adopting
+ * them as sites.
+ *
+ * @param int $platform_nid
+ *   The platform node id.
+ *
+ * @return array
+ *   array(<dir name> => array('seen' => timestamp)), possibly empty.
+ */
+function hosting_platform_leftover_list($platform_nid) {
+  if (empty($platform_nid)) {
+    return array();
+  }
+  $list = variable_get('hosting_leftover_platform_' . $platform_nid, array());
+  return is_array($list) ? $list : array();
+}
+
+/**
+ * Return the recorded leftovers on a platform not yet exposed as pseudo-sites.
+ *
+ * A leftover whose name already holds a hosting context (an exposed
+ * pseudo-site, or -- defensively -- any real record) is not a candidate.
+ *
+ * @param int $platform_nid
+ *   The platform node id.
+ *
+ * @return array
+ *   array(<dir name> => array('seen' => timestamp)), possibly empty.
+ */
+function hosting_platform_leftover_candidates($platform_nid) {
+  $candidates = array();
+  foreach (hosting_platform_leftover_list($platform_nid) as $name => $info) {
+    if (hosting_context_load($name)) {
+      continue;
+    }
+    $candidates[$name] = $info;
+  }
+  return $candidates;
+}
+
+/**
+ * Access callback for the leftover_import task (platform nodes).
+ *
+ * Same two-context posture as every task access callback (button render in
+ * hosting_task_fetch_tasks() and the hosting_confirm menu item; no URL token
+ * — the dialog GET only renders a form; queueing happens on the
+ * token-protected POST). Delegates the standard checks (permission, platform
+ * node access and state, task allowlist) to hosting_task_menu_access() —
+ * leftover_import is in its platform allowlist — and only shows the button
+ * when the platform's last verify recorded unexposed leftovers.
+ */
+function hosting_platform_leftover_import_task_access($node, $task) {
+  if (!is_object($node) || $node->type != 'platform') {
+    return FALSE;
+  }
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  return count(hosting_platform_leftover_candidates($node->nid)) > 0;
+}
+
+/**
+ * Implements the leftover_import task confirmation form.
+ *
+ * Discovered by hosting_task_confirm_form() via function_exists(); values
+ * land verbatim in $task->task_args.
+ */
+function hosting_task_leftover_import_form($node) {
+  $form = array();
+  // Rides into $form['parameters'] via the += merge; the validate reads it.
+  $form['#node'] = $node;
+  $candidates = hosting_platform_leftover_candidates($node->nid);
+  $options = array();
+  foreach ($candidates as $name => $info) {
+    $options[$name] = check_plain($name) . ' — ' . t('first seen @date', array(
+      '@date' => format_date(isset($info['seen']) ? $info['seen'] : REQUEST_TIME, 'short'),
+    ));
+  }
+  if (count($options)) {
+    $form['leftover'] = array(
+      '#type' => 'radios',
+      '#title' => t('Leftover to expose'),
+      '#required' => TRUE,
+      '#options' => $options,
+      '#default_value' => count($options) == 1 ? key($options) : NULL,
+      '#description' => t('Leftovers recorded by the last platform verify. Exposing one creates a pseudo-site record for it — clearly marked as an artifact — carrying a Purge button; nothing on the server changes until that purge is run.'),
+    );
+  }
+  else {
+    // Defence in depth for a direct request racing a purge/verify.
+    $form['no_leftover'] = array(
+      '#type' => 'item',
+      '#title' => t('Leftover to expose'),
+      '#markup' => t('No unexposed leftovers are currently recorded on this platform. Run Verify Platform to refresh the list.'),
+    );
+  }
+  return $form;
+}
+
+/**
+ * Validate the leftover_import form: recorded, manageable candidates only.
+ */
+function hosting_task_leftover_import_form_validate($form, &$form_state) {
+  $platform = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+  $name = isset($params['leftover']) ? $params['leftover'] : '';
+  $candidates = is_object($platform) ? hosting_platform_leftover_candidates($platform->nid) : array();
+  if ($name === '' || !isset($candidates[$name]) || !hosting_leftover_name_is_manageable($name)) {
+    form_set_error('parameters][leftover', t('Pick one of the leftovers recorded on this platform.'));
+  }
 }
 
 

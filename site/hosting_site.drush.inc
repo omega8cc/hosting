@@ -110,6 +110,73 @@ function drush_hosting_site_pre_hosting_task($task) {
     $task->args[1] = implode(',', $backups);
   }
 
+  if ($task->task_type == 'leftover_purge') {
+    _hosting_site_pre_leftover_purge_task($task);
+  }
+
+}
+
+/**
+ * Populate the backend invocation for the leftover_purge task (D-035).
+ *
+ * The pseudo-site node has NO backend context (nothing was ever installed
+ * under its name), so the invocation is re-targeted at its PLATFORM context:
+ * $task->ref->hosting_name is what drush_hosting_task() reads as the invoke
+ * alias. Args carry the leftover directory name; options carry the recorded
+ * db name + host (the backend drops the db only on a fresh re-parse match)
+ * and the db server context to drop it on.
+ *
+ * Authoritative frontend collision gate: when ANY live (non-deleted) site
+ * record fleet-wide carries the recorded db name, the drop is withheld
+ * entirely (directory-only purge). This covers the cross-platform shape the
+ * single-platform backend sweep cannot see — e.g. a site migrated away whose
+ * stranded artifact still names a db that a live site now legitimately owns
+ * on another platform/server.
+ */
+function _hosting_site_pre_leftover_purge_task($task) {
+  if ($task->ref->type != 'site') {
+    drush_set_error('HOSTING_LEFTOVER_REF',
+      dt('The leftover_purge task runs on leftover pseudo-site nodes only.'));
+    return;
+  }
+  $info = hosting_site_leftover_info($task->ref->nid);
+  if (empty($info['leftover']) || empty($info['platform'])
+    || !hosting_leftover_name_is_manageable($info['leftover'])) {
+    drush_set_error('HOSTING_LEFTOVER_META',
+      dt('This site node carries no leftover pseudo-site record; refusing to purge.'));
+    return;
+  }
+  $platform = node_load($info['platform']);
+  if (!is_object($platform) || empty($platform->hosting_name)
+    || (isset($platform->platform_status) && $platform->platform_status == HOSTING_PLATFORM_DELETED)) {
+    drush_set_error('HOSTING_LEFTOVER_PLATFORM',
+      dt('The platform holding this leftover could not be loaded (deleted?).'));
+    return;
+  }
+  // Re-target the backend invocation at the platform context.
+  $task->ref->hosting_name = $platform->hosting_name;
+  $task->args = array($info['leftover']);
+  if (!empty($info['db_name'])) {
+    // Fleet-wide authoritative check: a live site record owning this db name
+    // anywhere means it is NOT an orphan — withhold the drop.
+    $holder = db_query("SELECT n.title FROM {hosting_site} h INNER JOIN {node} n ON n.nid = h.nid
+      WHERE h.db_name = :db AND h.status <> :deleted AND h.nid <> :self",
+      array(':db' => $info['db_name'], ':deleted' => HOSTING_SITE_DELETED, ':self' => $task->ref->nid))->fetchField();
+    if ($holder) {
+      drush_log(dt('Database @db is recorded for live site @site — not an orphan; the purge will remove the directory only.',
+        array('@db' => $info['db_name'], '@site' => $holder)), 'warning');
+    }
+    else {
+      $task->options['leftover_db_name'] = $info['db_name'];
+      if (!empty($info['db_host'])) {
+        $task->options['leftover_db_host'] = $info['db_host'];
+      }
+      $db_server = hosting_context_name($task->ref->db_server);
+      if (is_string($db_server) && $db_server !== '') {
+        $task->options['leftover_db_server'] = ltrim($db_server, '@');
+      }
+    }
+  }
 }
 
 
@@ -213,6 +280,45 @@ function hosting_site_post_hosting_delete_task($task, $data) {
 
     // Clean up package instances
     hosting_package_instance_sync($task->ref->nid, 'site');
+  }
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Retires the pseudo-site after a successful leftover purge (D-035),
+ * mirroring the standard site delete post-task, and drops the leftover from
+ * the platform's recorded list immediately (the next verify would too, but
+ * the button should go now).
+ */
+function hosting_site_post_hosting_leftover_purge_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  $nid = $task->ref->nid;
+  if (!hosting_site_is_leftover($nid)) {
+    return;
+  }
+  $info = hosting_site_leftover_info($nid);
+
+  $task->ref->site_status = HOSTING_SITE_DELETED;
+  $task->ref->no_verify = TRUE;
+  hosting_context_delete($nid);
+  node_save($task->ref);
+  variable_del('hosting_leftover_site_' . $nid);
+
+  if (!empty($info['platform']) && !empty($info['leftover'])) {
+    $leftover_var = 'hosting_leftover_platform_' . $info['platform'];
+    $list = variable_get($leftover_var, array());
+    if (is_array($list) && isset($list[$info['leftover']])) {
+      unset($list[$info['leftover']]);
+      if (count($list)) {
+        variable_set($leftover_var, $list);
+      }
+      else {
+        variable_del($leftover_var);
+      }
+    }
   }
 }
 

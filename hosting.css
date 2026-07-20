@@ -56,11 +56,14 @@ table code {
 th.hosting-actions,
 td.hosting-actions {
   text-align: right;
+  /* Keep button pairs on one line: floated buttons wrap into a vertical
+     stack once a long task title squeezes the actions column. */
+  white-space: nowrap;
 }
 
 td.hosting-actions a.hosting-button-enabled,
 td.hosting-actions .hosting-button-disabled {
-  float: right;
+  display: inline-block;
 }
 
 .hosting-task-full {
