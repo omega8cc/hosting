@@ -104,6 +104,38 @@ function drush_hosting_task_validate($id, $type = NULL) {
       if (!empty($task->task_args['backup_mode'])) {
         $selected_backup_mode = $task->task_args['backup_mode'];
         $bytes_written = file_put_contents(AEGIR_BACKUP_MODE_CTRL, $selected_backup_mode, LOCK_EX);
+        if ($bytes_written === FALSE && is_file(AEGIR_BACKUP_MODE_CTRL)) {
+          // A leftover file with bad perms can defeat the rewrite; replace it.
+          @unlink(AEGIR_BACKUP_MODE_CTRL);
+          $bytes_written = file_put_contents(AEGIR_BACKUP_MODE_CTRL, $selected_backup_mode, LOCK_EX);
+        }
+        if ($bytes_written === FALSE) {
+          // The ctrl file is the only transport of the selected mode to the
+          // backend; continuing would run the backup with a stale or foreign
+          // mode instead of the one selected in the form. Fail closed - but
+          // mark the task failed FIRST: erroring out of validate while the
+          // node is still QUEUED would make the queue re-select it forever.
+          $task->task_status = HOSTING_TASK_ERROR;
+          $task->revision = TRUE;
+          node_save($task);
+          return drush_set_error('HOSTING_TASK_BACKUP_MODE', dt("Could not write the backup mode control file @path - aborting instead of running the backup with a stale mode.", array('@path' => AEGIR_BACKUP_MODE_CTRL)));
+        }
+      }
+      elseif (is_file(AEGIR_BACKUP_MODE_CTRL)) {
+        // No mode selected for this task: a leftover mode from an earlier
+        // backup task must never leak into this task's implicit backups
+        // (restore/delete safety copies and queued nightly backups would
+        // silently inherit it - e.g. a stale DB-only mode strips all site
+        // files from them). Only a genuinely stale file is removed: a young
+        // one may be a concurrent parallel worker's live mode, written
+        // seconds ago and not yet consumed by its backend.
+        $ctrl_mtime = filemtime(AEGIR_BACKUP_MODE_CTRL);
+        if ($ctrl_mtime !== FALSE && (REQUEST_TIME - $ctrl_mtime) > 900) {
+          @unlink(AEGIR_BACKUP_MODE_CTRL);
+          if (is_file(AEGIR_BACKUP_MODE_CTRL)) {
+            drush_log(dt("Could not remove the stale backup mode control file @path - implicit backups may inherit its mode.", array('@path' => AEGIR_BACKUP_MODE_CTRL)), 'warning');
+          }
+        }
       }
 
       $task->task_status = HOSTING_TASK_PROCESSING;
@@ -138,7 +170,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
         if (isset($selected_backup_mode)) {
           drush_log(dt("Uses drush_set_option to set selected_backup_mode to") . ': ' . $selected_backup_mode, 'queue');
         }
-        if (defined(AEGIR_BACKUP_MODE_CTRL)) {
+        if (defined('AEGIR_BACKUP_MODE_CTRL')) {
           drush_log(dt("AEGIR_BACKUP_MODE_CTRL was ") . ': ' . AEGIR_BACKUP_MODE_CTRL, 'queue');
         }
 
@@ -227,6 +259,16 @@ function drush_hosting_task() {
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
   drush_set_context('HOSTING_DRUSH_OUTPUT', $output);
+
+  // The backup mode ctrl file is a one-shot channel consumed by the backend
+  // invoke above; removing it here keeps a later task's implicit backups from
+  // inheriting this task's mode.
+  if (!empty($task->task_args['backup_mode']) && is_file(AEGIR_BACKUP_MODE_CTRL)) {
+    @unlink(AEGIR_BACKUP_MODE_CTRL);
+    if (is_file(AEGIR_BACKUP_MODE_CTRL)) {
+      drush_log(dt("Could not remove the backup mode control file @path after the task - implicit backups may inherit its mode.", array('@path' => AEGIR_BACKUP_MODE_CTRL)), 'warning');
+    }
+  }
 
   // On succesful delete, remove the named context.
   if ($task->task_type === 'delete' && !drush_get_error()) {
