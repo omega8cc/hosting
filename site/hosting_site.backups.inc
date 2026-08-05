@@ -27,7 +27,7 @@ function hosting_task_backup_form($node) {
       'site_files_without_db_backup' => t('Site files without any DB'),
       'site_files_with_mysqldump' => t('Site files with classic mysqldump DB'),
     ),
-    '#default_value' => isset($form_state['values']['backup_mode']) ? $form_state['values']['backup_mode'] : 'backup_mysqldump_only',
+    '#default_value' => isset($form_state['values']['backup_mode']) ? $form_state['values']['backup_mode'] : 'site_files_with_mysqldump',
     '#description' => t("Select the components to include in this backup archive. Note that only the 'Site files with classic mysqldump DB' option can be used for the Site Restore task. This backup process will bypass the ~/static/control/MyQuick.info file but you can still use the Fast DB Backups provided by this file for other Aegir tasks. This allows you to choose an additional manual backup mode that fits your needs. After the backup is created, you can export it from the Backups tab on the site node and download it to your PC."),
   );
 
@@ -39,16 +39,21 @@ function hosting_task_backup_form($node) {
  *
  * Builds a list of backups of the site that have been generated.
  */
-function hosting_site_add_backup($site, $web_server, $filename, $description = '', $size = '') {
-  $id = db_insert('hosting_site_backups')
-  ->fields(array(
+function hosting_site_add_backup($site, $web_server, $filename, $description = '', $size = '', $backup_mode = '') {
+  $fields = array(
     'site' => $site,
     'web_server' => $web_server,
     'filename' => $filename,
     'description' => $description,
     'size' => $size,
     'timestamp' => REQUEST_TIME,
-  ))
+  );
+  // Survive the code-before-updatedb window of an upgrade.
+  if ($backup_mode !== '' && db_field_exists('hosting_site_backups', 'backup_mode')) {
+    $fields['backup_mode'] = $backup_mode;
+  }
+  $id = db_insert('hosting_site_backups')
+  ->fields($fields)
   ->execute();
   return $id;
 }
@@ -86,11 +91,24 @@ function hosting_site_get_backups($nid) {
  *   An associative array of backups existing for the site, indexed by bid and sorted reverse chronologically.
  */
 function hosting_site_backup_list($site) {
-  $result = db_query("SELECT bid, description, size, timestamp FROM {hosting_site_backups} WHERE site = :site ORDER BY timestamp DESC", array(':site' => $site));
+  // Survive the code-before-updatedb window of an upgrade.
+  $has_mode = db_field_exists('hosting_site_backups', 'backup_mode');
+  $result = db_query("SELECT bid, description, size, timestamp" . ($has_mode ? ", backup_mode" : "") . " FROM {hosting_site_backups} WHERE site = :site ORDER BY timestamp DESC", array(':site' => $site));
+  // Partial backups look identical to full ones in this list; labelling them
+  // is what keeps a DB-only archive from being restored in the belief it
+  // carries the site files.
+  $mode_notes = array(
+    'backup_mysqldump_only' => t('database only, no site files'),
+    'site_files_without_db_backup' => t('site files only, no database'),
+  );
   $backups = array();
   foreach ($result as $object) {
     #needs to be cleaned up. but i am NOT generating a theme func for this right now.
-    $backups[$object->bid] = '<strong>' . format_date($object->timestamp) . '</strong> - ' . format_size($object->size) . ' - ' . filter_xss($object->description);
+    $note = '';
+    if ($has_mode && !empty($object->backup_mode) && isset($mode_notes[$object->backup_mode])) {
+      $note = ' - <em>' . $mode_notes[$object->backup_mode] . '</em>';
+    }
+    $backups[$object->bid] = '<strong>' . format_date($object->timestamp) . '</strong> - ' . format_size($object->size) . ' - ' . filter_xss($object->description) . $note;
   }
   return $backups;
 }
