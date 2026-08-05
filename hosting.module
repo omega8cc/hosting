@@ -500,7 +500,18 @@ function hosting_init() {
 
   // Fallback communication with the backend
   if (!defined('AEGIR_BACKUP_MODE_CTRL')) {
-    define('AEGIR_BACKUP_MODE_CTRL', '/tmp/aegir_backup_mode.txt');
+    // Scoped by uid: /tmp is shared and sticky, so an unscoped file written by
+    // one Octopus account blocks (and silently mis-modes) every other account's
+    // backups. Frontend and backend run as the same account user, so both
+    // resolve the same path. posix_getuid() (real process uid), NOT getmyuid()
+    // — the latter returns the entry-script file OWNER, which is root for the
+    // shared drush8 launcher and would collapse every account onto one path.
+    if (function_exists('posix_getuid')) {
+      define('AEGIR_BACKUP_MODE_CTRL', '/tmp/aegir_backup_mode.' . (int) posix_getuid() . '.txt');
+    }
+    else {
+      define('AEGIR_BACKUP_MODE_CTRL', '/tmp/aegir_backup_mode.' . (int) getmyuid() . '.txt');
+    }
   }
 }
 
