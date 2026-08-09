@@ -139,6 +139,12 @@ function hosting_subdirs_site_form_validate($form, &$form_state) {
  */
 function hosting_subdirs_is_a_subdir($url) {
   if (@strpos($url, '/') === FALSE) return FALSE;
+  // A slash with nothing after it ("example.com/") is a pasted-URL
+  // artefact, not a subdirectory site. Treating it as one makes the
+  // presave below mint the site's own name as a self-redirect alias,
+  // which dead-loops the whole vhost.
+  $parts = explode('/', $url, 2);
+  if (trim($parts[1], '/') === '') return FALSE;
   return TRUE;
 }
 

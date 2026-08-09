@@ -983,12 +983,18 @@ function hosting_site_hosting_site_domain_alter(&$domain) {
  * Ensure domains are properly formatted.
  */
 function hosting_site_clean_domain($domain) {
+  // A domain pasted from a browser URL bar arrives as "example.com/"; a
+  // trailing slash must never survive into a stored domain, or
+  // hosting_subdirs reads it as a subdirectory site and turns the site's
+  // own name into a self-redirect alias. Subdir aliases ("a.com/sub")
+  // are unaffected: only trailing slashes are stripped.
+  $domain = rtrim(trim($domain), '/');
   // Domain names are case-insensitive.
   if (function_exists('idna_convert_encode')) {
-    return idna_convert_encode(strtolower(trim($domain)));
+    return idna_convert_encode(strtolower($domain));
   }
   else {
-    return strtolower(trim($domain));
+    return strtolower($domain);
   }
 }
 
