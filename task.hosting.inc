@@ -101,6 +101,19 @@ function drush_hosting_task_validate($id, $type = NULL) {
       }
 
       // Now you can safely access task arguments.
+      // A backup task created without an explicit mode (CLI hosting-task,
+      // API hosting_add_task, queued nightly backups) must produce the same
+      // self-contained archive the panel's default produces. Without this
+      // default the backend falls to the legacy modeless path, which on
+      // mydumper-enabled systems dumps only to the transient tmp_expim store
+      // and packs files/private as bare symlinks - an archive that cannot
+      // restore its own database. Internal safety copies (clone, migrate,
+      // restore) are not created through this runner; their fast path is
+      // untouched.
+      if ($task->task_type == 'backup' && empty($task->task_args['backup_mode'])) {
+        $task->task_args['backup_mode'] = 'site_files_with_mysqldump';
+        drush_log(dt("No backup_mode in the task arguments - defaulting to the restorable mode: site_files_with_mysqldump"), 'queue');
+      }
       if (!empty($task->task_args['backup_mode'])) {
         $selected_backup_mode = $task->task_args['backup_mode'];
         $bytes_written = file_put_contents(AEGIR_BACKUP_MODE_CTRL, $selected_backup_mode, LOCK_EX);
@@ -185,7 +198,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
         }
       }
       else {
-        drush_log(dt("The backup_mode from task_args is empty"), 'queue');
+        // Only non-backup task types reach this branch now; a backup task
+        // always carries a mode (explicit or the default applied above).
+        drush_log(dt("No backup mode involved for this task type"), 'debug');
       }
 
       // Load Task Info.
