@@ -59,6 +59,31 @@ function hosting_site_add_backup($site, $web_server, $filename, $description = '
 }
 
 /**
+ * Extract the backup mode the backend actually applied, allowlisted.
+ *
+ * The task_args value is the frontend's REQUEST; the backend publishes
+ * backup_mode in its returned context only when it resolved one, and
+ * publishes nothing when it fell back to the modeless path (or skipped
+ * mode handling entirely, as on hostmaster). Recording the request would
+ * label a degraded archive with a mode it does not have. Allowlisted here
+ * because CLI/API-supplied values otherwise reach the table unvalidated -
+ * an unknown string mislabels the row and an over-long one aborts the
+ * insert, losing the backup record entirely.
+ */
+function hosting_site_backup_mode_from_context($data) {
+  if (empty($data['context']['backup_mode'])) {
+    return '';
+  }
+  $applied_mode = trim((string) $data['context']['backup_mode']);
+  $known_modes = array(
+    'backup_mysqldump_only',
+    'site_files_without_db_backup',
+    'site_files_with_mysqldump',
+  );
+  return in_array($applied_mode, $known_modes, TRUE) ? $applied_mode : '';
+}
+
+/**
  * Delete a site backup record
  */
 function hosting_site_delete_backup($bid) {
