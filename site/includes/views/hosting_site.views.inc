@@ -216,6 +216,24 @@ function hosting_site_views_data() {
     ),
   );
 
+  $data['hosting_site_backups']['backup_mode'] = array(
+    'title' => t('Backup mode'),
+    'help' => t('The mode the backend applied: full, database-only or files-only. Empty for implicit safety copies and pre-mode archives.'),
+    'field' => array(
+      'handler' => 'views_handler_field',
+      'click sortable' => TRUE,
+     ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_string',
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_string',
+    ),
+  );
+
   $data['hosting_site_backups']['size'] = array(
     'title' => t('Size'),
     'help' => t('The size of the backup file.'),
