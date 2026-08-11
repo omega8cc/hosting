@@ -177,7 +177,7 @@ function drush_hosting_task_validate($id, $type = NULL) {
         if (isset($ref_nid)) {
           drush_log(dt("Task ref-nid was ") . ': ' . $ref_nid, 'queue');
         }
-        if (isset($type)) {
+        if (isset($type) && isset($name) && isset($task_args[$name])) {
           drush_log(dt("Task add values were ") . ':: ' . $ref->nid . ' :: ' . $type . ' :: ' . $task_args[$name], 'queue');
         }
         if (isset($selected_backup_mode)) {
