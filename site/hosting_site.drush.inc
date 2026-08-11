@@ -251,7 +251,10 @@ function hosting_site_post_hosting_disable_task($task, $data) {
 function hosting_site_post_hosting_restore_task($task, $data) {
   if (!empty($data['context']['backup_file']) && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
-    hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being restored to a previous version'), $data['context']['backup_file_size']);
+    // The pre-restore safety copy is forced to the restorable mode by the
+    // backend; record the mode it publishes so the row stops rendering as an
+    // unlabelled archive of unknown completeness.
+    hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being restored to a previous version'), $data['context']['backup_file_size'], hosting_site_backup_mode_from_context($data));
   }
 }
 
@@ -332,9 +335,9 @@ function hosting_site_post_hosting_backup_task($task, $data) {
   if (!empty($data['context']['backup_file']) && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
 
-    $desc = $task->task_args['description'];
+    $desc = isset($task->task_args['description']) ? $task->task_args['description'] : '';
     $desc = ($desc) ? $desc : t('Generated on request');
-    $backup_mode = !empty($task->task_args['backup_mode']) ? $task->task_args['backup_mode'] : '';
+    $backup_mode = hosting_site_backup_mode_from_context($data);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], $desc, $data['context']['backup_file_size'], $backup_mode);
   }
 }
