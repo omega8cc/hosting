@@ -335,7 +335,7 @@ function hosting_site_post_hosting_backup_task($task, $data) {
   if (!empty($data['context']['backup_file']) && $task->ref->type == 'site') {
     $platform = node_load($task->ref->platform);
 
-    $desc = $task->task_args['description'];
+    $desc = isset($task->task_args['description']) ? $task->task_args['description'] : '';
     $desc = ($desc) ? $desc : t('Generated on request');
     $backup_mode = hosting_site_backup_mode_from_context($data);
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], $desc, $data['context']['backup_file_size'], $backup_mode);
