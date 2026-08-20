@@ -157,6 +157,19 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // Save the task node after setting its status.
       node_save($task);
 
+      // Record this runner's PID on the fresh PROCESSING revision. The final
+      // status is written only in this process's shutdown handler, so a
+      // runner that dies without it leaves the row at PROCESSING forever;
+      // the dispatcher's reaper needs the PID to tell such an orphan from a
+      // genuinely running task. Guarded: the column arrives with update
+      // 7303, and this code can run against a not-yet-updated schema.
+      if (db_field_exists('hosting_task', 'pid')) {
+        db_update('hosting_task')
+          ->fields(array('pid' => (int) getmypid()))
+          ->condition('vid', $task->vid)
+          ->execute();
+      }
+
       // Set the Drush contexts.
       drush_set_context('HOSTING_TASK', $task);
       drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');

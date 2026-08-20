@@ -874,6 +874,100 @@ function hosting_task_count_running() {
 }
 
 /**
+ * Check whether the recorded task runner process is still alive.
+ *
+ * A dead runner can never write its final status - that write happens only
+ * in the runner's own PHP shutdown handler - so a PROCESSING row whose
+ * process is gone is orphaned for good. /proc is authoritative here (the
+ * backend runs on Linux only), and a recycled PID does not fool the check:
+ * the command line must still look like a drush hosting-task runner.
+ *
+ * @param int $pid
+ *   The process ID recorded on the task revision.
+ *
+ * @return bool
+ *   TRUE when a live hosting-task runner with this PID exists.
+ */
+function hosting_task_runner_alive($pid) {
+  $pid = (int) $pid;
+  if ($pid <= 0) {
+    return FALSE;
+  }
+  $cmdline = @file_get_contents('/proc/' . $pid . '/cmdline');
+  if ($cmdline === FALSE) {
+    // Read failed: normally the process is simply gone. If the entry still
+    // exists the read failed for another reason - err on the live side, the
+    // dispatcher retries every pass. (A live runner's cmdline is readable
+    // here: dispatcher and runner execute as the same system user.)
+    return @is_dir('/proc/' . $pid);
+  }
+  if ($cmdline === '') {
+    // A zombie: it exists, but it already died without the status write.
+    return FALSE;
+  }
+  // Guard against PID recycling: an unrelated process on the same PID must
+  // not keep an orphaned row alive for the whole running-items window.
+  return (strpos($cmdline, 'hosting-task') !== FALSE);
+}
+
+/**
+ * Reap PROCESSING task rows whose runner process is gone.
+ *
+ * Nothing else ever moves such a row off PROCESSING (the only writers are
+ * the runner's own shutdown handler and a manual button on the task node),
+ * and while the row stays inside the running-items window it is subtracted
+ * from the dispatcher's concurrency budget - with the default single-task
+ * limit one orphan wedges the whole queue for eight hours.
+ *
+ * Only current revisions are examined ({node}.vid join): superseded
+ * revisions gate nothing. Rows carrying a recorded PID are reaped as soon as
+ * the process is verifiably gone; rows without one (written by pre-7303
+ * code) are aged out only after the running-items window, when they have
+ * already stopped capping the queue and only mislead the UI and
+ * hosting-pause.
+ *
+ * @return int
+ *   The number of task revisions marked failed.
+ */
+function hosting_task_reap_orphaned_tasks() {
+  if (!db_field_exists('hosting_task', 'pid')) {
+    return 0;
+  }
+  $reaped = 0;
+  $result = db_query("SELECT t.vid, t.nid, t.pid, t.executed FROM {node} n INNER JOIN {hosting_task} t ON n.vid = t.vid WHERE n.type = :type AND t.task_status = :processing AND t.executed < :grace",
+    array(
+      ':type' => 'task',
+      ':processing' => HOSTING_TASK_PROCESSING,
+      // The runner stamps its PID within the second it flips the row to
+      // PROCESSING; two minutes of grace keeps the reaper clear of that
+      // window while still recovering fast.
+      ':grace' => REQUEST_TIME - 120,
+    )
+  );
+  foreach ($result as $row) {
+    if ((int) $row->pid > 0) {
+      if (hosting_task_runner_alive($row->pid)) {
+        continue;
+      }
+    }
+    elseif ((REQUEST_TIME - $row->executed) < 28800) {
+      continue;
+    }
+    $updated = db_update('hosting_task')
+      ->fields(array('task_status' => HOSTING_TASK_ERROR))
+      ->condition('vid', $row->vid)
+      ->condition('task_status', HOSTING_TASK_PROCESSING)
+      ->execute();
+    if ($updated) {
+      hosting_task_log($row->vid, 'error', t('Task runner process @pid is gone without reporting a final status; marked failed by the queue reaper.', array('@pid' => (int) $row->pid)));
+      watchdog('hosting_task', 'Reaped orphaned task node/@nid revision @vid: runner process @pid is gone.', array('@nid' => $row->nid, '@vid' => $row->vid, '@pid' => (int) $row->pid), WATCHDOG_WARNING);
+      $reaped++;
+    }
+  }
+  return $reaped;
+}
+
+/**
  * Get a list of tasks that can be invoked by the user.
  *
  * Note this does not check permissions or relevance of the tasks.

@@ -44,6 +44,13 @@ function hosting_task_schema() {
         'type' => 'int',
         'not null' => FALSE,
       ),
+      'pid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Process ID of the drush runner executing this task revision; 0 when unknown. Lets the dispatcher tell an orphaned PROCESSING row from a live task.',
+      ),
     ),
     'indexes' => array(
       'nid' => array('nid'),
@@ -386,5 +393,26 @@ function hosting_task_update_7302() {
     if ($role) {
       user_role_grant_permissions($role->rid, $perms);
     }
+  }
+}
+
+/**
+ * Add {hosting_task}.pid so the dispatcher can reap orphaned tasks.
+ *
+ * The final task status is written only by the runner's own PHP shutdown
+ * handler, so a runner that dies without running it (signal kill, code-tree
+ * swap mid-upgrade, host reboot) leaves its revision at PROCESSING forever.
+ * The runner now records its process ID here; the dispatcher reaps rows
+ * whose process is verifiably gone.
+ */
+function hosting_task_update_7303() {
+  if (!db_field_exists('hosting_task', 'pid')) {
+    db_add_field('hosting_task', 'pid', array(
+      'type' => 'int',
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+      'default' => 0,
+      'description' => 'Process ID of the drush runner executing this task revision; 0 when unknown. Lets the dispatcher tell an orphaned PROCESSING row from a live task.',
+    ));
   }
 }
