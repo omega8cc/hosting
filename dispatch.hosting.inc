@@ -58,6 +58,22 @@ function drush_hosting_dispatch() {
         // queued/hosting_queued.drush.inc).
         global $conf;
         $conf = variable_initialize();
+        // For the tasks queue, first reap PROCESSING rows whose runner
+        // process is gone: a runner that dies without its shutdown handler
+        // (signal kill, code-tree swap during a hostmaster upgrade, host
+        // reboot) never writes a final status, and each such orphan is
+        // subtracted from the concurrency budget below for the whole
+        // running-items window - with the default single-task limit the
+        // queue wedges for eight hours per orphan. Then re-count under the
+        // semaphore: the pre-lock snapshot from hosting_get_queues() misses
+        // both a sibling's just-forked batch and anything the reap healed.
+        if ($queue == 'tasks' && function_exists('hosting_task_reap_orphaned_tasks')) {
+          $reaped = hosting_task_reap_orphaned_tasks();
+          if ($reaped) {
+            drush_log(dt('Reaped @count orphaned task(s) left in processing by dead runners.', array('@count' => $reaped)), 'warning');
+          }
+          $info['running_items'] = hosting_task_count_running();
+        }
         $last = variable_get("hosting_queue_{$queue}_last_run", $info["last"]);
         if (($now - $last) >= $info["calc_frequency"] || drush_get_option('force', FALSE)) {
           $count = $info['calc_items'] - $info['running_items'];

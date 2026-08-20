@@ -22,9 +22,15 @@ function hosting_queued_settings_form($form, &$form_state) {
     ->fetchField()
   ;
 
-  $processing_tasks = db_select('hosting_task', 't')
+  // Only the current revision reflects reality: superseded revisions keep
+  // their stale PROCESSING value forever, so an unjoined probe reports
+  // "Tasks Running: Yes" on an idle box with any historical stuck task and
+  // keeps the unlock button permanently disabled.
+  $processing_query = db_select('hosting_task', 't');
+  $processing_query->innerJoin('node', 'n', 't.vid = n.vid');
+  $processing_tasks = $processing_query
     ->fields('t', array('nid'))
-    ->condition('task_status', HOSTING_TASK_PROCESSING)
+    ->condition('t.task_status', HOSTING_TASK_PROCESSING)
     ->execute()
     ->fetchField()
   ;
@@ -104,9 +110,15 @@ function hosting_queued_remove_semaphore_form() {
 
   drupal_set_title(t('Unlock Hosting Queue'));
 
-  $processing_tasks = db_select('hosting_task', 't')
+  // Only the current revision reflects reality: superseded revisions keep
+  // their stale PROCESSING value forever, so an unjoined probe reports
+  // "Tasks Running: Yes" on an idle box with any historical stuck task and
+  // keeps the unlock button permanently disabled.
+  $processing_query = db_select('hosting_task', 't');
+  $processing_query->innerJoin('node', 'n', 't.vid = n.vid');
+  $processing_tasks = $processing_query
     ->fields('t', array('nid'))
-    ->condition('task_status', HOSTING_TASK_PROCESSING)
+    ->condition('t.task_status', HOSTING_TASK_PROCESSING)
     ->execute()
     ->fetchField()
   ;
