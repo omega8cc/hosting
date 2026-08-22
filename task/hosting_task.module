@@ -926,6 +926,13 @@ function hosting_task_runner_alive($pid) {
  * already stopped capping the queue and only mislead the UI and
  * hosting-pause.
  *
+ * The clock is read live here, not from REQUEST_TIME: PHP freezes that at
+ * bootstrap, and this function is also called from a long-lived process -
+ * hosting-pause loops on it while it waits for the queue to drain. With a
+ * frozen bound the candidate set stays anchored to process start, so any
+ * orphan minted after it stays invisible for the life of that process,
+ * while hosting_task_count_running() (live clock) keeps counting it.
+ *
  * @return int
  *   The number of task revisions marked failed.
  */
@@ -934,6 +941,7 @@ function hosting_task_reap_orphaned_tasks() {
     return 0;
   }
   $reaped = 0;
+  $now = time();
   $result = db_query("SELECT t.vid, t.nid, t.pid, t.executed FROM {node} n INNER JOIN {hosting_task} t ON n.vid = t.vid WHERE n.type = :type AND t.task_status = :processing AND t.executed < :grace",
     array(
       ':type' => 'task',
@@ -941,7 +949,7 @@ function hosting_task_reap_orphaned_tasks() {
       // The runner stamps its PID within the second it flips the row to
       // PROCESSING; two minutes of grace keeps the reaper clear of that
       // window while still recovering fast.
-      ':grace' => REQUEST_TIME - 120,
+      ':grace' => $now - 120,
     )
   );
   foreach ($result as $row) {
@@ -950,7 +958,7 @@ function hosting_task_reap_orphaned_tasks() {
         continue;
       }
     }
-    elseif ((REQUEST_TIME - $row->executed) < 28800) {
+    elseif (($now - $row->executed) < 28800) {
       continue;
     }
     $updated = db_update('hosting_task')
