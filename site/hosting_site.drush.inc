@@ -192,8 +192,10 @@ function hosting_site_post_hosting_install_task($task, $data) {
     $task->ref->site_status = HOSTING_SITE_ENABLED;
     $task->ref->no_verify = TRUE;
     $task->ref->verified = REQUEST_TIME;
-    $task->ref->db_name = $data['self']['db_name'];
-    if ($context['cron_key']) {
+    if (isset($data['self']['db_name'])) {
+      $task->ref->db_name = $data['self']['db_name'];
+    }
+    if (!empty($context['cron_key'])) {
       $task->ref->cron_key = $context['cron_key'];
     }
     node_save($task->ref);
@@ -351,7 +353,9 @@ function hosting_site_post_hosting_import_task($task, $data) {
 
   // Update the site node with the database name.
   $node = node_load($site_nid);
-  $node->db_name = $data['self']['db_name'];
+  if (isset($data['self']['db_name'])) {
+    $node->db_name = $data['self']['db_name'];
+  }
   node_save($node);
 
   $packages = $data['context']['packages'];
@@ -366,8 +370,10 @@ function hosting_site_post_hosting_verify_task($task, $data) {
   if ($task->ref->type == 'site') {
     $task->ref->verified = REQUEST_TIME;
     $task->ref->no_verify = TRUE;
-    $task->ref->db_name = $data['self']['db_name'];
-    if ($data['context']['cron_key']) {
+    if (isset($data['self']['db_name'])) {
+      $task->ref->db_name = $data['self']['db_name'];
+    }
+    if (!empty($data['context']['cron_key'])) {
       $task->ref->cron_key = $data['context']['cron_key'];
     }
     node_save($task->ref);

@@ -1,0 +1,206 @@
+<?php
+/**
+ * @file
+ * Textpattern platform support for the Aegir frontend.
+ *
+ * The frontend is version-agnostic: no node column records the CMS. The
+ * backend (provision txp layer) reports the Textpattern signal on platform
+ * verify as $data['txp'] = the TXP version string. This module stores that
+ * marker per platform, then uses it to (a) keep Textpattern and Drupal
+ * platforms from being offered together at site creation, (b) route TXP site
+ * installs through the TXP path via context_options, and (c) badge TXP
+ * platforms and their sites in the admin theme.
+ *
+ * Deliberately NOT here, unlike the Grav sibling:
+ *  - no hook_hosting_service(): Textpattern needs a real database, so sites
+ *    attach to the ordinary db server (Grav's 'none' service exists for
+ *    flat-file capsules).
+ *  - no upgrade task: the TXP upgrade engine is phase 2. Shipping a button
+ *    whose backend command does not exist is the silent-success class this
+ *    project has already been bitten by, so the task lands with its engine.
+ *
+ * Plain D7 idiom throughout because Hostmaster IS Drupal 7 — not for
+ * PHP-floor reasons (TXP's own floor is 8.4, boa-txp D-008).
+ */
+
+/**
+ * Variable-name prefix for the per-platform Textpattern version marker.
+ *
+ * Keyed by platform nid; the value is the reported TXP version string.
+ * Table-free storage (the {variable} table) keeps this a pure submodule with
+ * no schema change to the shared hosting_platform table.
+ */
+define('HOSTING_TXP_PLATFORM_VAR', 'hosting_txp_platform_version_');
+
+/**
+ * The install_method value the provision txp layer expects for TXP sites.
+ */
+define('HOSTING_TXP_INSTALL_METHOD', 'txp');
+
+/**
+ * Determine whether a platform node is a verified Textpattern platform.
+ *
+ * NB the name is load-bearing: the shared hosting_cron guard calls
+ * hosting_txp_platform_is_txp() through function_exists(), so that TXP sites
+ * are skipped by cron dispatch (Textpattern core needs no cron at all).
+ *
+ * @param int $platform_nid
+ *   The platform node id.
+ *
+ * @return bool
+ *   TRUE if the backend reported a Textpattern version for this platform.
+ */
+function hosting_txp_platform_is_txp($platform_nid) {
+  if (empty($platform_nid)) {
+    return FALSE;
+  }
+  $version = variable_get(HOSTING_TXP_PLATFORM_VAR . $platform_nid, '');
+  return $version !== '';
+}
+
+/**
+ * Return the stored Textpattern version string for a platform, or ''.
+ */
+function hosting_txp_platform_version($platform_nid) {
+  if (empty($platform_nid)) {
+    return '';
+  }
+  return variable_get(HOSTING_TXP_PLATFORM_VAR . $platform_nid, '');
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Stores (or clears) the per-platform Textpattern marker from the verify
+ * result. The backend contract: the txp layer's platform verify adds
+ * $data['txp'] = the TXP version string alongside the standard
+ * packages/profiles/sites keys. Presence of that key is the TXP signal.
+ */
+function hosting_txp_post_hosting_verify_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'platform') {
+    return;
+  }
+  $name = HOSTING_TXP_PLATFORM_VAR . $task->ref->nid;
+
+  // Read the reported version; tolerate it arriving nested under 'context'.
+  $version = '';
+  if (isset($data['txp']) && is_string($data['txp'])) {
+    $version = trim($data['txp']);
+  }
+  elseif (isset($data['context']['txp']) && is_string($data['context']['txp'])) {
+    $version = trim($data['context']['txp']);
+  }
+
+  if ($version !== '') {
+    // Only write on change to avoid needless variable-cache invalidation.
+    if (variable_get($name, '') !== $version) {
+      variable_set($name, $version);
+    }
+  }
+  else {
+    // Re-verified as a non-TXP platform: drop any stale marker. Guard the
+    // delete so a normal Drupal verify never clears the bootstrap cache.
+    if (variable_get($name, NULL) !== NULL) {
+      variable_del($name);
+    }
+  }
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Cleans up the per-platform marker when a platform is deleted.
+ */
+function hosting_txp_post_hosting_delete_task($task, $data) {
+  if (isset($task->ref) && $task->ref->type == 'platform') {
+    $name = HOSTING_TXP_PLATFORM_VAR . $task->ref->nid;
+    if (variable_get($name, NULL) !== NULL) {
+      variable_del($name);
+    }
+  }
+}
+
+/**
+ * Implements hook_hosting_site_options_alter().
+ *
+ * Partition the platform options so Textpattern and non-Textpattern platforms
+ * are never offered together (the distinct synthetic 'textpattern' profile
+ * already keeps the lists apart on the create form; this is the belt covering
+ * the migrate/clone option paths, symmetric in both directions).
+ */
+function hosting_txp_hosting_site_options_alter(&$return, &$node) {
+  if (empty($return['platform']) || !is_array($return['platform'])) {
+    return;
+  }
+
+  $reference = isset($node->platform) ? $node->platform : reset($return['platform']);
+  if (empty($reference)) {
+    return;
+  }
+  $reference_is_txp = hosting_txp_platform_is_txp($reference);
+
+  $filtered = array();
+  foreach ($return['platform'] as $nid) {
+    if (hosting_txp_platform_is_txp($nid) == $reference_is_txp) {
+      $filtered[] = $nid;
+    }
+  }
+
+  // Never present an empty platform list; only apply a non-empty partition.
+  if (!empty($filtered)) {
+    $return['platform'] = $filtered;
+  }
+}
+
+/**
+ * Implements hook_preprocess_node().
+ *
+ * Badge Textpattern platforms and their sites in the admin theme: a small
+ * title-suffix label plus node classes (platform-txp / site-txp) the eldir
+ * theme can style. A theme without the CSS just shows the plain label.
+ */
+function hosting_txp_preprocess_node(&$variables) {
+  if (empty($variables['node']) || !is_object($variables['node'])) {
+    return;
+  }
+  $node = $variables['node'];
+  $version = '';
+  $class = '';
+  if ($node->type == 'platform' && hosting_txp_platform_is_txp($node->nid)) {
+    $version = hosting_txp_platform_version($node->nid);
+    $class = 'platform-txp';
+  }
+  elseif ($node->type == 'site' && isset($node->platform) && hosting_txp_platform_is_txp($node->platform)) {
+    $version = hosting_txp_platform_version($node->platform);
+    $class = 'site-txp';
+  }
+  if ($class === '') {
+    return;
+  }
+  $variables['classes_array'][] = $class;
+  $label = $version !== '' ? t('Textpattern @version', array('@version' => $version)) : t('Textpattern');
+  $variables['title_suffix']['txp_badge'] = array(
+    '#markup' => ' <span class="txp-badge">' . $label . '</span>',
+  );
+}
+
+/**
+ * Implements hook_hosting_TASK_OBJECT_context_options().
+ *
+ * For a site on a Textpattern platform, tell the backend to install through
+ * the TXP path. The generic seam (hosting_site.drush.inc) only forwards an
+ * install_method already present on the node; there is no persistent
+ * install_method column, so derive it here from the platform's TXP marker.
+ * Respect an install_method another module may already have set.
+ */
+function hosting_txp_hosting_site_context_options(&$task) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  if (!empty($task->context_options['install_method'])) {
+    return;
+  }
+  if (isset($task->ref->platform) && hosting_txp_platform_is_txp($task->ref->platform)) {
+    $task->context_options['install_method'] = HOSTING_TXP_INSTALL_METHOD;
+  }
+}

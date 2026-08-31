@@ -73,6 +73,16 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
   // Get a list of sites for which to run cron.
   $sites = hosting_cron_get_sites($count);
   foreach ($sites as $site) {
+    // Foreign flat-file CMS sites take no Drupal-shaped cron: the backend
+    // verbs (elysia-cron, cron) do not exist for them, and the URL fallback
+    // fingerprints Drupal/Backdrop docroots. Union-shaped: each foreign-CMS
+    // frontend module contributes its predicate; inert while those modules
+    // are off. (Grav needs no cron in phase 1; its scheduler integration is
+    // a later, deliberate wave.)
+    if ((function_exists('hosting_grav_platform_is_grav') && hosting_grav_platform_is_grav($site->platform))
+      || (function_exists('hosting_txp_platform_is_txp') && hosting_txp_platform_is_txp($site->platform))) {
+      continue;
+    }
     $site_name = hosting_context_name($site->nid);
     $this_name = ltrim($site_name, '@');
     $this_host = '-H "Host: ' . $this_name . '"';
