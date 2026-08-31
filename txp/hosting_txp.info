@@ -1,0 +1,8 @@
+name = Hosting Textpattern
+description = Adds Textpattern as a first-class platform type: multisite site entries, platform partitioning at site creation, and the TXP install path.
+package = Hosting
+dependencies[] = hosting
+dependencies[] = hosting_platform
+dependencies[] = hosting_site
+dependencies[] = hosting_task
+core = 7.x

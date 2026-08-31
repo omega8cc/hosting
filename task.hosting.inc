@@ -111,8 +111,19 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // restore) are not created through this runner; their fast path is
       // untouched.
       if ($task->task_type == 'backup' && empty($task->task_args['backup_mode'])) {
-        $task->task_args['backup_mode'] = 'site_files_with_mysqldump';
-        drush_log(dt("No backup_mode in the task arguments - defaulting to the restorable mode: site_files_with_mysqldump"), 'queue');
+        // DB-less foreign-CMS sites get the truthful files-only mode: the
+        // mysqldump-carrying default would register a lying label there (no
+        // dump exists to add), and the grav backend refuses
+        // backup_mysqldump_only outright. Inert while hosting_grav is off.
+        if (function_exists('hosting_grav_platform_is_grav') && isset($task->ref->platform)
+          && hosting_grav_platform_is_grav($task->ref->platform)) {
+          $task->task_args['backup_mode'] = 'site_files_without_db_backup';
+          drush_log(dt("No backup_mode in the task arguments - defaulting to the Grav files-only mode: site_files_without_db_backup"), 'queue');
+        }
+        else {
+          $task->task_args['backup_mode'] = 'site_files_with_mysqldump';
+          drush_log(dt("No backup_mode in the task arguments - defaulting to the restorable mode: site_files_with_mysqldump"), 'queue');
+        }
       }
       if (!empty($task->task_args['backup_mode'])) {
         $selected_backup_mode = $task->task_args['backup_mode'];
