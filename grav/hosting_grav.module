@@ -1,0 +1,264 @@
+<?php
+/**
+ * @file
+ * Grav 2 platform support for the Aegir frontend.
+ *
+ * The frontend is version-agnostic: no node column records the CMS. The
+ * backend (provision grav layer) reports the Grav signal on platform verify
+ * as $data['grav'] = the Grav version string. This module stores that marker
+ * per platform, then uses it to (a) keep Grav and Drupal platforms from being
+ * offered together at site creation, (b) route Grav site installs through the
+ * Grav path via context_options, (c) offer the mirror-fed core+bundle Upgrade
+ * task, and (d) provide the 'none' db service type flat-file sites attach to
+ * (a real, selectable db_server node whose context maps to
+ * Provision_Service_null — boa-grav map par.1.3).
+ *
+ * PHP 5.6 floor: this file is loaded under the Drush-8 backend and must stay
+ * 5.6-parseable (the D7 hostmaster floor, independent of the grav-layer
+ * D-005 ruling).
+ */
+
+/**
+ * Variable-name prefix for the per-platform Grav version marker.
+ *
+ * Keyed by platform nid; the value is the reported Grav version string.
+ * Table-free storage (the {variable} table) keeps this a pure submodule with
+ * no schema change to the shared hosting_platform table.
+ */
+define('HOSTING_GRAV_PLATFORM_VAR', 'hosting_grav_platform_version_');
+
+/**
+ * The install_method value the provision grav layer expects for Grav sites.
+ */
+define('HOSTING_GRAV_INSTALL_METHOD', 'grav');
+
+/**
+ * Determine whether a platform node is a verified Grav platform.
+ *
+ * @param int $platform_nid
+ *   The platform node id.
+ *
+ * @return bool
+ *   TRUE if the backend reported a Grav version for this platform.
+ */
+function hosting_grav_platform_is_grav($platform_nid) {
+  if (empty($platform_nid)) {
+    return FALSE;
+  }
+  $version = variable_get(HOSTING_GRAV_PLATFORM_VAR . $platform_nid, '');
+  return $version !== '';
+}
+
+/**
+ * Return the stored Grav version string for a platform, or ''.
+ */
+function hosting_grav_platform_version($platform_nid) {
+  if (empty($platform_nid)) {
+    return '';
+  }
+  return variable_get(HOSTING_GRAV_PLATFORM_VAR . $platform_nid, '');
+}
+
+/**
+ * Implements hook_hosting_service().
+ */
+function hosting_grav_hosting_service() {
+  return array(
+    'none' => 'db',
+  );
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Stores (or clears) the per-platform Grav marker from the verify result.
+ * The backend contract: the grav layer's platform verify adds
+ * $data['grav'] = the Grav version string alongside the standard
+ * packages/profiles/sites keys. Presence of that key is the Grav signal.
+ */
+function hosting_grav_post_hosting_verify_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'platform') {
+    return;
+  }
+  $name = HOSTING_GRAV_PLATFORM_VAR . $task->ref->nid;
+
+  // Read the reported version; tolerate it arriving nested under 'context'.
+  $version = '';
+  if (isset($data['grav']) && is_string($data['grav'])) {
+    $version = trim($data['grav']);
+  }
+  elseif (isset($data['context']['grav']) && is_string($data['context']['grav'])) {
+    $version = trim($data['context']['grav']);
+  }
+
+  if ($version !== '') {
+    // Only write on change to avoid needless variable-cache invalidation.
+    if (variable_get($name, '') !== $version) {
+      variable_set($name, $version);
+    }
+  }
+  else {
+    // Re-verified as a non-Grav platform: drop any stale marker. Guard the
+    // delete so a normal Drupal verify never clears the bootstrap cache.
+    if (variable_get($name, NULL) !== NULL) {
+      variable_del($name);
+    }
+  }
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * Cleans up the per-platform marker when a platform is deleted.
+ */
+function hosting_grav_post_hosting_delete_task($task, $data) {
+  if (isset($task->ref) && $task->ref->type == 'platform') {
+    $name = HOSTING_GRAV_PLATFORM_VAR . $task->ref->nid;
+    if (variable_get($name, NULL) !== NULL) {
+      variable_del($name);
+    }
+  }
+}
+
+/**
+ * Implements hook_hosting_site_options_alter().
+ *
+ * Partition the platform options so Grav and non-Grav platforms are never
+ * offered together (the distinct synthetic 'grav' profile already keeps the
+ * lists apart on the create form; this is the belt covering migrate/clone
+ * option paths, symmetric in both directions — the hosting_backdrop shape).
+ */
+function hosting_grav_hosting_site_options_alter(&$return, &$node) {
+  if (empty($return['platform']) || !is_array($return['platform'])) {
+    return;
+  }
+
+  $reference = isset($node->platform) ? $node->platform : reset($return['platform']);
+  if (empty($reference)) {
+    return;
+  }
+  $reference_is_grav = hosting_grav_platform_is_grav($reference);
+
+  $filtered = array();
+  foreach ($return['platform'] as $nid) {
+    if (hosting_grav_platform_is_grav($nid) == $reference_is_grav) {
+      $filtered[] = $nid;
+    }
+  }
+
+  // Never present an empty platform list; only apply a non-empty partition.
+  if (!empty($filtered)) {
+    $return['platform'] = $filtered;
+  }
+}
+
+/**
+ * Implements hook_permission().
+ *
+ * The "create TASK_TYPE task" permission string is load-bearing:
+ * hosting_task_menu_access() gates both the Run button and the confirm path
+ * on user_access("create grav_upgrade task").
+ */
+function hosting_grav_permission() {
+  return array(
+    'create grav_upgrade task' => array(
+      'title' => t('create grav_upgrade task'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_hosting_tasks().
+ *
+ * The 'command' key is mandatory: the default derivation would yield
+ * provision-grav_upgrade (underscore), which does not exist. The task is
+ * per-SITE by design (D-003 capsules upgrade independently); the artefact is
+ * resolved backend-side from the mirror-fed staging directory (D-004/D-006),
+ * so no dialog and no arguments.
+ */
+function hosting_grav_hosting_tasks() {
+  $tasks = array();
+
+  $tasks['site']['grav_upgrade'] = array(
+    'title' => t('Upgrade Grav'),
+    'description' => t('Upgrade this site capsule to the newest staged official Grav release (core + admin bundle, fetched from our mirrors — never a third-party download on this box). A safety backup is taken first; user content, accounts and configuration survive the upgrade in place.'),
+    'command' => 'provision-grav-upgrade',
+    'access callback' => 'hosting_grav_upgrade_task_access',
+  );
+
+  return $tasks;
+}
+
+/**
+ * Access callback for the grav_upgrade task.
+ *
+ * Same two-context posture as the hosting_backdrop callbacks (button render +
+ * hosting_confirm menu item; must not require the URL token — none exists at
+ * button-render time). Only an ENABLED site on a marker-verified Grav
+ * platform gets the button.
+ */
+function hosting_grav_upgrade_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_grav_platform_is_grav($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements hook_preprocess_node().
+ *
+ * Badge Grav platforms and their sites in the admin theme: a small
+ * title-suffix label plus node classes (platform-grav / site-grav) the eldir
+ * theme can style. A theme without the CSS just shows the plain label.
+ */
+function hosting_grav_preprocess_node(&$variables) {
+  if (empty($variables['node']) || !is_object($variables['node'])) {
+    return;
+  }
+  $node = $variables['node'];
+  $version = '';
+  $class = '';
+  if ($node->type == 'platform' && hosting_grav_platform_is_grav($node->nid)) {
+    $version = hosting_grav_platform_version($node->nid);
+    $class = 'platform-grav';
+  }
+  elseif ($node->type == 'site' && isset($node->platform) && hosting_grav_platform_is_grav($node->platform)) {
+    $version = hosting_grav_platform_version($node->platform);
+    $class = 'site-grav';
+  }
+  if ($class === '') {
+    return;
+  }
+  $variables['classes_array'][] = $class;
+  $label = $version !== '' ? t('Grav @version', array('@version' => $version)) : t('Grav');
+  $variables['title_suffix']['grav_badge'] = array(
+    '#markup' => ' <span class="grav-badge">' . $label . '</span>',
+  );
+}
+
+/**
+ * Implements hook_hosting_TASK_OBJECT_context_options().
+ *
+ * For a site on a Grav platform, tell the backend to install through the Grav
+ * path. The generic seam (hosting_site.drush.inc) only forwards an
+ * install_method already present on the node; there is no persistent
+ * install_method column, so derive it here from the platform's Grav marker.
+ * Respect an install_method another module may already have set.
+ */
+function hosting_grav_hosting_site_context_options(&$task) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  if (!empty($task->context_options['install_method'])) {
+    return;
+  }
+  if (isset($task->ref->platform) && hosting_grav_platform_is_grav($task->ref->platform)) {
+    $task->context_options['install_method'] = HOSTING_GRAV_INSTALL_METHOD;
+  }
+}
