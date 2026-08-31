@@ -17,6 +17,29 @@
  * their (absent) marker.
  */
 function hosting_grav_enable() {
+  // Grant the upgrade-task permission FIRST -- the bounded sweep below can
+  // return early on platform-heavy panels, and the grant must never sit
+  // behind that return (rig-proven miss). It cannot live in
+  // hosting_custom_settings for a gated module (a features dependency there
+  // would force-enable hosting_grav and break ship-dark), so it is
+  // self-contained here and dies with the module. db_merge, not
+  // user_role_grant_permissions: at hook_enable time the dynamic task
+  // permission is not yet in user_permission_get_modules() (hosting builds
+  // it from its task registry, rebuilt after enable), so the API call skips
+  // it silently (also rig-proven). The row shape is exactly what the API
+  // writes; it becomes live once caches settle.
+  $roles = array('admin', 'administrator', 'aegir account manager',
+    'aegir administrator', 'aegir client', 'aegir platform manager', 'root');
+  foreach ($roles as $role_name) {
+    $role = user_role_load_by_name($role_name);
+    if ($role) {
+      db_merge('role_permission')
+        ->key(array('rid' => $role->rid, 'permission' => 'create grav_upgrade task'))
+        ->fields(array('module' => 'hosting_grav'))
+        ->execute();
+    }
+  }
+
   // BOUNDED: on a platform-heavy panel an unconditional sweep is a task
   // storm (E2E-observed: 84 platform verifies queued on the test panel in
   // one enable; the hosting-frontend analysis predicted exactly this). Above
@@ -38,6 +61,7 @@ function hosting_grav_enable() {
   if ($queued) {
     drupal_set_message(t('Hosting Grav queued a verify for @count platform(s) to refresh the Grav platform markers.', array('@count' => $queued)));
   }
+
 }
 
 /**

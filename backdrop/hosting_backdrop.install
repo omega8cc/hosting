@@ -16,6 +16,32 @@
  * idempotent and Drupal platforms simply confirm their (absent) marker.
  */
 function hosting_backdrop_enable() {
+  // Grant the task permissions FIRST, before the sweep below queues anything
+  // (the hosting_grav shape). They cannot live in hosting_custom_settings for
+  // a gated module (its features dependency force-enabled hosting_backdrop on
+  // every box, defeating a sticky _BACKDROP_SUPPORT=NO), so they are
+  // self-contained here and die with the module. db_merge, not
+  // user_role_grant_permissions: at hook_enable time the dynamic task
+  // permissions are not yet in user_permission_get_modules() (hosting builds
+  // it from its task registry, rebuilt after enable), so the API call skips
+  // them silently (rig-proven on the grav track). The row shape is exactly
+  // what the API writes; it becomes live once caches settle.
+  $task_permissions = array('create backdrop_cutover task',
+    'create backdrop_d6_upgrade task', 'create backdrop_upgrade task');
+  $roles = array('admin', 'administrator', 'aegir account manager',
+    'aegir administrator', 'aegir client', 'aegir platform manager', 'root');
+  foreach ($roles as $role_name) {
+    $role = user_role_load_by_name($role_name);
+    if ($role) {
+      foreach ($task_permissions as $permission) {
+        db_merge('role_permission')
+          ->key(array('rid' => $role->rid, 'permission' => $permission))
+          ->fields(array('module' => 'hosting_backdrop'))
+          ->execute();
+      }
+    }
+  }
+
   $queued = 0;
   foreach (_hosting_get_platforms() as $nid => $title) {
     if (hosting_task_outstanding($nid, 'verify')) {
