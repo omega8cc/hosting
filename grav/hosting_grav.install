@@ -17,8 +17,18 @@
  * their (absent) marker.
  */
 function hosting_grav_enable() {
+  // BOUNDED: on a platform-heavy panel an unconditional sweep is a task
+  // storm (E2E-observed: 84 platform verifies queued on the test panel in
+  // one enable; the hosting-frontend analysis predicted exactly this). Above
+  // the bound, tell the operator instead — only Grav platforms need the
+  // marker, and verifying those specifically is cheap.
+  $platforms = _hosting_get_platforms();
+  if (count($platforms) > 25) {
+    drupal_set_message(t('Hosting Grav did NOT queue the marker backfill sweep (@count platforms — too many to verify blindly). Run a Verify task on each GRAV platform to populate its marker; Drupal platforms need nothing.', array('@count' => count($platforms))), 'warning');
+    return;
+  }
   $queued = 0;
-  foreach (_hosting_get_platforms() as $nid => $title) {
+  foreach ($platforms as $nid => $title) {
     if (hosting_task_outstanding($nid, 'verify')) {
       continue;
     }
