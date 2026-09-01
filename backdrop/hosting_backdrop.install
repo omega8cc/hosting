@@ -42,8 +42,19 @@ function hosting_backdrop_enable() {
     }
   }
 
+  // BOUNDED (the hosting_grav/hosting_txp shape): on a platform-heavy panel an
+  // unconditional sweep is a task storm -- the grav track observed 84 platform
+  // verifies queued in a single enable on the shared test panel, which also
+  // carries a long backlog of ancient queued tasks. Above the bound, tell the
+  // operator instead: only Backdrop platforms need the marker, and verifying
+  // those specifically is cheap.
+  $platforms = _hosting_get_platforms();
+  if (count($platforms) > 25) {
+    drupal_set_message(t('Hosting Backdrop did NOT queue the marker backfill sweep (@count platforms — too many to verify blindly). Run a Verify task on each BACKDROP platform to populate its marker; Drupal platforms need nothing.', array('@count' => count($platforms))), 'warning');
+    return;
+  }
   $queued = 0;
-  foreach (_hosting_get_platforms() as $nid => $title) {
+  foreach ($platforms as $nid => $title) {
     if (hosting_task_outstanding($nid, 'verify')) {
       continue;
     }
