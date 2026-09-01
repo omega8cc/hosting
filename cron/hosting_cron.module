@@ -15,6 +15,48 @@ define('ADV_CRON_TURNED_OFF', 0);
 define('ADV_CRON_MAX_PLL', 5);
 
 /**
+ * Is this site's platform a foreign flat-file CMS?
+ *
+ * Union-shaped: each foreign-CMS frontend module contributes its predicate and
+ * the whole thing is inert while those modules are off. Both predicates read a
+ * per-platform variable, so this stays cheap enough to call per candidate row.
+ */
+function _hosting_cron_platform_is_foreign_cms($platform_nid) {
+  if (function_exists('hosting_grav_platform_is_grav') && hosting_grav_platform_is_grav($platform_nid)) {
+    return TRUE;
+  }
+  if (function_exists('hosting_txp_platform_is_txp') && hosting_txp_platform_is_txp($platform_nid)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Platform nids running a foreign flat-file CMS.
+ *
+ * Empty whenever no foreign-CMS module is enabled, which keeps the site count
+ * on its original single-query path on an ordinary Drupal-only panel.
+ */
+function _hosting_cron_foreign_cms_platforms() {
+  $platforms = &drupal_static(__FUNCTION__);
+  if (isset($platforms)) {
+    return $platforms;
+  }
+  $platforms = array();
+  if (!function_exists('hosting_grav_platform_is_grav')
+    && !function_exists('hosting_txp_platform_is_txp')) {
+    return $platforms;
+  }
+  $result = db_query('SELECT nid FROM {node} WHERE type = :type', array(':type' => 'platform'));
+  foreach ($result as $platform) {
+    if (_hosting_cron_platform_is_foreign_cms($platform->nid)) {
+      $platforms[] = $platform->nid;
+    }
+  }
+  return $platforms;
+}
+
+/**
  * Implements hook_hosting_queues().
  *
  * @todo: In Hosting 4.x change the type to HOSTING_QUEUE_TYPE_SPREAD.
@@ -36,13 +78,25 @@ function hosting_cron_hosting_queues() {
 }
 
 function hosting_cron_hosting_site_count() {
+  $args = array(
+    ':site' => 'site',
+    ':status' => HOSTING_SITE_ENABLED,
+    ':cron_interval' => variable_get('hosting_cron_default_interval', ADV_CRON_DEFAULT),
+  );
   $sql = "SELECT count(n.nid) FROM {node} n
     LEFT JOIN {hosting_site} hs ON n.nid = hs.nid
     LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid
     WHERE n.type = :site AND hs.status = :status
     AND ((hac.cron_interval IS NOT NULL AND hac.cron_interval > 0)
     OR (hac.cron_interval IS NULL AND :cron_interval > 0))";
-  $result = db_query($sql, array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED, ':cron_interval' => variable_get('hosting_cron_default_interval', ADV_CRON_DEFAULT)))->fetchField();
+  // Sites this queue will never run cron on must not size it either, or the
+  // batch queue scales its threads against work that does not exist.
+  $foreign_platforms = _hosting_cron_foreign_cms_platforms();
+  if (!empty($foreign_platforms)) {
+    $sql .= " AND hs.platform NOT IN (:platforms)";
+    $args[':platforms'] = $foreign_platforms;
+  }
+  $result = db_query($sql, $args)->fetchField();
   return $result;
 }
 
@@ -75,12 +129,11 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
   foreach ($sites as $site) {
     // Foreign flat-file CMS sites take no Drupal-shaped cron: the backend
     // verbs (elysia-cron, cron) do not exist for them, and the URL fallback
-    // fingerprints Drupal/Backdrop docroots. Union-shaped: each foreign-CMS
-    // frontend module contributes its predicate; inert while those modules
-    // are off. (Grav needs no cron in phase 1; its scheduler integration is
-    // a later, deliberate wave.)
-    if ((function_exists('hosting_grav_platform_is_grav') && hosting_grav_platform_is_grav($site->platform))
-      || (function_exists('hosting_txp_platform_is_txp') && hosting_txp_platform_is_txp($site->platform))) {
+    // fingerprints Drupal/Backdrop docroots. (Grav needs no cron in phase 1;
+    // its scheduler integration is a later, deliberate wave.) Belt only:
+    // hosting_cron_get_sites() already filters these out, which is what keeps
+    // them from consuming a slot they can never stamp.
+    if (_hosting_cron_platform_is_foreign_cms($site->platform)) {
       continue;
     }
     $site_name = hosting_context_name($site->nid);
@@ -378,9 +431,18 @@ function hosting_cron_node_insert($node) {
  * Retrieves a list of sites for which to run cron.
  */
 function hosting_cron_get_sites($count) {
-  $result = db_query('SELECT n.nid, hs.last_cron, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
+  $result = db_query('SELECT n.nid, hs.last_cron, hs.platform, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
   $counter = 0;
   foreach ($result as $site) {
+    // Skip foreign flat-file CMS sites HERE, not just at dispatch: the queue
+    // body takes no Drupal-shaped cron for them and returns before the
+    // last_cron stamp at the end of its loop, so such a site keeps a NULL
+    // last_cron, sorts first for ever under the ORDER BY above, and would
+    // occupy one of the few slots below on every single run -- starving the
+    // real sites behind it once enough of them exist.
+    if (_hosting_cron_platform_is_foreign_cms($site->platform)) {
+      continue;
+    }
     if ($counter <= $count && $counter <= ADV_CRON_MAX_PLL) {
       //
       // Run cron if it has never ran before for this site,
