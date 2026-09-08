@@ -168,10 +168,23 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
  * Implements hook_hosting_post_DELETE().
  */
 function hosting_platform_post_hosting_delete_task($task, $data) {
+  // Every module's post_hosting_delete_task hook runs for every delete task;
+  // a site's delete must not walk through the platform's cleanup (it marked
+  // the site node with a platform status, re-synced its package instances as
+  // a platform and, once cancellation was added here, cancelled the site's
+  // queued tasks with the platform's wording).
+  if (!isset($task->ref->type) || $task->ref->type != 'platform') {
+    return;
+  }
   $task->ref->platform_status = HOSTING_PLATFORM_DELETED;
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
   hosting_context_delete($task->ref->nid);
+  // Nothing queued for this platform may run against its gone context.
+  $cancelled = hosting_task_cancel_queued($task->ref->nid, 'the platform was deleted', $task->nid);
+  if ($cancelled) {
+    drush_log(dt('Cancelled @n queued task(s) of the deleted platform.', array('@n' => $cancelled)), 'ok');
+  }
   db_delete('hosting_platform_client_access')
     ->condition('pid', $task->ref->nid)
     ->execute();
