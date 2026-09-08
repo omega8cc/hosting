@@ -172,6 +172,11 @@ function hosting_platform_post_hosting_delete_task($task, $data) {
   $task->ref->no_verify = TRUE;
   node_save($task->ref);
   hosting_context_delete($task->ref->nid);
+  // Nothing queued for this platform may run against its gone context.
+  $cancelled = hosting_task_cancel_queued($task->ref->nid, 'the platform was deleted', $task->nid);
+  if ($cancelled) {
+    drush_log(dt('Cancelled @n queued task(s) of the deleted platform.', array('@n' => $cancelled)), 'ok');
+  }
   db_delete('hosting_platform_client_access')
     ->condition('pid', $task->ref->nid)
     ->execute();
