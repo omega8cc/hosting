@@ -279,6 +279,12 @@ function hosting_site_post_hosting_delete_task($task, $data) {
     hosting_context_delete($task->ref->nid);
     node_save($task->ref);
 
+    // Nothing queued for this site may run against its gone context.
+    $cancelled = hosting_task_cancel_queued($task->ref->nid, 'the site was deleted', $task->nid);
+    if ($cancelled) {
+      drush_log(dt('Cancelled @n queued task(s) of the deleted site.', array('@n' => $cancelled)), 'ok');
+    }
+
     // Record the backup created during delete.
     $task->task_args['description'] = t('Pre-delete backup');
     hosting_site_post_hosting_backup_task($task, $data);

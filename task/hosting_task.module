@@ -572,6 +572,22 @@ function hosting_add_task($nid, $type, $args = NULL, $status = HOSTING_TASK_QUEU
     return FALSE;
   }
 
+  // One queued task of a kind per node: every platform or site re-save queues
+  // a verify, and with the queue draining one task a minute a busy box piled
+  // up eighteen identical queued verifies per platform (measured). A task
+  // with arguments is its own request (which backup to restore, where to
+  // clone to) and is never folded; a task already PROCESSING does not count
+  // either, so a change made while it runs still gets its own turn.
+  if ($status == HOSTING_TASK_QUEUED && empty($args)) {
+    $queued = hosting_task_queued_nid($nid, $type);
+    if ($queued) {
+      $existing = node_load($queued);
+      if (is_object($existing)) {
+        return $existing;
+      }
+    }
+  }
+
   $node = db_query("SELECT nid, uid, title FROM {node} WHERE nid = :nid", array(':nid' => $nid))->fetchObject();
 
   $task = new stdClass();
@@ -819,6 +835,71 @@ function hosting_task_execute($task, $backend_options = array()) {
       '@duration' => format_interval($task->delta, 1),
     )), 'ok');
   }
+}
+
+/**
+ * The newest QUEUED task of a type for a node, or FALSE.
+ *
+ * Unlike hosting_task_outstanding() this ignores a PROCESSING task: the
+ * queued one is the request that has not run yet.
+ */
+function hosting_task_queued_nid($rid, $type) {
+  $nid = db_query("
+      SELECT t.nid FROM {hosting_task} t
+        INNER JOIN {node} n ON t.vid = n.vid
+      WHERE
+        t.rid = :rid
+        AND t.task_status = :status_queued
+        AND t.task_type = :type
+        ORDER BY t.vid DESC
+        LIMIT 1",
+        array(
+          ':rid' => $rid,
+          ':status_queued' => HOSTING_TASK_QUEUED,
+          ':type' => $type,
+        ))->fetchField();
+  return $nid ? $nid : FALSE;
+}
+
+/**
+ * Cancel every QUEUED task of a node that is going away.
+ *
+ * A site or platform Delete marks its node deleted and leaves the node in
+ * place, so the queued tasks that referenced it (a verify queued by the
+ * last re-save, a flush) stayed queued forever, each one dispatched later
+ * against a context that no longer exists (sixty-five such verifies on one
+ * box, measured). Same outcome as the cancel link: WARNING with a log line.
+ *
+ * @param $rid
+ *   The nid of the site/platform/server being deleted.
+ * @param $reason
+ *   Untranslated text for the log line.
+ * @param $except_nid
+ *   The task doing the deleting (PROCESSING, never queued; passed for safety).
+ * @return
+ *   The number of tasks cancelled.
+ */
+function hosting_task_cancel_queued($rid, $reason, $except_nid = 0) {
+  $count = 0;
+  $result = db_query("
+      SELECT DISTINCT t.nid FROM {hosting_task} t
+        INNER JOIN {node} n ON t.vid = n.vid
+      WHERE t.rid = :rid AND t.task_status = :status_queued",
+      array(':rid' => $rid, ':status_queued' => HOSTING_TASK_QUEUED));
+  foreach ($result as $row) {
+    if ($except_nid && $row->nid == $except_nid) {
+      continue;
+    }
+    $task = node_load($row->nid);
+    if (!is_object($task) || $task->task_status != HOSTING_TASK_QUEUED) {
+      continue;
+    }
+    $task->task_status = HOSTING_TASK_WARNING;
+    node_save($task);
+    hosting_task_log($task->vid, 'warning', t("Task was cancelled: @reason", array('@reason' => $reason)));
+    $count++;
+  }
+  return $count;
 }
 
 /**
