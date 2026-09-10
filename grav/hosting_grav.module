@@ -184,6 +184,11 @@ function hosting_grav_hosting_tasks() {
     'description' => t('Upgrade this site capsule to the newest staged official Grav release (core + admin bundle, fetched from our mirrors — never a third-party download on this box). A safety backup is taken first; user content, accounts and configuration survive the upgrade in place.'),
     'command' => 'provision-grav-upgrade',
     'access callback' => 'hosting_grav_upgrade_task_access',
+    // A dialog, like every sibling task: the confirm form's token is the
+    // CSRF check. The custom access callback above replaces the menu item's
+    // token-checking one, and without a dialog a plain GET on the confirm
+    // path queued the task.
+    'dialog' => TRUE,
   );
 
   return $tasks;
