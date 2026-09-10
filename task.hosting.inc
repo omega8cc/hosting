@@ -100,48 +100,56 @@ function drush_hosting_task_validate($id, $type = NULL) {
         return drush_set_error('HOSTING_TASK_NOT_QUEUED', dt("This task is not queued, use --force"));
       }
 
-      // One runner per instance, before anything is written (the backup
-      // mode control file below is shared, one-shot state): wait for the
+      // One runner per instance, before this task's row is touched (the
+      // string form above has already created its node; the backup mode
+      // control file below is shared, one-shot state): wait for the
       // instance's runner lock, then leave THIS task alone when a live
-      // runner still holds it. Nothing has been saved, so the shutdown
-      // handler has no task to mark and a queued row stays QUEUED for the
-      // next dispatch or sweep. --force does not bypass this: the forced
-      // callers were the ones starting beside a running task. The lock is
-      // held by this process's connection until exit, after the final
-      // status write. A holder past the ceiling no longer counts: this task
-      // then runs beside it, loudly (hosting_task_runner_lock_stale()).
+      // runner still holds it. Nothing of this task is saved on that path,
+      // so the shutdown handler has no task to mark and a queued row stays
+      // QUEUED for the next dispatch or sweep. --force does not bypass this:
+      // the forced callers were the ones starting beside a running task. The
+      // lock is held by this process's connection until exit, after the
+      // final status write. A holder past the ceiling no longer counts,
+      // before and after the wait: this task then runs beside it, loudly.
       $runner_wait = max(0, (int) drush_get_option('runner-wait', HOSTING_TASK_RUNNER_WAIT));
       $loaded_status = $task->task_status;
-      $got = function_exists('hosting_task_runner_lock_acquire') ? hosting_task_runner_lock_acquire($runner_wait) : 'unknown';
+      $got = 'unknown';
+      if (function_exists('hosting_task_runner_lock_acquire')) {
+        $stale = hosting_task_runner_lock_stale();
+        if ($stale) {
+          hosting_task_runner_lock_stale_notice($stale, dt('Task node/@nid', array('@nid' => $task->nid)));
+          $got = 'stale';
+        }
+        else {
+          $got = hosting_task_runner_lock_acquire($runner_wait, $task->nid);
+          if ($got === FALSE) {
+            $stale = hosting_task_runner_lock_stale();
+            if ($stale) {
+              hosting_task_runner_lock_stale_notice($stale, dt('Task node/@nid', array('@nid' => $task->nid)));
+              $got = 'stale';
+            }
+          }
+        }
+      }
       if ($got === 'unknown') {
         watchdog('hosting_task', 'The task runner lock gave no verdict on this server; task node/@nid runs without it.', array('@nid' => $task->nid), WATCHDOG_WARNING);
         drush_log(dt("The task runner lock gave no verdict on this server; running task @nid without it.", array('@nid' => $task->nid)), 'warning');
       }
-      elseif (!$got) {
-        $stale = hosting_task_runner_lock_stale();
-        if ($stale) {
-          $args = array('@nid' => $task->nid, '@other' => $stale->nid, '@pid' => $stale->pid, '@since' => format_date($stale->executed, 'short'));
-          watchdog('hosting_task', 'A task runner has held this instance past the ceiling: task node/@other, pid @pid, since @since. Task node/@nid runs beside it; kill that runner if it is hung.', $args, WATCHDOG_ERROR);
-          drush_log(dt("A task runner has held this instance past the ceiling (task node/@other, pid @pid, since @since); task @nid runs beside it. Kill that runner if it is hung.", $args), 'warning');
+      elseif ($got === FALSE) {
+        $holder = hosting_task_runner_lock_holder();
+        $running = hosting_task_running_now();
+        $args = array(
+          '@nid' => $task->nid,
+          '@holder' => $holder ? dt('server connection @conn', array('@conn' => $holder)) : dt('a runner that released it just now'),
+          '@task' => $running ? dt(', likely task node/@other pid @pid', array('@other' => $running->nid, '@pid' => $running->pid)) : '',
+          '@wait' => $runner_wait,
+        );
+        if ($loaded_status == HOSTING_TASK_QUEUED) {
+          watchdog('hosting_task', 'Task node/@nid left queued: another task\'s runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, the next pass runs this one.', $args, WATCHDOG_WARNING);
+          return drush_set_error('HOSTING_TASK_RUNNER_BUSY', dt("Task @nid left queued: another task's runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, the next pass runs this one.", $args));
         }
-        else {
-          $holder = hosting_task_runner_lock_holder();
-          $running = hosting_task_running_now();
-          $args = array(
-            '@nid' => $task->nid,
-            '@holder' => $holder ? dt('server connection @conn', array('@conn' => $holder)) : dt('a runner that released it just now'),
-            '@task' => $running ? dt(', likely task node/@other pid @pid', array('@other' => $running->nid, '@pid' => $running->pid)) : '',
-            '@wait' => $runner_wait,
-          );
-          if ($loaded_status == HOSTING_TASK_QUEUED) {
-            $msg = "Task @nid left queued: another task's runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, the next pass runs this one.";
-          }
-          else {
-            $msg = "Task @nid not run: another task's runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, re-issue the forced run once it is free.";
-          }
-          watchdog('hosting_task', $msg, $args, WATCHDOG_WARNING);
-          return drush_set_error('HOSTING_TASK_RUNNER_BUSY', dt($msg, $args));
-        }
+        watchdog('hosting_task', 'Task node/@nid not run: another task\'s runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, re-issue the forced run once it is free.', $args, WATCHDOG_WARNING);
+        return drush_set_error('HOSTING_TASK_RUNNER_BUSY', dt("Task @nid not run: another task's runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, re-issue the forced run once it is free.", $args));
       }
       // A queued task another runner completed while this one waited (two
       // runners loaded it QUEUED in the same instant) must not run twice:
@@ -154,6 +162,12 @@ function drush_hosting_task_validate($id, $type = NULL) {
         watchdog('hosting_task', 'Task node/@nid: its status changed while this runner waited for the instance (now @status); not running it.', $args, WATCHDOG_NOTICE);
         return drush_set_error('HOSTING_TASK_TAKEN', dt("Task @nid: its status changed while this runner waited for the instance (now @status); not running it.", $args));
       }
+      // The task's object (the site or platform) was loaded before the wait
+      // and may have changed under the task that held the lock -- a Migrate
+      // moves a site's platform, a Rename its uri -- and the context this
+      // task saves must be the current one, not the pre-wait snapshot.
+      $task->ref = node_load($task->rid, NULL, TRUE);
+      $task->context_options['context_type'] = $task->ref->type;
       // The task starts now, not when drush bootstrapped before the wait
       // (node_save() stamps `changed` itself; `executed` feeds the duration
       // and the reaper's grace).
