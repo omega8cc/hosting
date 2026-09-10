@@ -166,7 +166,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
   // path, the next platform build.
   if ($task->ref->type == 'server') {
     $all = (int) db_query("SELECT COUNT(nid) FROM {hosting_platform} WHERE status = :status AND web_server = :web_server", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid))->fetchField();
-    $query = db_query("SELECT p.nid FROM {hosting_platform} p WHERE p.status = :status AND p.web_server = :web_server AND EXISTS (SELECT 1 FROM {hosting_site} s WHERE s.platform = p.nid AND s.status = :enabled)", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid, ':enabled' => HOSTING_SITE_ENABLED));
+    $query = db_query("SELECT p.nid FROM {hosting_platform} p WHERE p.status = :status AND p.web_server = :web_server AND EXISTS (SELECT 1 FROM {hosting_site} s INNER JOIN {node} sn ON sn.vid = s.vid AND sn.nid = s.nid WHERE s.platform = p.nid AND s.status = :enabled)", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid, ':enabled' => HOSTING_SITE_ENABLED));
     $queued = 0;
     while ($nid = $query->fetch()) {
       hosting_add_task($nid->nid, 'verify');
