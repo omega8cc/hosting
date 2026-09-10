@@ -155,12 +155,24 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     }
   }
 
-  // When a server is verified, queue up a verify task for every platform.
+  // When a server is verified, queue up a verify task for every platform
+  // that carries at least one enabled site. A platform verify regenerates
+  // the platform's own drushrc and re-reads its codebase; on an instance
+  // crowded with site-less platforms (a test box with the whole catalogue
+  // built) a BOA upgrade pass, which verifies the server, used to queue one
+  // verify per platform -- 67 on one instance, about two minutes each, the
+  // dispatcher busy for two hours after every pass. A site-less platform is
+  // verified when something uses it: a platform task, a new site's install
+  // path, the next platform build.
   if ($task->ref->type == 'server') {
-    $query = db_query("SELECT nid FROM {hosting_platform} WHERE status = :status AND web_server = :web_server", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid));
+    $all = (int) db_query("SELECT COUNT(nid) FROM {hosting_platform} WHERE status = :status AND web_server = :web_server", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid))->fetchField();
+    $query = db_query("SELECT p.nid FROM {hosting_platform} p WHERE p.status = :status AND p.web_server = :web_server AND EXISTS (SELECT 1 FROM {hosting_site} s WHERE s.platform = p.nid AND s.status = :enabled)", array(':status' => HOSTING_PLATFORM_ENABLED, ':web_server' => $task->ref->nid, ':enabled' => HOSTING_SITE_ENABLED));
+    $queued = 0;
     while ($nid = $query->fetch()) {
       hosting_add_task($nid->nid, 'verify');
+      $queued++;
     }
+    drush_log(dt('Queued a verify for @queued platform(s) carrying an enabled site; @skipped site-less platform(s) verify on their next use.', array('@queued' => $queued, '@skipped' => max(0, $all - $queued))), 'ok');
   }
 }
 
