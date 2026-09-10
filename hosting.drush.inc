@@ -12,6 +12,10 @@ define('HOSTING_QUEUE_DEFAULT_LOCK_WAIT', 30);
 // left a single crashed run blocking the queue for an hour; 900s (15m) is a
 // generous margin over the real sub-minute hold while recovering far sooner.
 define('HOSTING_QUEUE_LOCK_TIMEOUT', 900.0);
+// Seconds a task runner waits for the instance's runner lock (one task runs
+// at a time per hostmaster) before leaving its task queued for the next pass.
+// Its own option, --runner-wait: --lock-wait means the queue semaphore above.
+define('HOSTING_TASK_RUNNER_WAIT', 30);
 
 /**
  * Implements hook_drush_command().
@@ -51,6 +55,7 @@ function hosting_drush_command() {
           // Declared so a synchronous drain (--fork=0) passes Drush's strict
           // option check; the tasks queue reads it via drush_get_option('fork').
           'fork' => dt('Run each task in this process instead of forking it (--fork=0); default forks.'),
+          'runner-wait' => dt('Seconds a synchronous tasks drain waits for a running task of this instance to finish before leaving the batch for the next pass (one task runs at a time). Defaults to @wait.', array('@wait' => HOSTING_TASK_RUNNER_WAIT)),
         ),
       );
     }
@@ -66,6 +71,9 @@ function hosting_drush_command() {
     'options' => array(
       'force' => array(
         'description' => 'Force the specified task to execute even if it is not queued to run.',
+      ),
+      'runner-wait' => array(
+        'description' => dt('Seconds to wait for a running task of this instance to finish before leaving this task queued for the next pass (one task runs at a time). Defaults to @wait; 0 does not wait.', array('@wait' => HOSTING_TASK_RUNNER_WAIT)),
       ),
     ),
     'examples' => array(
