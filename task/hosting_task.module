@@ -788,8 +788,65 @@ function hosting_tasks_queue($count = 20) {
     drush_log(dt("Found no tasks in queue. Not running."), "notice");
   }
 
+  // One task runs at a time on this instance (the runner lock every
+  // hosting-task takes). While a live holder has the instance, nothing is
+  // launched here: a forking batch would only fork children that park on
+  // the lock (they queue in the server for as long as a queue semaphore may
+  // be held, see hosting_task_execute(), so a batch forked while the lock is
+  // free runs one after another at full speed), and a synchronous drain
+  // (--fork=0, BOA's post-upgrade sweeps) waits ONCE, up to --runner-wait,
+  // for the lock to free and then drains task by task, stopping at the
+  // first child that comes back still QUEUED (it lost the lock to another
+  // launcher). A holder past the ceiling no longer counts.
+  $fork = drush_get_option('fork', TRUE);
+  if (count($tasks) && function_exists('hosting_task_runner_lock_holder')) {
+    $wait = $fork ? 0 : max(0, (int) drush_get_option('runner-wait', defined('HOSTING_TASK_RUNNER_WAIT') ? HOSTING_TASK_RUNNER_WAIT : 30));
+    $holder = hosting_task_runner_lock_holder();
+    $stale = hosting_task_runner_lock_stale($holder);
+    if ($holder && !$stale && $wait) {
+      drush_log(dt("A task runner holds this instance; waiting up to @wait seconds for it before draining @count queued task(s).", array('@wait' => $wait, '@count' => count($tasks))), 'notice');
+      $until = time() + $wait;
+      while ($holder && !$stale && time() < $until) {
+        sleep(1);
+        $holder = hosting_task_runner_lock_holder();
+        $stale = hosting_task_runner_lock_stale($holder);
+      }
+    }
+    if ($holder) {
+      if ($stale) {
+        hosting_task_runner_lock_stale_notice($stale, dt('This batch of @count queued task(s)', array('@count' => count($tasks))));
+      }
+      else {
+        $running = hosting_task_running_now();
+        drush_log(dt("A task runner holds this instance (server connection @conn@task)@waited; leaving @count queued task(s) for the next pass.", array(
+          '@conn' => $holder,
+          '@task' => $running ? dt(', likely task node/@nid', array('@nid' => $running->nid)) : '',
+          '@waited' => $wait ? dt(' after @wait seconds', array('@wait' => $wait)) : '',
+          '@count' => count($tasks),
+        )), 'warning');
+        return;
+      }
+    }
+  }
   foreach ($tasks as $task) {
-    hosting_task_execute($task, array('fork' => drush_get_option('fork', TRUE)));
+    hosting_task_execute($task, array('fork' => $fork));
+    if (!$fork && function_exists('hosting_task_runner_lock_holder')) {
+      // A synchronous child that came back with its task still QUEUED while
+      // a live holder has the instance was refused the lock (another
+      // launcher took it first): stop here, the rest of the batch would only
+      // wait and be refused the same way. Still QUEUED with the lock free is
+      // that task's own trouble (a runner that died before its first write):
+      // say so and go on, or one poison task would head every pass.
+      $after = node_load($task->nid, NULL, TRUE);
+      if ($after && $after->task_status == HOSTING_TASK_QUEUED) {
+        $held = hosting_task_runner_lock_holder();
+        if ($held && !hosting_task_runner_lock_stale($held)) {
+          drush_log(dt("Task @nid was left queued by its runner (the instance is held); leaving the rest of this batch for the next pass.", array('@nid' => $task->nid)), 'warning');
+          break;
+        }
+        drush_log(dt("Task @nid is still queued after its runner returned, with the instance free; going on with the batch.", array('@nid' => $task->nid)), 'warning');
+      }
+    }
   }
 }
 
@@ -814,8 +871,16 @@ function hosting_task_execute($task, $backend_options = array()) {
     '@nid' => $task->nid,
   )), 'ok');
 
-  // Execute in it's own process.
-  drush_invoke_process('@self', "hosting-task", array($task->nid), array('strict' => FALSE), $backend_options);
+  // Execute in it's own process. A forked child may find another task's
+  // runner holding the instance: it queues on the runner lock inside the
+  // server for as long as a queue semaphore may be held, so a batch of
+  // forks runs one after another instead of leaving tasks queued. A
+  // synchronous child keeps the short default wait (its caller waited).
+  $options = array('strict' => FALSE);
+  if (!empty($backend_options['fork'])) {
+    $options['runner-wait'] = defined('HOSTING_QUEUE_LOCK_TIMEOUT') ? (int) HOSTING_QUEUE_LOCK_TIMEOUT : 900;
+  }
+  drush_invoke_process('@self', "hosting-task", array($task->nid), $options, $backend_options);
 
   // Log a message, depending on forked process or not.
   // If forked, the process may not have completed yet, so we should change the message.
@@ -989,6 +1054,225 @@ function hosting_task_runner_alive($pid) {
   // Guard against PID recycling: an unrelated process on the same PID must
   // not keep an orphaned row alive for the whole running-items window.
   return (strpos($cmdline, 'hosting-task') !== FALSE);
+}
+
+/**
+ * The name of this instance's task runner lock.
+ *
+ * A MySQL named lock lives on the server the hostmaster uses, which every
+ * instance on a box shares, so the name must be unique per instance -- and
+ * stable: an Octopus upgrade pass renames the hostmaster database, and a
+ * name derived from it would split the lock across that window. The name is
+ * therefore minted once from the hostmaster's database name and kept in a
+ * variable, which the rename carries along.
+ */
+function hosting_task_runner_lock_name() {
+  $name = variable_get('hosting_task_runner_lock_name', '');
+  if ($name === '') {
+    // Seeded from the database name alone, so two processes that both
+    // miss the variable mint the same name; the variable is the carrier
+    // across a rename. 52 characters, under MySQL's cap of 64.
+    $options = Database::getConnection()->getConnectionOptions();
+    $db = isset($options['database']) ? $options['database'] : 'hostmaster';
+    $name = 'hosting_task_runner:' . md5($db);
+    variable_set('hosting_task_runner_lock_name', $name);
+  }
+  return $name;
+}
+
+/**
+ * Take the instance's task runner lock: one task runs at a time.
+ *
+ * The lock is held by this process's database connection for the rest of
+ * its life -- the runner writes every task log line through that
+ * connection, so it stays open for the whole task, and the server releases
+ * the lock the moment the connection closes: at exit, after the shutdown
+ * handler has written the final status, or when a runner dies. The
+ * session's wait_timeout is pinned so a backend step that logs nothing for
+ * an hour (BOA's my.cnf) cannot close the idle session under a running task.
+ * Nothing is inherited by the backend children (separate processes with
+ * their own connections). The wait happens inside the server, not in a
+ * poll. The holder records itself (hosting_task_runner_lock_holder_record):
+ * the hold ceiling and the operator's release command key on that record.
+ *
+ * Why: the dispatcher caps its own forks by hosting_task_count_running(),
+ * but a synchronous sweep (BOA's post-upgrade `hosting-tasks --force
+ * --fork=0`) and a manual `hosting-task N --force` used to start beside
+ * whatever was running. Measured twice on one day: a platform Verify beside
+ * a site's install imported the half-installed sites/<uri> as a second site
+ * node, and a clone's import beside the clone's delete saved a stale node
+ * over the deleted status.
+ *
+ * @param int $wait
+ *   Seconds to wait for the lock; 0 returns at once.
+ * @param int $nid
+ *   The task this runner is about to run, for the holder record.
+ *
+ * @return bool|string
+ *   TRUE when this connection holds the lock, FALSE when another one does
+ *   after the wait, 'unknown' when the server gave no verdict (an error):
+ *   the caller then runs without the lock rather than stalling the queue.
+ */
+function hosting_task_runner_lock_acquire($wait, $nid = 0) {
+  $wait = max(0, (int) $wait);
+  try {
+    // The wait is an integer literal after the cast: nothing to coerce.
+    $got = db_query("SELECT GET_LOCK(:name, " . $wait . ")", array(':name' => hosting_task_runner_lock_name()))->fetchField();
+  }
+  catch (Exception $e) {
+    watchdog('hosting_task', 'GET_LOCK failed on this server: @error', array('@error' => $e->getMessage()), WATCHDOG_WARNING);
+    return 'unknown';
+  }
+  if ($got === NULL || $got === FALSE) {
+    return 'unknown';
+  }
+  if ((int) $got !== 1) {
+    return FALSE;
+  }
+  // The lock is held from here on; losing the pin or the record is the
+  // lesser harm, each on its own, each with a durable row.
+  try {
+    db_query("SET SESSION wait_timeout = 604800");
+  }
+  catch (Exception $e) {
+    watchdog('hosting_task', 'Could not pin the task runner session (wait_timeout): @error', array('@error' => $e->getMessage()), WATCHDOG_WARNING);
+    drush_log(dt("Could not pin the runner's session: @error", array('@error' => $e->getMessage())), 'warning');
+  }
+  try {
+    $conn = (int) db_query("SELECT CONNECTION_ID()")->fetchField();
+    variable_set('hosting_task_runner_lock_holder', array('conn' => $conn, 'pid' => (int) getmypid(), 'nid' => (int) $nid, 'since' => time()));
+  }
+  catch (Exception $e) {
+    watchdog('hosting_task', 'Could not record the task runner lock holder (the hold ceiling cannot see this runner): @error', array('@error' => $e->getMessage()), WATCHDOG_WARNING);
+    drush_log(dt("Could not record the lock holder: @error", array('@error' => $e->getMessage())), 'warning');
+  }
+  return TRUE;
+}
+
+/**
+ * The server connection id holding the runner lock, or NULL when it is free.
+ */
+function hosting_task_runner_lock_holder() {
+  try {
+    $holder = db_query("SELECT IS_USED_LOCK(:name)", array(':name' => hosting_task_runner_lock_name()))->fetchField();
+  }
+  catch (Exception $e) {
+    // Read as free (the fail-open side), but on the record.
+    watchdog('hosting_task', 'IS_USED_LOCK failed on this server: @error', array('@error' => $e->getMessage()), WATCHDOG_WARNING);
+    return NULL;
+  }
+  return ($holder === NULL || $holder === FALSE) ? NULL : (int) $holder;
+}
+
+/**
+ * What the current holder recorded when it took the lock, or FALSE.
+ *
+ * The record (conn, pid, nid, since) is trusted only while the lock is held
+ * by the connection it names; a record left by an earlier holder says
+ * nothing about the current one.
+ *
+ * @param int|null|false $holder
+ *   The holder's connection id when the caller already read it (NULL for a
+ *   free lock); FALSE to read it here.
+ */
+function hosting_task_runner_lock_holder_record($holder = FALSE) {
+  if ($holder === FALSE) {
+    $holder = hosting_task_runner_lock_holder();
+  }
+  if (!$holder) {
+    return FALSE;
+  }
+  $record = variable_get('hosting_task_runner_lock_holder', array());
+  if (is_array($record) && isset($record['conn'], $record['pid'], $record['nid'], $record['since']) && (int) $record['conn'] === (int) $holder) {
+    return $record;
+  }
+  return FALSE;
+}
+
+/**
+ * The holder past the ceiling, or FALSE.
+ *
+ * A runner that DIES releases the lock with its connection; a runner that
+ * HANGS alive would hold it forever, and one stuck task would stop every
+ * task on the instance. So a holder that took the lock longer ago than
+ * hosting_task_runner_lock_max_hold (default eight hours) stops counting:
+ * callers announce it (hosting_task_runner_lock_stale_notice) and run
+ * beside it, the pre-lock behaviour, until someone kills that runner
+ * (drush @hostmaster hosting-runner-lock --release). The age comes from the
+ * holder's own record, not from any task row, so a task moved off
+ * PROCESSING by hand, a younger task that ran beside the hung one, or a
+ * schema without the pid column cannot hide the hang. A holder that left no
+ * record (nothing of this module took the lock) has an unknown age and is
+ * never stale here.
+ *
+ * @param int|null|false $holder
+ *   The holder's connection id when the caller already read it (NULL for a
+ *   free lock); FALSE to read it here.
+ *
+ * @return array|false
+ *   The stale holder's record (conn, pid, nid, since), or FALSE.
+ */
+function hosting_task_runner_lock_stale($holder = FALSE) {
+  $record = hosting_task_runner_lock_holder_record($holder);
+  if (!$record) {
+    return FALSE;
+  }
+  $ceiling = (int) variable_get('hosting_task_runner_lock_max_hold', 28800);
+  if ($ceiling > 0 && (time() - (int) $record['since']) > $ceiling) {
+    // Server connection ids repeat across a server restart: a record left
+    // by a runner of a previous uptime names a pid that is gone, a hung
+    // runner's pid is alive.
+    if (function_exists('hosting_task_runner_alive') && !hosting_task_runner_alive($record['pid'])) {
+      return FALSE;
+    }
+    return $record;
+  }
+  return FALSE;
+}
+
+/**
+ * Announce a holder past the ceiling: a watchdog error and a drush warning.
+ *
+ * @param array $stale
+ *   The record from hosting_task_runner_lock_stale().
+ * @param string $what
+ *   What proceeds beside the hung runner, for the message.
+ */
+function hosting_task_runner_lock_stale_notice($stale, $what) {
+  $args = array('@nid' => (int) $stale['nid'], '@pid' => (int) $stale['pid'], '@conn' => (int) $stale['conn'], '@since' => format_date((int) $stale['since'], 'short'), '@what' => $what);
+  // One durable row per hung holder (the daemon and the drain poll every
+  // second; a flood would evict the log an operator needs), the warning on
+  // every pass.
+  if ((int) variable_get('hosting_task_runner_lock_stale_announced', 0) !== (int) $stale['conn']) {
+    variable_set('hosting_task_runner_lock_stale_announced', (int) $stale['conn']);
+    watchdog('hosting_task', 'A task runner has held this instance past the ceiling: task node/@nid, pid @pid, server connection @conn, since @since. Tasks run beside it from now on; kill that runner (pid @pid) if it is hung, and release its connection with drush @hostmaster hosting-runner-lock --release.', $args, WATCHDOG_ERROR);
+  }
+  drush_log(dt("A task runner has held this instance past the ceiling (task node/@nid, pid @pid, server connection @conn, since @since); @what runs beside it. Kill that runner (pid @pid) if it is hung; drush @hostmaster hosting-runner-lock --release frees its connection.", $args), 'warning');
+}
+
+/**
+ * The task a live runner is most likely working on right now.
+ *
+ * The newest current-revision PROCESSING row whose recorded runner is alive;
+ * no time window (liveness is what counts, however long the task runs). A
+ * best guess for messages: the lock holder itself is a server connection,
+ * not a task.
+ *
+ * @return object|false
+ *   The row (nid, pid, executed), or FALSE.
+ */
+function hosting_task_running_now() {
+  if (!db_field_exists('hosting_task', 'pid')) {
+    return FALSE;
+  }
+  $rows = db_query("SELECT t.nid, t.pid, t.executed FROM {node} n INNER JOIN {hosting_task} t ON n.vid = t.vid WHERE n.type = :type AND t.task_status = :status AND t.pid > 0 AND t.pid <> :self ORDER BY t.vid DESC",
+    array(':type' => 'task', ':status' => HOSTING_TASK_PROCESSING, ':self' => (int) getmypid()));
+  foreach ($rows as $row) {
+    if (hosting_task_runner_alive($row->pid)) {
+      return $row;
+    }
+  }
+  return FALSE;
 }
 
 /**
