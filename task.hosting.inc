@@ -115,8 +115,23 @@ function drush_hosting_task_validate($id, $type = NULL) {
       $loaded_status = $task->task_status;
       $got = 'unknown';
       if (function_exists('hosting_task_runner_lock_acquire')) {
-        $stale = hosting_task_runner_lock_stale();
-        if ($stale) {
+        // A task run from inside a running task's backend (provision's
+        // clone, import and migrate verify their sites and platforms that
+        // way) is the holder's own, synchronous work: it runs under the
+        // holder's lock, it never waits on its own ancestor.
+        $parent = hosting_task_runner_lock_holder_record();
+        $stale = FALSE;
+        if ($parent && hosting_task_runner_is_ancestor($parent['pid'])) {
+          drush_log(dt("Task @nid runs inside the runner of task @parent (pid @pid), under its lock.", array('@nid' => $task->nid, '@parent' => $parent['nid'], '@pid' => $parent['pid'])), 'notice');
+          $got = 'nested';
+        }
+        else {
+          $stale = hosting_task_runner_lock_stale();
+        }
+        if ($got === 'nested') {
+          // nothing to take
+        }
+        elseif ($stale) {
           hosting_task_runner_lock_stale_notice($stale, dt('Task node/@nid', array('@nid' => $task->nid)));
           $got = 'stale';
         }
