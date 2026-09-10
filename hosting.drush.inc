@@ -62,9 +62,9 @@ function hosting_drush_command() {
   }
 
   $items['hosting-runner-lock'] = array(
-    'description' => dt('Show who holds this instance\'s task runner lock (one task runs at a time); with --release, kill that server connection so a hung runner stops blocking the queue.'),
+    'description' => dt('Show who holds this instance\'s task runner lock (one task runs at a time); with --release, kill that server connection so a hung runner stops blocking the queue (the runner process itself is not killed).'),
     'options' => array(
-      'release' => dt('Kill the holder\'s server connection and clear its record.'),
+      'release' => dt('Kill the holder\'s server connection.'),
     ),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
   );
@@ -198,8 +198,10 @@ function hosting_drush_import($alias) {
  * hangs holds it, and after hosting_task_runner_lock_max_hold every launcher
  * runs beside it, loudly. This is the operator's hand on it: the holder's
  * connection id, the pid, task and time it recorded, and --release to kill
- * that connection (the hostmaster's own database user may kill its own
- * connections; nothing else on the server is touched).
+ * that CONNECTION (the hostmaster's own database user may kill its own
+ * connections; nothing else on the server is touched). The runner process
+ * behind it is not killed: a runner hung in a backend step issues no SQL
+ * and survives; the output names its pid.
  */
 function drush_hosting_runner_lock() {
   if (!function_exists('hosting_task_runner_lock_holder')) {
@@ -228,10 +230,17 @@ function drush_hosting_runner_lock() {
   catch (Exception $e) {
     return drush_set_error('HOSTING_RUNNER_LOCK', dt('Could not kill server connection @conn: @error', array('@conn' => $holder, '@error' => $e->getMessage())));
   }
-  variable_del('hosting_task_runner_lock_holder');
+  // The record is not cleared: it is inert once its connection is gone, and
+  // a parked runner that takes the freed lock writes its own at once (a
+  // clear here could erase THAT record). The runner behind the killed
+  // connection may still be alive: it is the pid printed above.
   sleep(1);
   $after = hosting_task_runner_lock_holder();
   watchdog('hosting_task', 'The task runner lock was released by hand: server connection @conn killed@record.', array('@conn' => $holder, '@record' => $record ? dt(' (pid @pid, task node/@nid)', array('@pid' => $record['pid'], '@nid' => $record['nid'])) : ''), WATCHDOG_WARNING);
-  drush_log(dt('Server connection @conn killed; the lock is now @state.', array('@conn' => $holder, '@state' => $after ? dt('held by connection @c', array('@c' => $after)) : dt('free'))), $after ? 'warning' : 'ok');
+  drush_log(dt('Server connection @conn killed; the lock is now @state.@pid', array(
+    '@conn' => $holder,
+    '@state' => $after ? dt('held by connection @c', array('@c' => $after)) : dt('free'),
+    '@pid' => $record ? dt(' The runner behind it (pid @pid) is not killed by this: if it is hung, kill that pid and mark its task node/@nid failed.', array('@pid' => $record['pid'], '@nid' => $record['nid'])) : '',
+  )), $after ? 'warning' : 'ok');
   return TRUE;
 }

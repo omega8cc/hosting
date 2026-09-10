@@ -157,7 +157,11 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // forced run of a task loaded in any other status proceeds: the lock
       // proves no live runner holds the instance, whatever the row says.
       $fresh = node_load($task->nid, NULL, TRUE);
-      if ($fresh && $loaded_status == HOSTING_TASK_QUEUED && $fresh->task_status != HOSTING_TASK_QUEUED) {
+      if (!$fresh) {
+        watchdog('hosting_task', 'Task node/@nid vanished while this runner waited for the instance; not running it.', array('@nid' => $task->nid), WATCHDOG_NOTICE);
+        return drush_set_error('HOSTING_TASK_GONE', dt("Task @nid vanished while this runner waited for the instance; not running it.", array('@nid' => $task->nid)));
+      }
+      if ($loaded_status == HOSTING_TASK_QUEUED && $fresh->task_status != HOSTING_TASK_QUEUED) {
         $args = array('@nid' => $task->nid, '@status' => _hosting_parse_error_code($fresh->task_status));
         watchdog('hosting_task', 'Task node/@nid: its status changed while this runner waited for the instance (now @status); not running it.', $args, WATCHDOG_NOTICE);
         return drush_set_error('HOSTING_TASK_TAKEN', dt("Task @nid: its status changed while this runner waited for the instance (now @status); not running it.", $args));
@@ -166,8 +170,13 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // and may have changed under the task that held the lock -- a Migrate
       // moves a site's platform, a Rename its uri -- and the context this
       // task saves must be the current one, not the pre-wait snapshot.
-      $task->ref = node_load($task->rid, NULL, TRUE);
-      $task->context_options['context_type'] = $task->ref->type;
+      $ref = node_load($task->rid, NULL, TRUE);
+      if (!is_object($ref)) {
+        watchdog('hosting_task', 'The object of task node/@nid (node/@rid) vanished while this runner waited for the instance; not running it.', array('@nid' => $task->nid, '@rid' => $task->rid), WATCHDOG_NOTICE);
+        return drush_set_error('HOSTING_TASK_GONE', dt("The object of task @nid (node @rid) vanished while this runner waited for the instance; not running it.", array('@nid' => $task->nid, '@rid' => $task->rid)));
+      }
+      $task->ref = $ref;
+      $task->context_options['context_type'] = $ref->type;
       // The task starts now, not when drush bootstrapped before the wait
       // (node_save() stamps `changed` itself; `executed` feeds the duration
       // and the reaper's grace).
