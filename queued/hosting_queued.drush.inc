@@ -130,6 +130,35 @@ function drush_hosting_queued() {
       }
 
 
+    // One task runs at a time on this instance: while a runner holds the
+    // instance's lock (a dispatcher fork, a sweep, a manual run), forking a
+    // child here would only wait and leave its task queued -- idle instead,
+    // announced once, honouring --onetime like the loop's tail does. A
+    // holder past the ceiling no longer counts (hosting_task_runner_lock_stale()).
+    if (function_exists('hosting_task_runner_lock_holder')) {
+      $runner_lock_conn = hosting_task_runner_lock_holder();
+      $runner_lock_stale = hosting_task_runner_lock_stale($runner_lock_conn);
+      if ($runner_lock_conn && $runner_lock_stale) {
+        hosting_task_runner_lock_stale_notice($runner_lock_stale, dt('The queue daemon'));
+      }
+      elseif ($runner_lock_conn) {
+        if (empty($runner_lock_idle)) {
+          drush_log(dt('A task runner holds this instance; idling until it is free.'), 'notice');
+          $runner_lock_idle = TRUE;
+        }
+        sleep(1);
+        if (drush_get_option('onetime')) {
+          drush_log(dt("exiting while another runner holds the instance, as requested by --onetime"));
+          break;
+        }
+        continue;
+      }
+      if (!empty($runner_lock_idle)) {
+        drush_log(dt('The instance is free again.'), 'notice');
+        $runner_lock_idle = FALSE;
+      }
+    }
+
     // Get some tasks to run.
     if ($tasks = @hosting_get_new_tasks(1)) {
 

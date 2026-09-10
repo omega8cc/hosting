@@ -12,6 +12,10 @@ define('HOSTING_QUEUE_DEFAULT_LOCK_WAIT', 30);
 // left a single crashed run blocking the queue for an hour; 900s (15m) is a
 // generous margin over the real sub-minute hold while recovering far sooner.
 define('HOSTING_QUEUE_LOCK_TIMEOUT', 900.0);
+// Seconds a task runner waits for the instance's runner lock (one task runs
+// at a time per hostmaster) before leaving its task queued for the next pass.
+// Its own option, --runner-wait: --lock-wait means the queue semaphore above.
+define('HOSTING_TASK_RUNNER_WAIT', 30);
 
 /**
  * Implements hook_drush_command().
@@ -51,10 +55,19 @@ function hosting_drush_command() {
           // Declared so a synchronous drain (--fork=0) passes Drush's strict
           // option check; the tasks queue reads it via drush_get_option('fork').
           'fork' => dt('Run each task in this process instead of forking it (--fork=0); default forks.'),
+          'runner-wait' => dt('Seconds a synchronous tasks drain waits for a running task of this instance to finish before leaving the batch for the next pass (one task runs at a time). Defaults to @wait.', array('@wait' => HOSTING_TASK_RUNNER_WAIT)),
         ),
       );
     }
   }
+
+  $items['hosting-runner-lock'] = array(
+    'description' => dt('Show who holds this instance\'s task runner lock (one task runs at a time); with --release, kill that server connection so a hung runner stops blocking the queue (the runner process itself is not killed).'),
+    'options' => array(
+      'release' => dt('Kill the holder\'s server connection.'),
+    ),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+  );
 
   $items['hosting-task'] = array(
     'description' => 'execute a specific queue item',
@@ -66,6 +79,9 @@ function hosting_drush_command() {
     'options' => array(
       'force' => array(
         'description' => 'Force the specified task to execute even if it is not queued to run.',
+      ),
+      'runner-wait' => array(
+        'description' => dt('Seconds to wait for a running task of this instance to finish before leaving this task queued for the next pass (one task runs at a time). Defaults to @wait; 0 does not wait.', array('@wait' => HOSTING_TASK_RUNNER_WAIT)),
       ),
     ),
     'examples' => array(
@@ -172,4 +188,59 @@ function hosting_drush_import($alias) {
   }
 
   return $node->nid;
+}
+
+/**
+ * Show or release the instance's task runner lock.
+ *
+ * The lock is a MySQL named lock held by a running task's connection
+ * (task/hosting_task.module). A runner that dies releases it; a runner that
+ * hangs holds it, and after hosting_task_runner_lock_max_hold every launcher
+ * runs beside it, loudly. This is the operator's hand on it: the holder's
+ * connection id, the pid, task and time it recorded, and --release to kill
+ * that CONNECTION (the hostmaster's own database user may kill its own
+ * connections; nothing else on the server is touched). The runner process
+ * behind it is not killed: a runner hung in a backend step issues no SQL
+ * and survives; the output names its pid.
+ */
+function drush_hosting_runner_lock() {
+  if (!function_exists('hosting_task_runner_lock_holder')) {
+    return drush_set_error('HOSTING_RUNNER_LOCK', dt('The hosting_task module is not available.'));
+  }
+  $name = hosting_task_runner_lock_name();
+  $holder = hosting_task_runner_lock_holder();
+  if (!$holder) {
+    drush_log(dt('The task runner lock @name is free.', array('@name' => $name)), 'ok');
+    return TRUE;
+  }
+  $record = hosting_task_runner_lock_holder_record($holder);
+  $running = hosting_task_running_now();
+  drush_log(dt('The task runner lock @name is held by server connection @conn@record@task.', array(
+    '@name' => $name,
+    '@conn' => $holder,
+    '@record' => $record ? dt(' (recorded: pid @pid, task node/@nid, since @since, @age)', array('@pid' => $record['pid'], '@nid' => $record['nid'], '@since' => format_date($record['since'], 'short'), '@age' => format_interval(time() - $record['since']))) : dt(' (no record of this holder)'),
+    '@task' => $running ? dt('; likely task node/@nid pid @pid', array('@nid' => $running->nid, '@pid' => $running->pid)) : '',
+  )), 'ok');
+  if (!drush_get_option('release', FALSE)) {
+    return TRUE;
+  }
+  try {
+    db_query("KILL " . (int) $holder);
+  }
+  catch (Exception $e) {
+    return drush_set_error('HOSTING_RUNNER_LOCK', dt('Could not kill server connection @conn: @error', array('@conn' => $holder, '@error' => $e->getMessage())));
+  }
+  // The record is not cleared: it is inert once its connection is gone, and
+  // a parked runner that takes the freed lock writes its own at once (a
+  // clear here could erase THAT record). The runner behind the killed
+  // connection may still be alive: it is the pid printed above.
+  sleep(1);
+  $after = hosting_task_runner_lock_holder();
+  watchdog('hosting_task', 'The task runner lock was released by hand: server connection @conn killed@record.', array('@conn' => $holder, '@record' => $record ? dt(' (pid @pid, task node/@nid)', array('@pid' => $record['pid'], '@nid' => $record['nid'])) : ''), WATCHDOG_WARNING);
+  drush_log(dt('Server connection @conn killed; the lock is now @state.@pid', array(
+    '@conn' => $holder,
+    '@state' => $after ? dt('held by connection @c', array('@c' => $after)) : dt('free'),
+    '@pid' => $record ? dt(' The runner behind it (pid @pid) is not killed by this: if it is hung, kill that pid and mark its task node/@nid failed.', array('@pid' => $record['pid'], '@nid' => $record['nid'])) : '',
+  )), $after ? 'warning' : 'ok');
+  return TRUE;
 }
