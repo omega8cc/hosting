@@ -1190,6 +1190,41 @@ function hosting_task_runner_lock_holder_record($holder = FALSE) {
 }
 
 /**
+ * Whether the lock's recorded holder is an ancestor of this process.
+ *
+ * A task's backend runs other tasks synchronously from inside it: provision's
+ * clone, import and migrate invoke `hosting-task <context> verify --force`
+ * on the hostmaster and wait for it. Such a nested runner is the holder's
+ * own work -- the holder waits for it, nothing runs beside anything -- so it
+ * runs under the holder's lock instead of waiting on its own ancestor for
+ * --runner-wait seconds and failing the parent (measured on the first
+ * as-delivered clone, 2026-09-10: the clone's nested Verify was left queued
+ * and the clone rolled back). The ancestry is read from /proc (the backend
+ * runs on Linux only, like hosting_task_runner_alive()).
+ *
+ * @param int $pid
+ *   The recorded holder's pid.
+ */
+function hosting_task_runner_is_ancestor($pid) {
+  $pid = (int) $pid;
+  if ($pid <= 1) {
+    return FALSE;
+  }
+  $p = (int) getmypid();
+  for ($i = 0; $i < 64 && $p > 1; $i++) {
+    $status = @file_get_contents('/proc/' . $p . '/status');
+    if ($status === FALSE || !preg_match('/^PPid:\s*(\d+)/m', $status, $m)) {
+      return FALSE;
+    }
+    $p = (int) $m[1];
+    if ($p === $pid) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
  * The holder past the ceiling, or FALSE.
  *
  * A runner that DIES releases the lock with its connection; a runner that
