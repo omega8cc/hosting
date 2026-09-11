@@ -145,6 +145,12 @@ function hosting_grav_ensure_none_db_server() {
   if (!function_exists('hosting_services_add') || !function_exists('_hosting_valid_fqdn_ip')) {
     return FALSE;
   }
+  // A partial bootstrap (update.php, where hook_init never ran and the
+  // hosting constants do not exist) cannot save a node: the node-access
+  // hooks die on the missing constants. Leave it to a full request.
+  if (!defined('HOSTING_DEFAULT_DB_SERVER')) {
+    return FALSE;
+  }
   if (hosting_grav_none_db_servers(TRUE)) {
     return FALSE;
   }
@@ -188,6 +194,23 @@ function hosting_grav_ensure_none_db_server() {
   drupal_set_message(t('Hosting Grav created the "None (flat-file sites)" database server @title for flat-file site capsules.', array('@title' => $node->title)));
 
   return $node;
+}
+
+/**
+ * Implements hook_init().
+ *
+ * The one deferred job: create the no-database server that an update hook
+ * asked for (it cannot save nodes itself). One cached variable read per
+ * request while nothing is pending; the flag is cleared on the first full
+ * request that manages to create the server, or finds one.
+ */
+function hosting_grav_init() {
+  if (!variable_get('hosting_grav_none_server_wanted', 0)) {
+    return;
+  }
+  if (hosting_grav_none_db_servers(TRUE) || hosting_grav_ensure_none_db_server()) {
+    variable_del('hosting_grav_none_server_wanted');
+  }
 }
 
 /**

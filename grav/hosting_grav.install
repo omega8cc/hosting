@@ -147,16 +147,13 @@ function hosting_grav_requirements($phase) {
  * hook_enable has already done the work -- only the older panels run it here.
  */
 function hosting_grav_update_7001() {
-  if (!function_exists('hosting_grav_ensure_none_db_server')) {
-    return;
-  }
-  $node = hosting_grav_ensure_none_db_server();
-  if (is_object($node) && !empty($node->title)) {
-    return t('Created the "None (flat-file sites)" database server @title.', array('@title' => $node->title));
-  }
-  // FALSE covers three cases; only one of them is "nothing to do".
-  if (hosting_grav_none_db_servers(TRUE)) {
+  // Not here: update.php runs without hook_init, so none of the hosting
+  // constants (HOSTING_DEFAULT_DB_SERVER, HOSTING_ADMIN_CLIENT, ...) exist
+  // and a node_save() dies in the node-access hooks. Flag the work; the
+  // module's hook_init does it on the next full request.
+  if (function_exists('hosting_grav_none_db_servers') && hosting_grav_none_db_servers(TRUE)) {
     return t('A no-database server already exists; nothing to do.');
   }
-  throw new DrupalUpdateException('No no-database server could be created (no usable hostname could be derived, or the server services API was unavailable); add one by hand with its database service set to the "None" type before creating Grav sites.');
+  variable_set('hosting_grav_none_server_wanted', 1);
+  return t('The "None (flat-file sites)" database server will be created on the next page request.');
 }
