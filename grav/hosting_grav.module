@@ -506,7 +506,7 @@ function hosting_grav_hosting_tasks() {
 
   $tasks['site']['grav_copy_upgrade'] = array(
     'title' => t('Upgrade a copy'),
-    'description' => t('Copy this site capsule onto a Grav platform at a NEW domain name and upgrade the copy to the newest staged official release. The original site keeps serving at its current domain throughout — its capsule is never opened for writing; test the copy, then take the original domain over with Cutover. The copy keeps the content, accounts and configuration of the original but gets its own security keys, and it starts with encryption switched off.'),
+    'description' => t('Copy this site capsule onto a Grav platform at a NEW domain name and upgrade the copy to the newest staged official release. The original site keeps serving at its current domain throughout — its capsule is never opened for writing; test the copy, then take the original domain over with Cutover. The copy keeps the original\'s content, accounts, configuration, security keys and outstanding tokens: it is the same site under a temporary name, not an independent publication, until Cutover. It starts with encryption switched off.'),
     'command' => 'provision-grav-copy-upgrade',
     'access callback' => 'hosting_grav_copy_upgrade_task_access',
     'dialog' => TRUE,
@@ -729,7 +729,7 @@ function hosting_task_grav_copy_upgrade_form($node) {
   $form['copy_report'] = array(
     '#type' => 'item',
     '#title' => t('What happens'),
-    '#markup' => t('The copy is built from a safety backup of this capsule, upgraded on the target platform to the newest staged official release, and verified. It answers at the new domain; this site keeps answering at its own, and its capsule is never opened for writing. The copy keeps content, accounts and configuration but gets its own security keys, and starts with encryption switched off and cron disabled.'),
+    '#markup' => t('The copy is built from a safety backup of this capsule, upgraded on the target platform to the newest staged official release, and verified. It answers at the new domain; this site keeps answering at its own, and its capsule is never opened for writing. The copy keeps the original\'s content, accounts, configuration, security keys and outstanding tokens — it is the same site under a temporary name, not an independent publication, until Cutover — and starts with encryption switched off and cron disabled.'),
   );
 
   $form['#node'] = $node;
