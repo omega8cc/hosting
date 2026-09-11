@@ -1146,7 +1146,7 @@ function hosting_grav_form_hosting_task_confirm_form_alter(&$form, &$form_state)
       '#value' => isset($node->db_server) ? $node->db_server : 0,
     );
     if ($task == 'clone') {
-      $help = t('Cloning a Grav site copies the entire site capsule - content, configuration, accounts, themes and plugins - to the new domain name, and gives the copy its own security keys. The copy starts with encryption switched off: enable it for the new domain once the clone has been verified. Nothing is copied from a database, because a Grav capsule keeps everything in files, so the database server stays as it is. Migrate, and the rename it performs, is not offered for Grav sites yet.');
+      $help = t('Cloning a Grav site copies the entire site capsule - content, configuration, accounts, themes and plugins - to the new domain name, and gives the copy its own security keys. The copy starts with encryption switched off: enable it for the new domain once the clone has been verified. Nothing is copied from a database, because a Grav capsule keeps everything in files, so the database server stays as it is. Migrate does not apply to Grav sites: use the Rename task to move this site to a new name on its own platform, or Upgrade a copy to place an upgraded copy on another Grav platform.');
       // '#markup' is what Drupal 7 renders; the '#value' key is what the
       // generic confirm form carries, kept for anything that reads it.
       $form['help'] = array('#markup' => '<p>' . $help . '</p>', '#value' => $help);
