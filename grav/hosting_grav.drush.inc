@@ -169,6 +169,18 @@ function _hosting_grav_pre_cutover_task($task) {
         array('@site' => hosting_site_get_domain($holder->title))));
       return;
     }
+    // The holder is whatever answers to the domain typed into the dialog, so
+    // the account that queued the task must be allowed to administer it —
+    // the task permission is granted per account, not per site, and the
+    // delete leg below is dispatched on the holder, not on $site. Task nodes
+    // carry the queueing account in uid; an unloadable one refuses.
+    $account = isset($task->uid) ? user_load($task->uid) : FALSE;
+    if (!_hosting_grav_may_retire_site($holder, $account)) {
+      drush_set_error('HOSTING_GRAV_CUTOVER_DENIED',
+        dt('You may not retire @site, and cutover would delete it.',
+        array('@site' => hosting_site_get_domain($holder->title))));
+      return;
+    }
     $task->options['cutover_source'] = hosting_context_name($holder->nid);
   }
   else {
