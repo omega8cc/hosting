@@ -40,6 +40,11 @@ function hosting_grav_enable() {
     }
   }
 
+  // The no-database server, before the sweep below: that sweep RETURNS early
+  // on a platform-heavy panel, and the server is what every Grav site has to
+  // attach to. Idempotent -- a second enable finds it and does nothing.
+  hosting_grav_ensure_none_db_server();
+
   // BOUNDED: on a platform-heavy panel an unconditional sweep is a task
   // storm (E2E-observed: 84 platform verifies queued on the test panel in
   // one enable; the hosting-frontend analysis predicted exactly this). Above
@@ -129,4 +134,25 @@ function hosting_grav_requirements($phase) {
   }
 
   return $requirements;
+}
+
+/**
+ * Create the "None (flat-file sites)" database server.
+ *
+ * hook_enable only fires on enablement, so a panel that enabled hosting_grav
+ * before this code shipped would never get the server: the Grav site form
+ * would go on offering nothing but real database servers, and every capsule
+ * created there would be attached to MySQL. This module has no hook_schema
+ * and no hook_install, so a fresh install lands at this update number and
+ * hook_enable has already done the work -- only the older panels run it here.
+ */
+function hosting_grav_update_7001() {
+  if (!function_exists('hosting_grav_ensure_none_db_server')) {
+    return;
+  }
+  $node = hosting_grav_ensure_none_db_server();
+  if (is_object($node) && !empty($node->title)) {
+    return t('Created the "None (flat-file sites)" database server @title.', array('@title' => $node->title));
+  }
+  return t('A no-database server already exists; nothing to do.');
 }

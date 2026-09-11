@@ -69,6 +69,128 @@ function hosting_grav_hosting_service() {
 }
 
 /**
+ * Return every no-database server node on this panel, keyed by nid.
+ *
+ * hosting_get_servers('db') cannot answer this question: it returns every
+ * server with an available db service whatever its TYPE, and it tags the
+ * query with node_access — from drush or any non-web context that list can
+ * come back empty for reasons that have nothing to do with the servers. So
+ * this query is deliberately untagged, and joins on the CURRENT revision
+ * (n.vid) so a service disabled in a newer revision stops counting.
+ *
+ * @param bool $reset
+ *   TRUE to re-read after creating or changing a server in this request.
+ *
+ * @return array
+ *   nid => title; empty when the panel has no 'none' server.
+ */
+function hosting_grav_none_db_servers($reset = FALSE) {
+  $servers = &drupal_static(__FUNCTION__, NULL);
+  if ($reset) {
+    $servers = NULL;
+  }
+  if (is_array($servers)) {
+    return $servers;
+  }
+
+  $servers = array();
+  $query = db_select('node', 'n');
+  $query->join('hosting_service', 's', 'n.vid = s.vid');
+  $query
+    ->fields('n', array('nid', 'title'))
+    ->condition('n.type', 'server')
+    ->condition('s.service', 'db')
+    ->condition('s.type', 'none')
+    ->condition('s.available', 1);
+  $result = $query->execute();
+  foreach ($result as $server) {
+    $servers[$server->nid] = $server->title;
+  }
+
+  return $servers;
+}
+
+/**
+ * Determine whether a db server node is a no-database ('none') server.
+ */
+function hosting_grav_db_server_is_none($nid) {
+  if (empty($nid)) {
+    return FALSE;
+  }
+  $servers = hosting_grav_none_db_servers();
+  return isset($servers[$nid]);
+}
+
+/**
+ * Create the no-database server node, once, if the panel has none.
+ *
+ * Flat-file capsules need a REAL db_server node to point at (db_server = 0
+ * emits a hosting_context_name(0) error on every install and verify), and
+ * the only way to get one is to create a server whose db service is of type
+ * 'none'. Doing it by hand is a five-field form an operator has no reason to
+ * know about, so the module that defines the service type also ships it.
+ *
+ * Idempotent by construction: it returns early when a 'none' server already
+ * exists, which is what makes it safe from both hook_enable (first
+ * enablement) and hook_update_N (panels that enabled the module before this
+ * code existed).
+ *
+ * @return object|false
+ *   The created server node, or FALSE when nothing was created.
+ */
+function hosting_grav_ensure_none_db_server() {
+  // Without the service API the node would be saved with no db service at
+  // all -- an unselectable server that looks like a bug. hosting_server is a
+  // dependency of hosting itself, but enable order is not ours to assume.
+  if (!function_exists('hosting_services_add') || !function_exists('_hosting_valid_fqdn_ip')) {
+    return FALSE;
+  }
+  if (hosting_grav_none_db_servers(TRUE)) {
+    return FALSE;
+  }
+
+  // A server title must be hostname-shaped (hosting_server_validate() runs
+  // _hosting_valid_fqdn_ip on it), so name the server after the panel.
+  $host = '';
+  if (function_exists('hosting_get_hostmaster_site_nid')) {
+    $hostmaster_nid = hosting_get_hostmaster_site_nid();
+    if (!empty($hostmaster_nid)) {
+      $hostmaster = node_load($hostmaster_nid);
+      if (is_object($hostmaster) && !empty($hostmaster->title)) {
+        $host = $hostmaster->title;
+      }
+    }
+  }
+  if ($host === '') {
+    $host = php_uname('n');
+  }
+  $title = 'none.' . drupal_strtolower(trim($host));
+  if (!_hosting_valid_fqdn_ip($title)) {
+    drupal_set_message(t('Hosting Grav could not derive a valid hostname for the "None (flat-file sites)" database server (tried @title). Add the server by hand, with its database service set to the "None" type, before creating Grav sites.', array('@title' => $title)), 'warning');
+    return FALSE;
+  }
+
+  $node = new stdClass();
+  $node->type = 'server';
+  node_object_prepare($node);
+  $node->uid = 1;
+  $node->status = 1;
+  $node->title = $title;
+  $node->human_name = 'None (flat-file sites)';
+  // hosting_services_add(), never a bare hosting_services_new_object(): only
+  // this path sets available, and a service with available = 0 makes the
+  // server invisible to hosting_get_servers('db') -- that is, unselectable
+  // everywhere, which is exactly the failure this function exists to avoid.
+  hosting_services_add($node, 'db', 'none', array('available' => 1));
+  node_save($node);
+  hosting_grav_none_db_servers(TRUE);
+
+  drupal_set_message(t('Hosting Grav created the "None (flat-file sites)" database server @title for flat-file site capsules.', array('@title' => $node->title)));
+
+  return $node;
+}
+
+/**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
  * Stores (or clears) the per-platform Grav marker from the verify result.
@@ -266,4 +388,192 @@ function hosting_grav_hosting_site_context_options(&$task) {
   if (isset($task->ref->platform) && hosting_grav_platform_is_grav($task->ref->platform)) {
     $task->context_options['install_method'] = HOSTING_GRAV_INSTALL_METHOD;
   }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * The clone and migrate dialogs ask which DATABASE SERVER the copy should
+ * use (hosting_task_migrate_form(), reused verbatim by
+ * hosting_task_clone_form()) and they offer every server that has an
+ * available db service. On a panel that carries both a MySQL server and the
+ * flat-file 'none' server, that control is a REQUIRED choice between two
+ * wrong answers: it lets an operator attach a DB-less Grav capsule to MySQL,
+ * or a Drupal site to the no-database server. The backend refuses a Grav
+ * clone or restore whose site is attached to a real database server, so the
+ * front end must not offer it in the first place.
+ */
+function hosting_grav_form_hosting_task_confirm_form_alter(&$form, &$form_state) {
+  if (!isset($form['task']['#value'])) {
+    return;
+  }
+  $task = $form['task']['#value'];
+  if ($task != 'clone' && $task != 'migrate') {
+    return;
+  }
+  // Only hosting_task_migrate_form() carries the site node into the confirm
+  // form ($form['#node'], merged in under 'parameters'); any other task's
+  // form leaves nothing to test against.
+  if (!isset($form['parameters']['#node']) || !is_object($form['parameters']['#node'])) {
+    return;
+  }
+  if (!isset($form['parameters']['new_db_server'])) {
+    return;
+  }
+  $node = $form['parameters']['#node'];
+
+  if (isset($node->platform) && hosting_grav_platform_is_grav($node->platform)) {
+    // Pin the site's own db server. The element has to STAY PRESENT:
+    // drush_hosting_clone_pre_hosting_task() and the post-task handlers read
+    // $task->task_args['new_db_server'] unguarded, so dropping it turns
+    // every Grav clone into a notice and a wrong comparison.
+    $form['parameters']['new_db_server'] = array(
+      '#type' => 'value',
+      '#value' => isset($node->db_server) ? $node->db_server : 0,
+    );
+    if ($task == 'clone') {
+      $form['help']['#value'] = t('Cloning a Grav site copies the entire site capsule - content, configuration, accounts, themes and plugins - to the new domain name, and gives the copy its own security keys. The copy starts with encryption switched off: enable it for the new domain once the clone has been verified. Nothing is copied from a database, because a Grav capsule keeps everything in files, so the database server stays as it is. Migrate, and the rename it performs, is not offered for Grav sites yet.');
+    }
+    $form['#validate'][] = 'hosting_grav_task_confirm_form_validate';
+    return;
+  }
+
+  // A non-Grav site must never be offered the no-database server.
+  if (!isset($form['parameters']['new_db_server']['#type'])
+    || $form['parameters']['new_db_server']['#type'] != 'radios'
+    || !isset($form['parameters']['new_db_server']['#options'])
+    || !is_array($form['parameters']['new_db_server']['#options'])) {
+    return;
+  }
+  $none = hosting_grav_none_db_servers();
+  if (empty($none)) {
+    return;
+  }
+  $options = $form['parameters']['new_db_server']['#options'];
+  foreach ($none as $none_nid => $none_title) {
+    unset($options[$none_nid]);
+  }
+  if (empty($options)) {
+    // Every option was a no-database server. Leave the form exactly as it
+    // was rather than present an empty required control.
+    return;
+  }
+  if (count($options) == 1) {
+    // One option is not a choice -- hosting_task_migrate_form() renders that
+    // same case as a fixed value rather than a single radio.
+    $remaining = array_keys($options);
+    $form['parameters']['new_db_server'] = array(
+      '#type' => 'value',
+      '#value' => $remaining[0],
+    );
+  }
+  else {
+    $form['parameters']['new_db_server']['#options'] = $options;
+  }
+}
+
+/**
+ * Validation belt for the clone/migrate dialog on a Grav site.
+ *
+ * The pinned value element makes this unreachable through the rendered form;
+ * the belt is for a crafted post and for any later alter that puts the radios
+ * back.
+ */
+function hosting_grav_task_confirm_form_validate($form, &$form_state) {
+  if (!isset($form['parameters']['#node']) || !is_object($form['parameters']['#node'])) {
+    return;
+  }
+  $node = $form['parameters']['#node'];
+  if (!isset($node->platform) || !hosting_grav_platform_is_grav($node->platform)) {
+    return;
+  }
+  if (!isset($form_state['values']['parameters']['new_db_server'])) {
+    return;
+  }
+  if ($form_state['values']['parameters']['new_db_server'] != $node->db_server) {
+    form_set_error('parameters][new_db_server', t('Grav sites carry no database: this site keeps the database server it was created with.'));
+  }
+}
+
+/**
+ * Implements hook_node_validate().
+ *
+ * A Grav capsule has no database, so its site node must point at the
+ * no-database server: attached to a real one the backend builds a database
+ * the site will never use, and the Grav clone and restore paths refuse the
+ * site outright. The site form offers every db server
+ * (hosting_get_servers('db')), so the wrong choice is caught here.
+ *
+ * Only form submissions reach hook_node_validate. Programmatic node_save()
+ * -- the clone post-task handler, the import path -- is deliberately
+ * untouched: those copy a db_server that was already validated.
+ */
+function hosting_grav_node_validate($node, $form, &$form_state) {
+  if (!isset($node->type) || $node->type != 'site') {
+    return;
+  }
+  if (!isset($node->platform) || !hosting_grav_platform_is_grav($node->platform)) {
+    return;
+  }
+  if (!hosting_grav_none_db_servers()) {
+    // No 'none' server on this panel: there is nothing to point the operator
+    // at, and the backend already says so at install time. Refusing here
+    // would only make Grav sites uncreatable.
+    return;
+  }
+  if (!isset($node->db_server) || !hosting_grav_db_server_is_none($node->db_server)) {
+    form_set_error('db_server', t('Grav sites carry no database yet: attach this site to the "None (flat-file sites)" database server.'));
+  }
+}
+
+/**
+ * Implements hook_hosting_tasks_alter().
+ *
+ * The backend refuses Migrate (and the rename it performs) for Grav sites,
+ * so the button must not be offered: a queued task that can only fail is
+ * worse than no button.
+ *
+ * Composition matters -- hosting_txp installs the same kind of wrapper on
+ * the same task. Whichever alter runs second has to wrap the first rather
+ * than replace it, so read the CURRENT callback here and remember it, and
+ * never assume the shipped default.
+ */
+function hosting_grav_hosting_tasks_alter(&$tasks) {
+  if (!isset($tasks['site']['migrate'])) {
+    return;
+  }
+  if (isset($tasks['site']['migrate']['access callback'])
+    && $tasks['site']['migrate']['access callback'] == 'hosting_grav_migrate_task_access') {
+    return;
+  }
+  if (!empty($tasks['site']['migrate']['access callback'])) {
+    $tasks['site']['migrate']['hosting_grav_prev_access'] = $tasks['site']['migrate']['access callback'];
+  }
+  $tasks['site']['migrate']['access callback'] = 'hosting_grav_migrate_task_access';
+}
+
+/**
+ * Access callback for the site migrate task.
+ *
+ * Denies Grav sites and delegates everything else to whichever callback was
+ * in place before this module wrapped it (hosting_task_menu_access() when
+ * nothing else had). Read at call time from the task registry, which is
+ * already built and statically cached by the time any access callback runs.
+ */
+function hosting_grav_migrate_task_access($node, $task) {
+  if (isset($node->type) && $node->type == 'site'
+    && isset($node->platform) && hosting_grav_platform_is_grav($node->platform)) {
+    return FALSE;
+  }
+
+  $previous = '';
+  $site_tasks = hosting_available_tasks('site');
+  if (isset($site_tasks[$task]['hosting_grav_prev_access'])) {
+    $previous = $site_tasks[$task]['hosting_grav_prev_access'];
+  }
+  if ($previous !== '' && $previous != 'hosting_grav_migrate_task_access' && function_exists($previous)) {
+    return $previous($node, $task);
+  }
+
+  return hosting_task_menu_access($node, $task);
 }
