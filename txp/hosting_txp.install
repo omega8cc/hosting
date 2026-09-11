@@ -16,6 +16,11 @@
  * idempotent and Drupal platforms simply confirm their (absent) marker.
  */
 function hosting_txp_enable() {
+  // Grant the task permissions FIRST, before the bounded sweep below: that
+  // sweep RETURNS early on a platform-heavy panel and the grants must never
+  // sit behind that return (rig-proven miss on the grav track).
+  _hosting_txp_grant_task_permissions();
+
   // BOUNDED from the start: on a platform-heavy panel an unconditional sweep
   // is a task storm (the grav track observed 84 platform verifies queued in a
   // single enable on the shared test panel, which also carries a long backlog
@@ -37,6 +42,38 @@ function hosting_txp_enable() {
   }
   if ($queued) {
     drupal_set_message(t('Hosting Textpattern queued a verify for @count platform(s) to refresh the Textpattern platform markers.', array('@count' => $queued)));
+  }
+}
+
+/**
+ * Grant every Textpattern task permission to the panel's administrative roles.
+ *
+ * These cannot live in hosting_custom_settings for a gated module (a features
+ * dependency there would force-enable hosting_txp on every box, defeating a
+ * sticky opt-out), so they are self-contained here and die with the module.
+ * db_merge, not user_role_grant_permissions: at hook_enable time the dynamic
+ * task permissions are not yet in user_permission_get_modules() (hosting
+ * builds that from its task registry, rebuilt after enable), so the API call
+ * skips them silently (rig-proven on the grav track). The row shape is
+ * exactly what the API writes; it becomes live once caches settle.
+ * Idempotent, which is what lets the update hook below re-run it on
+ * already-enabled panels.
+ */
+function _hosting_txp_grant_task_permissions() {
+  $task_permissions = array('create txp_cutover task',
+    'create txp_rename task', 'create txp_upgrade task');
+  $roles = array('admin', 'administrator', 'aegir account manager',
+    'aegir administrator', 'aegir client', 'aegir platform manager', 'root');
+  foreach ($roles as $role_name) {
+    $role = user_role_load_by_name($role_name);
+    if ($role) {
+      foreach ($task_permissions as $permission) {
+        db_merge('role_permission')
+          ->key(array('rid' => $role->rid, 'permission' => $permission))
+          ->fields(array('module' => 'hosting_txp'))
+          ->execute();
+      }
+    }
   }
 }
 
@@ -105,4 +142,21 @@ function hosting_txp_requirements($phase) {
   }
 
   return $requirements;
+}
+
+/**
+ * Grant the upgrade, rename and cutover task permissions.
+ *
+ * hook_enable only fires on enablement, so a panel that enabled hosting_txp
+ * before these tasks shipped carries no grant for them at all: the three
+ * buttons would be invisible to every role until somebody noticed and set
+ * them by hand. This module has no hook_schema and no hook_install, so a
+ * fresh install lands at this update number with hook_enable having already
+ * done the work -- only the older panels run it here. Nothing saves a node:
+ * update.php runs without hook_init, so none of the hosting constants exist
+ * and a node_save() would die in the node-access hooks.
+ */
+function hosting_txp_update_7001() {
+  _hosting_txp_grant_task_permissions();
+  return t('Granted the Textpattern upgrade, rename and cutover task permissions to the administrative roles.');
 }

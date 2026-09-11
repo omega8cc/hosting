@@ -8,16 +8,19 @@
  * verify as $data['txp'] = the TXP version string. This module stores that
  * marker per platform, then uses it to (a) keep Textpattern and Drupal
  * platforms from being offered together at site creation, (b) route TXP site
- * installs through the TXP path via context_options, and (c) badge TXP
- * platforms and their sites in the admin theme.
+ * installs through the TXP path via context_options, (c) badge TXP platforms
+ * and their sites in the admin theme, and (d) offer the supported upgrade
+ * procedure — a copy on a newer-core platform, plus the Rename and Cutover
+ * primitives that finish it.
  *
  * Deliberately NOT here, unlike the Grav sibling:
  *  - no hook_hosting_service(): Textpattern needs a real database, so sites
  *    attach to the ordinary db server (Grav's 'none' service exists for
  *    flat-file capsules).
- *  - no upgrade task: the TXP upgrade engine is phase 2. Shipping a button
- *    whose backend command does not exist is the silent-success class this
- *    project has already been bitten by, so the task lands with its engine.
+ *  - no in-place upgrade task: the Textpattern core is SHARED by every site
+ *    on a platform, so a release upgrade is a move onto a newer-core platform
+ *    followed by the CMS's own update chain on the copy — which is exactly
+ *    what txp_upgrade does. There is nothing to upgrade in place.
  *
  * Plain D7 idiom throughout because Hostmaster IS Drupal 7 — not for
  * PHP-floor reasons (TXP's own floor is 8.4, boa-txp D-008).
@@ -109,6 +112,138 @@ function hosting_txp_post_hosting_verify_task($task, $data) {
 /**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
+ * Creates the frontend node for the upgraded copy, mirroring the clone
+ * post-task. Dark-by-design states are set EXPLICITLY (never inherited
+ * defaults): encryption disabled — a bespoke task inherits none of the
+ * task-type-scoped auto-disable in the migrate/clone post-tasks — and cron
+ * off, so a copy never runs processes that confuse the live site's users.
+ * import=1 makes the insert hook queue an import task (not install); the
+ * import flips the node ENABLED once the backend context reports the site
+ * installed.
+ */
+function hosting_txp_post_hosting_txp_upgrade_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  $target = $task->task_args['target_platform'];
+
+  // A platform verify running concurrently (the queue forks tasks) can
+  // discover the freshly built site dir and adopt it before this hook runs;
+  // inserting a second node would then fail on the duplicate context and mark
+  // an otherwise fully successful upgrade Failed. Keep the adopted node and
+  // only record the backup.
+  $existing = hosting_get_site_by_url(hosting_site_get_domain($task->task_args['new_uri']), FALSE);
+  if ($existing) {
+    drush_log(dt('[txp-upgrade] The upgraded copy @uri was already registered as node @nid (adopted by a platform verify); keeping it.',
+      array('@uri' => $task->task_args['new_uri'], '@nid' => $existing)), 'ok');
+    $task->task_args['description'] = t('Pre-upgrade backup');
+    hosting_site_post_hosting_backup_task($task, $data);
+    return;
+  }
+
+  $upgrade = new stdClass();
+  // Copy carry-over settings from the source node. Deliberately NOT copied:
+  // profile (re-resolved on the target below), site_status (the queued import
+  // proves ENABLED honestly), cron_interval and ssl_* (forced dark below).
+  foreach (array('type', 'status', 'uid', 'comment', 'promote', 'moderate', 'sticky', 'name', 'format', 'client', 'db_server', 'site_language') as $field) {
+    if (isset($task->ref->$field)) {
+      $upgrade->$field = $task->ref->$field;
+    }
+  }
+  $upgrade->title = hosting_site_clean_domain($task->task_args['new_uri']);
+  $upgrade->hosting_name = hosting_site_get_domain($upgrade->title);
+  $upgrade->platform = $target;
+  $upgrade->import = 1;
+  $upgrade->verified = 0;
+  // The backend saved the new context with aliases=array() and redirection=0.
+  $upgrade->aliases = array();
+  $upgrade->redirection = FALSE;
+
+  if (isset($task->task_args['new_db_server']) && $task->task_args['new_db_server']
+    && $upgrade->db_server != $task->task_args['new_db_server']) {
+    $upgrade->db_server = $task->task_args['new_db_server'];
+  }
+
+  // Resolve the profile on the TARGET platform. A Textpattern platform
+  // carries the one synthetic 'textpattern' profile; the backend's own value
+  // is preferred when it reported one. Unresolvable -> leave unset; the
+  // queued import re-resolves it from the backend context.
+  $short_name = 'textpattern';
+  if (!empty($data['context']['profile']) && is_string($data['context']['profile'])) {
+    $short_name = $data['context']['profile'];
+  }
+  $profile = hosting_package_instance_load(array(
+    'i.rid' => $target,
+    'p.short_name' => $short_name,
+  ));
+  if ($profile) {
+    $upgrade->profile = $profile->package_id;
+  }
+
+  if (defined('HOSTING_SSL_DISABLED')) {
+    $upgrade->ssl_enabled = HOSTING_SSL_DISABLED;
+    $upgrade->ssl_key = 0;
+    drush_log(dt('[txp-upgrade] Encryption explicitly disabled on the upgraded copy @uri', array('@uri' => $upgrade->title)), 'advisory');
+  }
+  if (defined('ADV_CRON_TURNED_OFF')) {
+    $upgrade->cron_interval = ADV_CRON_TURNED_OFF;
+  }
+
+  node_save($upgrade);
+
+  // Record the pre-upgrade backup taken on the source.
+  $task->task_args['description'] = t('Pre-upgrade backup');
+  hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * The rename bookkeeping subset of the migrate post-task: the site keeps its
+ * node, so the node has to follow the backend — retitle, re-register the
+ * hosting context under the new name, disable encryption (keys are
+ * name-bound) and queue the verify that renders the new vhost state into the
+ * frontend. The alias set is emptied because the backend saved the new
+ * context that way; anything else would have the next verify push aliases the
+ * renamed site does not serve.
+ */
+function hosting_txp_post_hosting_txp_rename_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  $site = $task->ref;
+  $new_uri = isset($task->task_args['new_uri']) ? $task->task_args['new_uri'] : '';
+
+  if ($new_uri !== '' && hosting_site_get_domain($site->title) != hosting_site_get_domain($new_uri)) {
+    $site->title = hosting_site_clean_domain($new_uri);
+    hosting_context_register($site->nid, hosting_site_get_domain($site->title));
+
+    if (defined('HOSTING_SSL_DISABLED') && !empty($site->ssl_enabled)
+      && !(function_exists('hosting_get_hostmaster_nid') && $site->nid == hosting_get_hostmaster_nid())) {
+      $site->ssl_enabled = HOSTING_SSL_DISABLED;
+      $site->ssl_key = 0;
+      drush_log(dt('[txp-rename] Encryption disabled for the new name @uri; re-enable it deliberately once the rename is verified.', array('@uri' => $site->title)), 'advisory');
+    }
+
+    $site->aliases = array();
+    $site->redirection = FALSE;
+    $site->verified = REQUEST_TIME;
+    $site->no_verify = TRUE;
+    node_save($site);
+    $task->ref = $site;
+
+    // Refresh the vhost and the site's recorded state under the new name.
+    hosting_add_task($site->nid, 'verify');
+  }
+
+  // Record the safety copy taken before the rename.
+  $task->task_args['description'] = t('Pre-rename backup');
+  hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
  * Cleans up the per-platform marker when a platform is deleted.
  */
 function hosting_txp_post_hosting_delete_task($task, $data) {
@@ -149,6 +284,417 @@ function hosting_txp_hosting_site_options_alter(&$return, &$node) {
   // Never present an empty platform list; only apply a non-empty partition.
   if (!empty($filtered)) {
     $return['platform'] = $filtered;
+  }
+}
+
+/**
+ * Implements hook_permission().
+ *
+ * The "create TASK_TYPE task" permission string is load-bearing:
+ * hosting_task_menu_access() gates both the Run button and the confirm path
+ * on user_access("create txp_upgrade task").
+ */
+function hosting_txp_permission() {
+  return array(
+    'create txp_upgrade task' => array(
+      'title' => t('create txp_upgrade task'),
+    ),
+    'create txp_rename task' => array(
+      'title' => t('create txp_rename task'),
+    ),
+    'create txp_cutover task' => array(
+      'title' => t('create txp_cutover task'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_hosting_tasks().
+ *
+ * The 'command' key is mandatory on every one of these: the default
+ * derivation would yield provision-txp_upgrade (underscore), which does not
+ * exist.
+ *
+ * Three tasks, all per-SITE:
+ *  - txp_upgrade  the migration shape -- a copy on a newer-core platform,
+ *                 with Textpattern's own update chain run on the copy
+ *  - txp_rename   the same-platform rename primitive
+ *  - txp_cutover  the deliberate final step: take over the old domain
+ *
+ * Cutover chains txp_rename (and a delete of the domain's current holder) as
+ * REAL frontend tasks, so there is deliberately no post-task hook for it
+ * here: each chained task carries its own, and the node bookkeeping happens
+ * there rather than twice.
+ */
+function hosting_txp_hosting_tasks() {
+  $tasks = array();
+
+  $tasks['site']['txp_upgrade'] = array(
+    'title' => t('Upgrade Textpattern'),
+    'description' => t('Copy this site onto a platform carrying a newer Textpattern core at a NEW domain name, then run Textpattern\'s own update chain on the copy. The original site keeps serving at its current domain throughout — its database and files are never in the write path; test the copy, then take the original domain over with Cutover. The copy starts with encryption switched off and cron disabled.'),
+    'command' => 'provision-txp-upgrade',
+    'access callback' => 'hosting_txp_upgrade_task_access',
+    'dialog' => TRUE,
+  );
+
+  $tasks['site']['txp_rename'] = array(
+    'title' => t('Rename'),
+    'description' => t('Move this site to a new domain name on the same platform. A safety backup is taken first. The old domain stops serving as soon as the rename completes; custom aliases are not carried over, and encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards.'),
+    'command' => 'provision-txp-rename',
+    'access callback' => 'hosting_txp_rename_task_access',
+    'dialog' => TRUE,
+  );
+
+  $tasks['site']['txp_cutover'] = array(
+    'title' => t('Cutover'),
+    'description' => t('Make this site answer at a domain currently held by another site — typically the original domain of the site it was upgraded from. The site holding that domain is backed up and then deleted; this site is then renamed to the freed domain. Encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards. The domain is unserved while the rename completes: minutes that scale with the size of this site.'),
+    'command' => 'provision-txp-cutover',
+    'access callback' => 'hosting_txp_cutover_task_access',
+    'dialog' => TRUE,
+  );
+
+  return $tasks;
+}
+
+/**
+ * Return the available upgrade targets for a site: NEWER TXP platforms.
+ *
+ * Marker presence already implies a verified, non-deleted Textpattern
+ * platform (the marker is written on platform verify and cleared on delete);
+ * _hosting_get_platforms(0, TRUE) additionally drops locked ones. The site's
+ * own platform is never a target — the core is shared, so a move onto it
+ * would upgrade nothing.
+ *
+ * The comparison is version_compare on the marker STRINGS, never
+ * version_code: the code drops the patch level, which is exactly what
+ * separates two Textpattern releases. Fail-open when either version is
+ * missing: the platform stays on offer and the backend refuses a
+ * same-or-older core with a clear message, so a stale marker can never make a
+ * site un-upgradeable. Titles are check_plain()ed for direct use as radio
+ * option labels.
+ */
+function _hosting_txp_upgrade_targets($node) {
+  $targets = array();
+  $source = '';
+  if (is_object($node) && isset($node->platform)) {
+    $source = hosting_txp_platform_version($node->platform);
+  }
+  foreach (_hosting_get_platforms(0, TRUE) as $nid => $title) {
+    if (!hosting_txp_platform_is_txp($nid)) {
+      continue;
+    }
+    if (is_object($node) && isset($node->platform) && $nid == $node->platform) {
+      continue;
+    }
+    $version = hosting_txp_platform_version($nid);
+    if ($source !== '' && $version !== '' && version_compare($version, $source, '<=')) {
+      continue;
+    }
+    $targets[$nid] = check_plain($title);
+  }
+  return $targets;
+}
+
+/**
+ * Access callback for the txp_upgrade task.
+ *
+ * Runs in two contexts with the same ($node, $task) signature: button
+ * rendering in hosting_task_fetch_tasks() and the hosting_confirm menu item
+ * (where this callback REPLACES hosting_task_menu_access_csrf). It therefore
+ * must not require the URL token — none exists at button-render time. That
+ * matches the CSRF posture of the interactive migrate/clone tasks: the dialog
+ * GET only renders a form; queueing happens on the token-protected POST.
+ *
+ * An ENABLED site on a marker-verified Textpattern platform, and at least one
+ * newer-core platform to move it to — offering a dead-end form is worse than
+ * no button.
+ */
+function hosting_txp_upgrade_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_txp_platform_is_txp($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  if (!count(_hosting_txp_upgrade_targets($node))) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the txp_upgrade task confirmation form.
+ *
+ * Discovered by hosting_task_confirm_form() via function_exists(); the
+ * returned elements are merged under $form['parameters'] (#tree), so their
+ * values land verbatim in $task->task_args.
+ */
+function hosting_task_txp_upgrade_form($node) {
+  $form = array();
+
+  $form['new_uri'] = array(
+    '#type' => 'textfield',
+    '#title' => t('New domain name'),
+    '#description' => t('The upgraded copy is created at this new domain. The original site keeps serving at its current domain until you switch over deliberately.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+  );
+
+  // Marker-verified, newer-core Textpattern targets only. The access callback
+  // already hides the task when this list is empty; the no-target branch is
+  // defence in depth for a direct request racing a platform lock or delete.
+  $targets = _hosting_txp_upgrade_targets($node);
+  if (count($targets)) {
+    $form['target_platform'] = array(
+      '#type' => 'radios',
+      '#title' => t('Target Textpattern platform'),
+      '#required' => TRUE,
+      '#options' => $targets,
+      '#default_value' => count($targets) == 1 ? key($targets) : NULL,
+    );
+  }
+  else {
+    $form['no_target'] = array(
+      '#type' => 'item',
+      '#title' => t('Target Textpattern platform'),
+      '#markup' => t('No verified Textpattern platform with a newer core is available. Add one and verify it first.'),
+    );
+  }
+
+  $db_servers = hosting_get_servers('db');
+  if (count($db_servers) > 1) {
+    $form['new_db_server'] = array(
+      '#type' => 'radios',
+      '#title' => t('Database server'),
+      '#required' => TRUE,
+      '#description' => t('The database server hosting the copy database.'),
+      '#options' => $db_servers,
+      '#default_value' => $node->db_server,
+    );
+  }
+  else {
+    $form['new_db_server'] = array(
+      '#type' => 'hidden',
+      '#value' => $node->db_server,
+    );
+  }
+
+  $form['upgrade_report'] = array(
+    '#type' => 'item',
+    '#title' => t('What happens'),
+    '#markup' => t('The copy is built from a safety backup of this site, Textpattern\'s own update chain is run on the copy against the newer core, the result is checked against the core\'s own table definitions, and the copy is verified. It answers at the new domain; this site keeps answering at its own and is never in the write path.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the txp_upgrade task confirmation form.
+ *
+ * The backend validate re-checks everything fail-closed (Textpattern on both
+ * sides, free URI, the source's recorded version older than the target core);
+ * this front check exists so operator mistakes surface in the form, not
+ * minutes later in a red task log.
+ */
+function hosting_task_txp_upgrade_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  if (!isset($site->platform) || !hosting_txp_platform_is_txp($site->platform)) {
+    form_set_error('parameters][target_platform', t('This site does not run on a verified Textpattern platform.'));
+  }
+
+  $url = hosting_site_get_domain($params['new_uri']);
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][new_uri', t('The upgraded copy needs a new domain name; the original site keeps serving at @domain.', array('@domain' => hosting_site_get_domain($site->title))));
+  }
+  else {
+    if (!_hosting_valid_fqdn($url)) {
+      form_set_error('parameters][new_uri', t('You have not specified a valid domain name.'));
+    }
+    if (!hosting_domain_allowed($url)) {
+      form_set_error('parameters][new_uri', t('The domain name you have specified is not unique or not allowed.'));
+    }
+  }
+
+  $targets = _hosting_txp_upgrade_targets($site);
+  if (empty($params['target_platform'])) {
+    form_set_error('parameters][target_platform', t('You must choose a Textpattern target platform carrying a newer core.'));
+  }
+  elseif (!isset($targets[$params['target_platform']])) {
+    form_set_error('parameters][target_platform', t('The chosen target platform is not an available Textpattern platform with a newer core.'));
+  }
+}
+
+/**
+ * Access callback for the txp_rename task.
+ *
+ * Same two-context posture as hosting_txp_upgrade_task_access (no URL token).
+ * Only an ENABLED site on a marker-verified Textpattern platform: renaming a
+ * disabled or not-yet-imported site is a dead end, and the backend refuses it.
+ */
+function hosting_txp_rename_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_txp_platform_is_txp($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the txp_rename task confirmation form.
+ */
+function hosting_task_txp_rename_form($node) {
+  $form = array();
+
+  $form['new_uri'] = array(
+    '#type' => 'textfield',
+    '#title' => t('New domain name'),
+    '#description' => t('The site keeps its content, users and configuration and answers at this name instead, on the same platform.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+    // The site's own primary name, never the redirection target: the migrate
+    // dialog's reasoning applies here too.
+    '#default_value' => hosting_site_clean_domain($node->title),
+  );
+
+  $form['rename_report'] = array(
+    '#type' => 'item',
+    '#title' => t('What happens'),
+    '#markup' => t('A safety backup is taken first. The site moves to the new name, its settings and stored paths are rewritten, the old vhost is removed and the new one rendered, so the old domain stops serving as soon as the rename completes. Sessions are ended by the rename. Custom aliases are not carried over, and encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the txp_rename task confirmation form.
+ */
+function hosting_task_txp_rename_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  if (!isset($site->platform) || !hosting_txp_platform_is_txp($site->platform)) {
+    form_set_error('parameters][new_uri', t('This site does not run on a verified Textpattern platform.'));
+    return;
+  }
+
+  $url = hosting_site_get_domain($params['new_uri']);
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][new_uri', t('Renaming needs a domain name different from @domain.', array('@domain' => hosting_site_get_domain($site->title))));
+    return;
+  }
+  if (!_hosting_valid_fqdn($url)) {
+    form_set_error('parameters][new_uri', t('You have not specified a valid domain name.'));
+    return;
+  }
+  // Deliberately without the migrate validator's www/non-www companion
+  // tolerance: this rename saves the new context with an EMPTY alias set, so
+  // an alias equal to the new name is a genuine conflict — remove it from the
+  // site first.
+  if (!hosting_domain_allowed($url)) {
+    form_set_error('parameters][new_uri', t('The domain name you have specified is not unique or not allowed.'));
+  }
+}
+
+/**
+ * Access callback for the txp_cutover task.
+ *
+ * Same two-context posture (no URL token). Only an ENABLED site on a
+ * marker-verified Textpattern platform can take a domain over this way: the
+ * chain ends in the Textpattern rename leg, and renaming a disabled or
+ * not-yet-imported copy is a dead end (the import after an upgrade enables
+ * the copy).
+ */
+function hosting_txp_cutover_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_txp_platform_is_txp($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the txp_cutover task confirmation form.
+ */
+function hosting_task_txp_cutover_form($node) {
+  $form = array();
+
+  $form['target_domain'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Domain to take over'),
+    '#description' => t('Usually the original domain of the site this copy was upgraded from. The site currently at that domain is backed up and then deleted; this site is renamed to it. If no site holds the domain (for example after a previous cutover attempt), the rename runs alone.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+  );
+
+  $form['cutover_report'] = array(
+    '#type' => 'item',
+    '#title' => t('What happens'),
+    '#markup' => t('The current holder of the domain is re-checked when the task runs; its full backup is taken by the delete step and stays restorable. Encryption ends up disabled for the new name (certificates are name-bound) — re-enable it on this site afterwards. Custom aliases of the old site are not carried over. The domain is unserved while the rename completes: minutes that scale with the size of this site.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the txp_cutover task confirmation form.
+ *
+ * The pre-task drush hook re-resolves the domain holder at execution time and
+ * the backend validates fail-closed; this front check exists so operator
+ * mistakes surface in the form, not minutes later in a red task log.
+ */
+function hosting_task_txp_cutover_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  $url = hosting_site_get_domain($params['target_domain']);
+  if (!_hosting_valid_fqdn($url)) {
+    form_set_error('parameters][target_domain', t('You have not specified a valid domain name.'));
+    return;
+  }
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][target_domain', t('This site already answers at @domain.', array('@domain' => $url)));
+    return;
+  }
+
+  $holder = hosting_get_site_by_url($url);
+  if (is_object($holder)) {
+    if ($holder->nid == $site->nid) {
+      form_set_error('parameters][target_domain', t('@domain already belongs to this site (as an alias). Remove that alias from the site, then use Rename to make @domain its main domain.', array('@domain' => $url)));
+    }
+    elseif ($holder->nid == hosting_get_hostmaster_site_nid()) {
+      form_set_error('parameters][target_domain', t('@domain is the hosting front-end; it cannot be taken over.', array('@domain' => $url)));
+    }
+    elseif (hosting_site_get_domain($holder->title) != $url) {
+      form_set_error('parameters][target_domain', t('@domain is an alias of @site, not its main domain. Remove the alias there, or cut over to the main domain instead.', array('@domain' => $url, '@site' => hosting_site_get_domain($holder->title))));
+    }
+    elseif (!hosting_task_dangerous_task_is_allowed('delete', $holder->nid)) {
+      form_set_error('parameters][target_domain', t('@site is guarded against deletion; cutover would need to delete it.', array('@site' => hosting_site_get_domain($holder->title))));
+    }
+  }
+  else {
+    // Nobody holds the domain: cutover degrades to a plain rename, but the
+    // name must still be allowed (not held by a non-site record).
+    if (!hosting_domain_allowed($url)) {
+      form_set_error('parameters][target_domain', t('No site holds @domain but the name is not allowed.', array('@domain' => $url)));
+    }
   }
 }
 
