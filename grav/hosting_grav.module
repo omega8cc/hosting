@@ -30,6 +30,17 @@
 define('HOSTING_GRAV_PLATFORM_VAR', 'hosting_grav_platform_version_');
 
 /**
+ * Variable-name prefix for the per-site Grav capsule version marker.
+ *
+ * Keyed by site nid; the value is the version the capsule itself reports on
+ * its verify. A capsule is upgraded in place while the platform it was
+ * created from keeps its seed version, so the platform marker describes the
+ * capsule only until the first upgrade lands — this one always does. Same
+ * table-free storage as the platform marker.
+ */
+define('HOSTING_GRAV_SITE_VAR', 'hosting_grav_site_version_');
+
+/**
  * The install_method value the provision grav layer expects for Grav sites.
  */
 define('HOSTING_GRAV_INSTALL_METHOD', 'grav');
@@ -218,13 +229,44 @@ function hosting_grav_init() {
 /**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
- * Stores (or clears) the per-platform Grav marker from the verify result.
- * The backend contract: the grav layer's platform verify adds
- * $data['grav'] = the Grav version string alongside the standard
- * packages/profiles/sites keys. Presence of that key is the Grav signal.
+ * Stores (or clears) the Grav version markers from the verify result.
+ *
+ * Platform: the grav layer's platform verify adds $data['grav'] = the Grav
+ * version string alongside the standard packages/profiles/sites keys.
+ * Presence of that key is the Grav signal.
+ *
+ * Site: the capsule carries its OWN version — it is upgraded in place while
+ * the platform keeps its seed version — and the site verify reports it in the
+ * site package map, which the grav layer builds from the capsule path:
+ * $packages['base']['platforms']['grav']['version']. Recording it per site
+ * nid is what lets the dialogs name the capsule's version rather than the
+ * platform's, which is wrong on every capsule upgraded at least once.
  */
 function hosting_grav_post_hosting_verify_task($task, $data) {
-  if (!isset($task->ref) || $task->ref->type != 'platform') {
+  if (!isset($task->ref)) {
+    return;
+  }
+  if ($task->ref->type == 'site') {
+    $name = HOSTING_GRAV_SITE_VAR . $task->ref->nid;
+    $version = '';
+    if (isset($data['context']['packages']['base']['platforms']['grav']['version'])
+      && is_string($data['context']['packages']['base']['platforms']['grav']['version'])) {
+      $version = trim($data['context']['packages']['base']['platforms']['grav']['version']);
+    }
+    if ($version !== '') {
+      // Only write on change to avoid needless variable-cache invalidation.
+      if (variable_get($name, '') !== $version) {
+        variable_set($name, $version);
+      }
+    }
+    elseif (variable_get($name, NULL) !== NULL) {
+      // A non-Grav site reports no such map: drop any stale marker. Guarded
+      // so an ordinary Drupal verify never clears the bootstrap cache.
+      variable_del($name);
+    }
+    return;
+  }
+  if ($task->ref->type != 'platform') {
     return;
   }
   $name = HOSTING_GRAV_PLATFORM_VAR . $task->ref->nid;
@@ -260,11 +302,19 @@ function hosting_grav_post_hosting_verify_task($task, $data) {
  * it the way the clone records its pre-clone copy, so it appears on the
  * site's backups list (restorable, deletable) instead of sitting on disk
  * unregistered until the retention sweep.
+ *
+ * The capsule now carries a different version, and only a frontend verify
+ * refreshes the marker the dialogs read (the backend's own post-command
+ * verify is a separate process whose package map never reaches the front
+ * end). Queue one; hosting_add_task() folds it into a verify already waiting
+ * for the site.
  */
 function hosting_grav_post_hosting_grav_upgrade_task($task, $data) {
   if (!isset($task->ref) || $task->ref->type != 'site') {
     return;
   }
+  hosting_add_task($task->ref->nid, 'verify');
+
   if (empty($data['context']['backup_file']) || !function_exists('hosting_site_post_hosting_backup_task')) {
     return;
   }
@@ -405,14 +455,22 @@ function hosting_grav_post_hosting_grav_rename_task($task, $data) {
 /**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
- * Cleans up the per-platform marker when a platform is deleted.
+ * Cleans up the version marker when a platform or a site is deleted, so a
+ * recycled nid never inherits the previous node's version.
  */
 function hosting_grav_post_hosting_delete_task($task, $data) {
-  if (isset($task->ref) && $task->ref->type == 'platform') {
+  if (!isset($task->ref)) {
+    return;
+  }
+  $name = '';
+  if ($task->ref->type == 'platform') {
     $name = HOSTING_GRAV_PLATFORM_VAR . $task->ref->nid;
-    if (variable_get($name, NULL) !== NULL) {
-      variable_del($name);
-    }
+  }
+  elseif ($task->ref->type == 'site') {
+    $name = HOSTING_GRAV_SITE_VAR . $task->ref->nid;
+  }
+  if ($name !== '' && variable_get($name, NULL) !== NULL) {
+    variable_del($name);
   }
 }
 
@@ -557,15 +615,23 @@ function hosting_grav_upgrade_task_access($node, $task) {
  *
  * A capsule carries its OWN version -- capsules are upgraded independently of
  * the platform they were created from -- and the site verify reports it as the
- * site package map. Only a value that looks like a version is taken from
- * there: a capsule whose instance row predates that map reads 'Unknown'. The
- * platform marker is the fallback, correct on a capsule never upgraded and
- * only ever used to word one sentence: the backend reads the capsule itself
- * and refuses an artefact that is not newer.
+ * site package map. The per-site marker written from that map is therefore
+ * the authoritative value and is read first.
+ *
+ * The package instance row is the older route and is kept as a second chance:
+ * Grav's site map carries no versioned plural group, so that row normally
+ * reads 'Unknown' and only a value that looks like a version is taken from
+ * it. The platform marker is the last fallback, correct on a capsule never
+ * upgraded and only ever used to word one sentence: the backend reads the
+ * capsule itself and refuses an artefact that is not newer.
  */
 function _hosting_grav_site_version($node) {
   if (!is_object($node) || empty($node->nid)) {
     return '';
+  }
+  $capsule = variable_get(HOSTING_GRAV_SITE_VAR . $node->nid, '');
+  if ($capsule !== '') {
+    return $capsule;
   }
   if (function_exists('hosting_package_instance_load')) {
     $instance = hosting_package_instance_load(array(
