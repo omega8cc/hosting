@@ -50,6 +50,10 @@ function hosting_drush_command() {
         'description' => $info['description'] . " " . $dispatch,
         'queue' => $queue,
         'options' => array(
+          // Declared so a hand-run drain (--items=3) passes Drush's strict
+          // option check; hosting_run_queue() reads it, and the dispatcher
+          // passes the queue's configured batch the same way.
+          'items' => dt('Number of queued items to process in this run. Defaults to the batch the dispatcher uses for the @queue queue (@items).', array('@queue' => $queue, '@items' => $info['items'])),
           'lock-wait' => dt('Time to wait to acquire a lock on the @queue queue. Defaults to @wait seconds.', array('@queue' => $queue, '@wait' => HOSTING_QUEUE_DEFAULT_LOCK_WAIT)),
           'force' => dt('Continue even if the task queue is still locked.'),
           // Declared so a synchronous drain (--fork=0) passes Drush's strict

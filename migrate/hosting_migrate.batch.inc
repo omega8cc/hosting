@@ -244,6 +244,21 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
   $site = node_load($site_id);
   $profile = node_load($site->profile);
   $batch = &batch_get();
+  // A site whose Migrate task is denied by the task's own access callback
+  // (a Grav or Textpattern site, where the backend refuses the task) fails
+  // the evaluation here, so the batch never queues a task that can only
+  // fail. The per-site dialog consults the same callback through the menu.
+  $site_tasks = hosting_available_tasks('site');
+  $access_callback = !empty($site_tasks['migrate']['access callback']) ? $site_tasks['migrate']['access callback'] : 'hosting_task_menu_access';
+  if (function_exists($access_callback) && !$access_callback($site, 'migrate')) {
+    $batch['form_state']['storage']['status'][$site->nid] = array(
+      'error' => 1,
+      'missing' => 0,
+      'upgrade' => 0,
+    );
+    $batch['form_state']['storage']['failed'][$site->nid] = hosting_site_get_domain($site->title);
+    return;
+  }
   // Determine whether the install profile is available on the target platform
   $profile_instance = hosting_package_instance_load(
     array(
