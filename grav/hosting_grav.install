@@ -154,5 +154,9 @@ function hosting_grav_update_7001() {
   if (is_object($node) && !empty($node->title)) {
     return t('Created the "None (flat-file sites)" database server @title.', array('@title' => $node->title));
   }
-  return t('A no-database server already exists; nothing to do.');
+  // FALSE covers three cases; only one of them is "nothing to do".
+  if (hosting_grav_none_db_servers(TRUE)) {
+    return t('A no-database server already exists; nothing to do.');
+  }
+  throw new DrupalUpdateException('No no-database server could be created (no usable hostname could be derived, or the server services API was unavailable); add one by hand with its database service set to the "None" type before creating Grav sites.');
 }

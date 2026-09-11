@@ -408,21 +408,26 @@ function hosting_grav_form_hosting_task_confirm_form_alter(&$form, &$form_state)
     return;
   }
   $task = $form['task']['#value'];
-  if ($task != 'clone' && $task != 'migrate') {
-    return;
-  }
-  // Only hosting_task_migrate_form() carries the site node into the confirm
-  // form ($form['#node'], merged in under 'parameters'); any other task's
-  // form leaves nothing to test against.
-  if (!isset($form['parameters']['#node']) || !is_object($form['parameters']['#node'])) {
-    return;
-  }
   if (!isset($form['parameters']['new_db_server'])) {
     return;
   }
-  $node = $form['parameters']['#node'];
+  // The site node rides into the confirm form on the dialogs that offer a
+  // db server (hosting_task_migrate_form() sets $form['#node'], merged in
+  // under 'parameters'; the Backdrop upgrade dialogs do the same); the menu
+  // callback's node is the fallback.
+  $node = NULL;
+  if (isset($form['parameters']['#node']) && is_object($form['parameters']['#node'])) {
+    $node = $form['parameters']['#node'];
+  }
+  elseif (isset($form['nid']['#value'])) {
+    $node = node_load($form['nid']['#value']);
+  }
+  if (!is_object($node) || !isset($node->type) || $node->type != 'site') {
+    return;
+  }
 
-  if (isset($node->platform) && hosting_grav_platform_is_grav($node->platform)) {
+  if (($task == 'clone' || $task == 'migrate')
+    && isset($node->platform) && hosting_grav_platform_is_grav($node->platform)) {
     // Pin the site's own db server. The element has to STAY PRESENT:
     // drush_hosting_clone_pre_hosting_task() and the post-task handlers read
     // $task->task_args['new_db_server'] unguarded, so dropping it turns
@@ -432,13 +437,17 @@ function hosting_grav_form_hosting_task_confirm_form_alter(&$form, &$form_state)
       '#value' => isset($node->db_server) ? $node->db_server : 0,
     );
     if ($task == 'clone') {
-      $form['help']['#value'] = t('Cloning a Grav site copies the entire site capsule - content, configuration, accounts, themes and plugins - to the new domain name, and gives the copy its own security keys. The copy starts with encryption switched off: enable it for the new domain once the clone has been verified. Nothing is copied from a database, because a Grav capsule keeps everything in files, so the database server stays as it is. Migrate, and the rename it performs, is not offered for Grav sites yet.');
+      $help = t('Cloning a Grav site copies the entire site capsule - content, configuration, accounts, themes and plugins - to the new domain name, and gives the copy its own security keys. The copy starts with encryption switched off: enable it for the new domain once the clone has been verified. Nothing is copied from a database, because a Grav capsule keeps everything in files, so the database server stays as it is. Migrate, and the rename it performs, is not offered for Grav sites yet.');
+      // '#markup' is what Drupal 7 renders; the '#value' key is what the
+      // generic confirm form carries, kept for anything that reads it.
+      $form['help'] = array('#markup' => '<p>' . $help . '</p>', '#value' => $help);
     }
     $form['#validate'][] = 'hosting_grav_task_confirm_form_validate';
     return;
   }
 
-  // A non-Grav site must never be offered the no-database server.
+  // A non-Grav site must never be offered the no-database server, on any
+  // dialog that offers a db server (clone, migrate, the Backdrop upgrades).
   if (!isset($form['parameters']['new_db_server']['#type'])
     || $form['parameters']['new_db_server']['#type'] != 'radios'
     || !isset($form['parameters']['new_db_server']['#options'])
@@ -512,17 +521,44 @@ function hosting_grav_node_validate($node, $form, &$form_state) {
   if (!isset($node->type) || $node->type != 'site') {
     return;
   }
-  if (!isset($node->platform) || !hosting_grav_platform_is_grav($node->platform)) {
+  // The db server is chosen ONCE, on the create form: the edit form of an
+  // existing site renders it as a display-only value the operator cannot
+  // change, so an error there could never be cleared and would lock every
+  // pre-existing site's edit form. Only a new node is judged here.
+  if (!empty($node->nid)) {
     return;
   }
-  if (!hosting_grav_none_db_servers()) {
-    // No 'none' server on this panel: there is nothing to point the operator
-    // at, and the backend already says so at install time. Refusing here
-    // would only make Grav sites uncreatable.
+  if (!isset($node->db_server)) {
     return;
   }
-  if (!isset($node->db_server) || !hosting_grav_db_server_is_none($node->db_server)) {
+  $is_grav = isset($node->platform) && hosting_grav_platform_is_grav($node->platform);
+  $on_none = hosting_grav_db_server_is_none($node->db_server);
+  if ($is_grav && !$on_none && hosting_grav_none_db_servers()) {
+    // No 'none' server on this panel means there is nothing to point the
+    // operator at (the backend says so at install time); refusing would
+    // only make Grav sites uncreatable, hence the third condition.
     form_set_error('db_server', t('Grav sites carry no database yet: attach this site to the "None (flat-file sites)" database server.'));
+  }
+  elseif (!$is_grav && $on_none) {
+    // The symmetric half: the no-database server maps to a null service,
+    // so a Drupal or Backdrop site attached to it would install with no
+    // database at all.
+    form_set_error('db_server', t('The "None (flat-file sites)" database server carries no database: only Grav sites may use it.'));
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * The panel-wide default database server (used for imports and every site
+ * created without an explicit choice) must never be the no-database one.
+ */
+function hosting_grav_form_hosting_settings_alter(&$form, &$form_state) {
+  if (!isset($form['hosting_default_db_server']['#options']) || !is_array($form['hosting_default_db_server']['#options'])) {
+    return;
+  }
+  foreach (hosting_grav_none_db_servers() as $none_nid => $none_title) {
+    unset($form['hosting_default_db_server']['#options'][$none_nid]);
   }
 }
 
