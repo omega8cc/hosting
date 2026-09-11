@@ -388,7 +388,19 @@ function drush_hosting_task() {
   }
 
   if (!isset($task->task_command)) {
-    $task->task_command = 'provision-' . $task->task_type;
+    // A task created in this very process by the string+type form
+    // (hosting_add_task() in the validate hook) never went through
+    // hosting_task_load(), which is where the command a module declared for
+    // the type is attached. Read the same registry here, so a task type whose
+    // backend command is not provision-<type> resolves when it is chained by
+    // type name; the derived form stays the fallback for undeclared types.
+    $types = hosting_available_tasks($task->ref->type);
+    if (isset($types[$task->task_type]['command']) && $types[$task->task_type]['command'] !== '') {
+      $task->task_command = $types[$task->task_type]['command'];
+    }
+    else {
+      $task->task_command = 'provision-' . $task->task_type;
+    }
   }
   // Run the actual command. Adding alias here to work around Drush API.
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
