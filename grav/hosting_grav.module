@@ -254,6 +254,25 @@ function hosting_grav_post_hosting_verify_task($task, $data) {
 /**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
+ * The upgrade takes a safety copy of the capsule before touching it; record
+ * it the way the clone records its pre-clone copy, so it appears on the
+ * site's backups list (restorable, deletable) instead of sitting on disk
+ * unregistered until the retention sweep.
+ */
+function hosting_grav_post_hosting_grav_upgrade_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  if (empty($data['context']['backup_file']) || !function_exists('hosting_site_post_hosting_backup_task')) {
+    return;
+  }
+  $task->task_args['description'] = t('Pre-upgrade backup');
+  hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
  * Cleans up the per-platform marker when a platform is deleted.
  */
 function hosting_grav_post_hosting_delete_task($task, $data) {
