@@ -139,7 +139,11 @@ function hosting_get_profile_platforms($profile, $check_old_short_name = FALSE) 
     'r.type' => 'platform',
   ));
 
-  if ($check_old_short_name) {
+  // The old-name lookup keys off the FIRST instance found above, so it has
+  // nothing to key off when the profile is on no platform at all: key() on
+  // an empty array returns NULL and the property read is a notice on a path
+  // that is reached whenever a profile's platforms are still unverified.
+  if ($check_old_short_name && !empty($instances)) {
     $instances = array_merge($instances, hosting_package_instances_load(array(
       'p.old_short_name' => $instances[key($instances)]->short_name,
       'n.status' => 1,
