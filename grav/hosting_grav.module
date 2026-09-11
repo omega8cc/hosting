@@ -8,8 +8,10 @@
  * as $data['grav'] = the Grav version string. This module stores that marker
  * per platform, then uses it to (a) keep Grav and Drupal platforms from being
  * offered together at site creation, (b) route Grav site installs through the
- * Grav path via context_options, (c) offer the mirror-fed core+bundle Upgrade
- * task, and (d) provide the 'none' db service type flat-file sites attach to
+ * Grav path via context_options, (c) offer the supported upgrade procedures —
+ * the mirror-fed core+bundle Upgrade in place, the Upgrade a copy migration
+ * shape, and the Rename and Cutover primitives that finish it — and (d)
+ * provide the 'none' db service type flat-file sites attach to
  * (a real, selectable db_server node whose context maps to
  * Provision_Service_null — boa-grav map par.1.3).
  *
@@ -273,6 +275,136 @@ function hosting_grav_post_hosting_grav_upgrade_task($task, $data) {
 /**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
+ * Creates the frontend node for the upgraded copy, mirroring the clone
+ * post-task. Dark-by-design states are set EXPLICITLY (never inherited
+ * defaults): encryption disabled — a bespoke task inherits none of the
+ * task-type-scoped auto-disable in the migrate/clone post-tasks — and cron
+ * off, so a copy never runs processes that confuse the live site's users.
+ * import=1 makes the insert hook queue an import task (not install); the
+ * import flips the node ENABLED once the backend context reports the site
+ * installed.
+ */
+function hosting_grav_post_hosting_grav_copy_upgrade_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  $target = $task->task_args['target_platform'];
+
+  // A platform verify running concurrently (the queue forks tasks) can
+  // discover the freshly built capsule and adopt it before this hook runs;
+  // inserting a second node would then fail on the duplicate context and
+  // mark an otherwise fully successful upgrade Failed. Keep the adopted node
+  // and only record the backup.
+  $existing = hosting_get_site_by_url(hosting_site_get_domain($task->task_args['new_uri']), FALSE);
+  if ($existing) {
+    drush_log(dt('[grav-copy-upgrade] The upgraded copy @uri was already registered as node @nid (adopted by a platform verify); keeping it.',
+      array('@uri' => $task->task_args['new_uri'], '@nid' => $existing)), 'ok');
+    $task->task_args['description'] = t('Pre-upgrade backup');
+    hosting_site_post_hosting_backup_task($task, $data);
+    return;
+  }
+
+  $upgrade = new stdClass();
+  // Copy carry-over settings from the source node. Deliberately NOT copied:
+  // profile (re-resolved on the target below), site_status (the queued import
+  // proves ENABLED honestly), cron_interval and ssl_* (forced dark below).
+  // db_server IS carried: a Grav capsule has no database and keeps the
+  // source's no-database server, which the pre-task hook has already pinned
+  // in task_args.
+  foreach (array('type', 'status', 'uid', 'comment', 'promote', 'moderate', 'sticky', 'name', 'format', 'client', 'db_server', 'site_language') as $field) {
+    if (isset($task->ref->$field)) {
+      $upgrade->$field = $task->ref->$field;
+    }
+  }
+  $upgrade->title = hosting_site_clean_domain($task->task_args['new_uri']);
+  $upgrade->hosting_name = hosting_site_get_domain($upgrade->title);
+  $upgrade->platform = $target;
+  $upgrade->import = 1;
+  $upgrade->verified = 0;
+  // The backend saved the new context with aliases=array() and redirection=0.
+  $upgrade->aliases = array();
+  $upgrade->redirection = FALSE;
+
+  // Resolve the profile on the TARGET platform. A Grav platform reports the
+  // single synthetic 'grav' profile; the backend's own value is preferred
+  // when it reported one. Unresolvable -> leave unset; the queued import
+  // re-resolves it from the backend context.
+  $short_name = 'grav';
+  if (!empty($data['context']['profile']) && is_string($data['context']['profile'])) {
+    $short_name = $data['context']['profile'];
+  }
+  $profile = hosting_package_instance_load(array(
+    'i.rid' => $target,
+    'p.short_name' => $short_name,
+  ));
+  if ($profile) {
+    $upgrade->profile = $profile->package_id;
+  }
+
+  if (defined('HOSTING_SSL_DISABLED')) {
+    $upgrade->ssl_enabled = HOSTING_SSL_DISABLED;
+    $upgrade->ssl_key = 0;
+    drush_log(dt('[grav-copy-upgrade] Encryption explicitly disabled on the upgraded copy @uri', array('@uri' => $upgrade->title)), 'advisory');
+  }
+  if (defined('ADV_CRON_TURNED_OFF')) {
+    $upgrade->cron_interval = ADV_CRON_TURNED_OFF;
+  }
+
+  node_save($upgrade);
+
+  // Record the pre-upgrade backup taken on the source.
+  $task->task_args['description'] = t('Pre-upgrade backup');
+  hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
+ * The rename bookkeeping subset of the migrate post-task: the site keeps its
+ * node, so the node has to follow the backend — retitle, re-register the
+ * hosting context under the new name, disable encryption (keys are
+ * name-bound) and queue the verify that renders the new vhost state into the
+ * frontend. The alias set is emptied because the backend saved the new
+ * context that way; anything else would have the next verify push aliases
+ * the renamed capsule does not serve.
+ */
+function hosting_grav_post_hosting_grav_rename_task($task, $data) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  $site = $task->ref;
+  $new_uri = isset($task->task_args['new_uri']) ? $task->task_args['new_uri'] : '';
+
+  if ($new_uri !== '' && hosting_site_get_domain($site->title) != hosting_site_get_domain($new_uri)) {
+    $site->title = hosting_site_clean_domain($new_uri);
+    hosting_context_register($site->nid, hosting_site_get_domain($site->title));
+
+    if (defined('HOSTING_SSL_DISABLED') && !empty($site->ssl_enabled)
+      && !(function_exists('hosting_get_hostmaster_nid') && $site->nid == hosting_get_hostmaster_nid())) {
+      $site->ssl_enabled = HOSTING_SSL_DISABLED;
+      $site->ssl_key = 0;
+      drush_log(dt('[grav-rename] Encryption disabled for the new name @uri; re-enable it deliberately once the rename is verified.', array('@uri' => $site->title)), 'advisory');
+    }
+
+    $site->aliases = array();
+    $site->redirection = FALSE;
+    $site->verified = REQUEST_TIME;
+    $site->no_verify = TRUE;
+    node_save($site);
+    $task->ref = $site;
+
+    // Refresh the vhost and the site's recorded state under the new name.
+    hosting_add_task($site->nid, 'verify');
+  }
+
+  // Record the safety copy taken before the rename.
+  $task->task_args['description'] = t('Pre-rename backup');
+  hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ *
  * Cleans up the per-platform marker when a platform is deleted.
  */
 function hosting_grav_post_hosting_delete_task($task, $data) {
@@ -328,17 +460,34 @@ function hosting_grav_permission() {
     'create grav_upgrade task' => array(
       'title' => t('create grav_upgrade task'),
     ),
+    'create grav_copy_upgrade task' => array(
+      'title' => t('create grav_copy_upgrade task'),
+    ),
+    'create grav_rename task' => array(
+      'title' => t('create grav_rename task'),
+    ),
+    'create grav_cutover task' => array(
+      'title' => t('create grav_cutover task'),
+    ),
   );
 }
 
 /**
  * Implements hook_hosting_tasks().
  *
- * The 'command' key is mandatory: the default derivation would yield
- * provision-grav_upgrade (underscore), which does not exist. The task is
- * per-SITE by design (D-003 capsules upgrade independently); the artefact is
- * resolved backend-side from the mirror-fed staging directory (D-004/D-006),
- * so no dialog and no arguments.
+ * The 'command' key is mandatory on every one of these: the default derivation
+ * would yield provision-grav_upgrade (underscore), which does not exist.
+ *
+ * Four tasks, all per-SITE by design (capsules upgrade independently):
+ *  - grav_upgrade      in place, on the live capsule, from the staged artefact
+ *  - grav_copy_upgrade the migration shape -- a copy at a NEW domain, upgraded
+ *  - grav_rename       the same-platform rename primitive
+ *  - grav_cutover      the deliberate final step: take over the old domain
+ *
+ * Cutover chains grav_rename (and a delete of the domain's current holder)
+ * as REAL frontend tasks, so there is deliberately no post-task hook for it
+ * here: each chained task carries its own, and the node bookkeeping happens
+ * there rather than twice.
  */
 function hosting_grav_hosting_tasks() {
   $tasks = array();
@@ -352,6 +501,30 @@ function hosting_grav_hosting_tasks() {
     // CSRF check. The custom access callback above replaces the menu item's
     // token-checking one, and without a dialog a plain GET on the confirm
     // path queued the task.
+    'dialog' => TRUE,
+  );
+
+  $tasks['site']['grav_copy_upgrade'] = array(
+    'title' => t('Upgrade a copy'),
+    'description' => t('Copy this site capsule onto a Grav platform at a NEW domain name and upgrade the copy to the newest staged official release. The original site keeps serving at its current domain throughout — its capsule is never opened for writing; test the copy, then take the original domain over with Cutover. The copy keeps the content, accounts and configuration of the original but gets its own security keys, and it starts with encryption switched off.'),
+    'command' => 'provision-grav-copy-upgrade',
+    'access callback' => 'hosting_grav_copy_upgrade_task_access',
+    'dialog' => TRUE,
+  );
+
+  $tasks['site']['grav_rename'] = array(
+    'title' => t('Rename'),
+    'description' => t('Move this site capsule to a new domain name on the same platform. A safety backup is taken first. The old domain stops serving as soon as the rename completes; custom aliases are not carried over, and encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards.'),
+    'command' => 'provision-grav-rename',
+    'access callback' => 'hosting_grav_rename_task_access',
+    'dialog' => TRUE,
+  );
+
+  $tasks['site']['grav_cutover'] = array(
+    'title' => t('Cutover'),
+    'description' => t('Make this site answer at a domain currently held by another site — typically the original domain of the site it was upgraded from. The site holding that domain is backed up and then deleted; this site is then renamed to the freed domain. Encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards. The domain is unserved while the rename completes: minutes that scale with the size of this site.'),
+    'command' => 'provision-grav-cutover',
+    'access callback' => 'hosting_grav_cutover_task_access',
     'dialog' => TRUE,
   );
 
@@ -377,6 +550,394 @@ function hosting_grav_upgrade_task_access($node, $task) {
     return FALSE;
   }
   return TRUE;
+}
+
+/**
+ * Return the Grav version this site capsule reports, or ''.
+ *
+ * A capsule carries its OWN version -- capsules are upgraded independently of
+ * the platform they were created from -- and the site verify reports it as the
+ * site package map. Only a value that looks like a version is taken from
+ * there: a capsule whose instance row predates that map reads 'Unknown'. The
+ * platform marker is the fallback, correct on a capsule never upgraded and
+ * only ever used to word one sentence: the backend reads the capsule itself
+ * and refuses an artefact that is not newer.
+ */
+function _hosting_grav_site_version($node) {
+  if (!is_object($node) || empty($node->nid)) {
+    return '';
+  }
+  if (function_exists('hosting_package_instance_load')) {
+    $instance = hosting_package_instance_load(array(
+      'i.rid' => $node->nid,
+      'p.short_name' => 'grav',
+    ));
+    if (is_object($instance) && !empty($instance->version)
+      && preg_match('/^[0-9]/', $instance->version)) {
+      return $instance->version;
+    }
+  }
+  if (isset($node->platform)) {
+    return hosting_grav_platform_version($node->platform);
+  }
+  return '';
+}
+
+/**
+ * Implements the grav_upgrade task confirmation form.
+ *
+ * The in-place upgrade takes no arguments -- the artefact is resolved
+ * backend-side from the mirror-fed staging directory. The dialog exists for
+ * its CSRF token; this item makes it say what the operator is about to
+ * install over.
+ */
+function hosting_task_grav_upgrade_form($node) {
+  $form = array();
+
+  $version = _hosting_grav_site_version($node);
+  $form['current_version'] = array(
+    '#type' => 'item',
+    '#title' => t('Version'),
+    '#markup' => $version !== ''
+      ? t('This capsule runs Grav @version. The upgrade installs the newest staged official release held on this server, over the capsule in place, and refuses when nothing newer than the capsule is staged.', array('@version' => $version))
+      : t('The version of this capsule is not recorded yet — run a Verify task on the site to record it. The upgrade installs the newest staged official release held on this server, over the capsule in place, and refuses when nothing newer than the capsule is staged.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Return the available copy-upgrade targets: verified Grav platforms.
+ *
+ * Marker presence already implies a verified, non-deleted Grav platform (the
+ * marker is written on platform verify and cleared on delete);
+ * _hosting_get_platforms(0, TRUE) additionally drops locked ones. The site's
+ * own platform stays in the list: a capsule is self-contained, so upgrading a
+ * copy on the same platform is an ordinary choice. Titles are check_plain()ed
+ * for direct use as radio option labels.
+ */
+function _hosting_grav_copy_upgrade_targets() {
+  $targets = array();
+  foreach (_hosting_get_platforms(0, TRUE) as $nid => $title) {
+    if (hosting_grav_platform_is_grav($nid)) {
+      $targets[$nid] = check_plain($title);
+    }
+  }
+  return $targets;
+}
+
+/**
+ * Pick the default copy-upgrade target: the highest reported version string.
+ *
+ * version_compare on the marker STRING, never version_code: the code drops
+ * the patch level, which is exactly what separates two Grav platforms. A
+ * platform with no readable version never displaces one that has.
+ */
+function _hosting_grav_copy_upgrade_default_target($targets) {
+  $best = NULL;
+  $best_version = '';
+  foreach (array_keys($targets) as $nid) {
+    $version = hosting_grav_platform_version($nid);
+    if (is_null($best)) {
+      $best = $nid;
+      $best_version = $version;
+      continue;
+    }
+    if ($version === '') {
+      continue;
+    }
+    if ($best_version === '' || version_compare($version, $best_version, '>')) {
+      $best = $nid;
+      $best_version = $version;
+    }
+  }
+  return $best;
+}
+
+/**
+ * Access callback for the grav_copy_upgrade task.
+ *
+ * Same two-context posture as hosting_grav_upgrade_task_access (button render
+ * + the hosting_confirm menu item; no URL token exists at button-render
+ * time). An ENABLED site on a marker-verified Grav platform, and at least one
+ * verified Grav platform to put the copy on -- offering a dead-end form is
+ * worse than no button.
+ */
+function hosting_grav_copy_upgrade_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_grav_platform_is_grav($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  if (!count(_hosting_grav_copy_upgrade_targets())) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the grav_copy_upgrade task confirmation form.
+ */
+function hosting_task_grav_copy_upgrade_form($node) {
+  $form = array();
+
+  $form['new_uri'] = array(
+    '#type' => 'textfield',
+    '#title' => t('New domain name'),
+    '#description' => t('The upgraded copy is created at this new domain. The original site keeps serving at its current domain until you switch over deliberately.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+  );
+
+  // Marker-verified Grav targets only. The access callback already hides the
+  // task when this list is empty; the no-target branch is defence in depth
+  // for a direct request racing a platform lock or delete.
+  $targets = _hosting_grav_copy_upgrade_targets();
+  if (count($targets)) {
+    $form['target_platform'] = array(
+      '#type' => 'radios',
+      '#title' => t('Target Grav platform'),
+      '#required' => TRUE,
+      '#options' => $targets,
+      '#default_value' => _hosting_grav_copy_upgrade_default_target($targets),
+    );
+  }
+  else {
+    $form['no_target'] = array(
+      '#type' => 'item',
+      '#title' => t('Target Grav platform'),
+      '#markup' => t('No verified Grav platform is available. Add a Grav platform and verify it first.'),
+    );
+  }
+
+  // A Grav capsule carries no database, so the copy keeps the source's
+  // no-database server whatever anyone asks for. The element has to stay
+  // PRESENT: the pre-task hook and the post-task handler both read
+  // task_args['new_db_server'], and dropping it turns every copy upgrade
+  // into a notice and a wrong comparison. The shared confirm-form alter pins
+  // it again for this task and adds the crafted-post validation belt.
+  $form['new_db_server'] = array(
+    '#type' => 'value',
+    '#value' => isset($node->db_server) ? $node->db_server : 0,
+  );
+
+  $form['copy_report'] = array(
+    '#type' => 'item',
+    '#title' => t('What happens'),
+    '#markup' => t('The copy is built from a safety backup of this capsule, upgraded on the target platform to the newest staged official release, and verified. It answers at the new domain; this site keeps answering at its own, and its capsule is never opened for writing. The copy keeps content, accounts and configuration but gets its own security keys, and starts with encryption switched off and cron disabled.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the grav_copy_upgrade task confirmation form.
+ *
+ * The backend validate re-checks everything fail-closed (Grav on both sides,
+ * free URI, a staged artefact newer than the capsule); this front check
+ * exists so operator mistakes surface in the form, not minutes later in a red
+ * task log.
+ */
+function hosting_task_grav_copy_upgrade_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  if (!isset($site->platform) || !hosting_grav_platform_is_grav($site->platform)) {
+    form_set_error('parameters][target_platform', t('This site does not run on a verified Grav platform.'));
+  }
+
+  $url = hosting_site_get_domain($params['new_uri']);
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][new_uri', t('The upgraded copy needs a new domain name; the original site keeps serving at @domain.', array('@domain' => hosting_site_get_domain($site->title))));
+  }
+  else {
+    if (!_hosting_valid_fqdn($url)) {
+      form_set_error('parameters][new_uri', t('You have not specified a valid domain name.'));
+    }
+    if (!hosting_domain_allowed($url)) {
+      form_set_error('parameters][new_uri', t('The domain name you have specified is not unique or not allowed.'));
+    }
+  }
+
+  if (empty($params['target_platform'])) {
+    form_set_error('parameters][target_platform', t('You must choose a verified Grav target platform.'));
+  }
+  elseif (!hosting_grav_platform_is_grav($params['target_platform'])) {
+    form_set_error('parameters][target_platform', t('The chosen target platform is not a verified Grav platform.'));
+  }
+}
+
+/**
+ * Access callback for the grav_rename task.
+ *
+ * Same two-context posture (no URL token). Only an ENABLED site on a
+ * marker-verified Grav platform: renaming a disabled or not-yet-imported
+ * capsule is a dead end, and the backend refuses it.
+ */
+function hosting_grav_rename_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_grav_platform_is_grav($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the grav_rename task confirmation form.
+ */
+function hosting_task_grav_rename_form($node) {
+  $form = array();
+
+  $form['new_uri'] = array(
+    '#type' => 'textfield',
+    '#title' => t('New domain name'),
+    '#description' => t('The capsule keeps its content, accounts and configuration and answers at this name instead, on the same platform.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+    // The site's own primary name, never the redirection target: the
+    // migrate dialog's reasoning applies here too.
+    '#default_value' => hosting_site_clean_domain($node->title),
+  );
+
+  $form['rename_report'] = array(
+    '#type' => 'item',
+    '#title' => t('What happens'),
+    '#markup' => t('A safety backup is taken first. The capsule moves to the new name, the old vhost is removed and the new one rendered, so the old domain stops serving as soon as the rename completes. Custom aliases are not carried over, and encryption ends up disabled for the new name (certificates are name-bound) — re-enable it deliberately afterwards.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the grav_rename task confirmation form.
+ */
+function hosting_task_grav_rename_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  if (!isset($site->platform) || !hosting_grav_platform_is_grav($site->platform)) {
+    form_set_error('parameters][new_uri', t('This site does not run on a verified Grav platform.'));
+    return;
+  }
+
+  $url = hosting_site_get_domain($params['new_uri']);
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][new_uri', t('Renaming needs a domain name different from @domain.', array('@domain' => hosting_site_get_domain($site->title))));
+    return;
+  }
+  if (!_hosting_valid_fqdn($url)) {
+    form_set_error('parameters][new_uri', t('You have not specified a valid domain name.'));
+    return;
+  }
+  // Deliberately without the migrate validator's www/non-www companion
+  // tolerance: this rename saves the new context with an EMPTY alias set, so
+  // an alias equal to the new name is a genuine conflict — remove it from
+  // the site first.
+  if (!hosting_domain_allowed($url)) {
+    form_set_error('parameters][new_uri', t('The domain name you have specified is not unique or not allowed.'));
+  }
+}
+
+/**
+ * Access callback for the grav_cutover task.
+ *
+ * Same two-context posture (no URL token). Only an ENABLED site on a
+ * marker-verified Grav platform can take a domain over this way: the chain
+ * ends in the Grav rename leg, and renaming a disabled or not-yet-imported
+ * copy is a dead end (the import after a copy upgrade enables the copy).
+ */
+function hosting_grav_cutover_task_access($node, $task) {
+  if (!hosting_task_menu_access($node, $task)) {
+    return FALSE;
+  }
+  if (!isset($node->platform) || !hosting_grav_platform_is_grav($node->platform)) {
+    return FALSE;
+  }
+  if (!isset($node->site_status) || $node->site_status != HOSTING_SITE_ENABLED) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements the grav_cutover task confirmation form.
+ */
+function hosting_task_grav_cutover_form($node) {
+  $form = array();
+
+  $form['target_domain'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Domain to take over'),
+    '#description' => t('Usually the original domain of the site this copy was upgraded from. The site currently at that domain is backed up and then deleted; this site is renamed to it. If no site holds the domain (for example after a previous cutover attempt), the rename runs alone.'),
+    '#required' => TRUE,
+    '#weight' => -1,
+  );
+
+  $form['cutover_report'] = array(
+    '#type' => 'item',
+    '#title' => t('What happens'),
+    '#markup' => t('The current holder of the domain is re-checked when the task runs; its full backup is taken by the delete step and stays restorable. Encryption ends up disabled for the new name (certificates are name-bound) — re-enable it on this site afterwards. Custom aliases of the old site are not carried over. The domain is unserved while the rename completes: minutes that scale with the size of this site.'),
+  );
+
+  $form['#node'] = $node;
+  return $form;
+}
+
+/**
+ * Validation for the grav_cutover task confirmation form.
+ *
+ * The pre-task drush hook re-resolves the domain holder at execution time and
+ * the backend validates fail-closed; this front check exists so operator
+ * mistakes surface in the form, not minutes later in a red task log.
+ */
+function hosting_task_grav_cutover_form_validate($form, &$form_state) {
+  $site = $form['parameters']['#node'];
+  $params = $form_state['values']['parameters'];
+
+  $url = hosting_site_get_domain($params['target_domain']);
+  if (!_hosting_valid_fqdn($url)) {
+    form_set_error('parameters][target_domain', t('You have not specified a valid domain name.'));
+    return;
+  }
+  if ($url == hosting_site_get_domain($site->title)) {
+    form_set_error('parameters][target_domain', t('This site already answers at @domain.', array('@domain' => $url)));
+    return;
+  }
+
+  $holder = hosting_get_site_by_url($url);
+  if (is_object($holder)) {
+    if ($holder->nid == $site->nid) {
+      form_set_error('parameters][target_domain', t('@domain already belongs to this site (as an alias). Remove that alias from the site, then use Rename to make @domain its main domain.', array('@domain' => $url)));
+    }
+    elseif ($holder->nid == hosting_get_hostmaster_site_nid()) {
+      form_set_error('parameters][target_domain', t('@domain is the hosting front-end; it cannot be taken over.', array('@domain' => $url)));
+    }
+    elseif (hosting_site_get_domain($holder->title) != $url) {
+      form_set_error('parameters][target_domain', t('@domain is an alias of @site, not its main domain. Remove the alias there, or cut over to the main domain instead.', array('@domain' => $url, '@site' => hosting_site_get_domain($holder->title))));
+    }
+    elseif (!hosting_task_dangerous_task_is_allowed('delete', $holder->nid)) {
+      form_set_error('parameters][target_domain', t('@site is guarded against deletion; cutover would need to delete it.', array('@site' => hosting_site_get_domain($holder->title))));
+    }
+  }
+  else {
+    // Nobody holds the domain: cutover degrades to a plain rename, but the
+    // name must still be allowed (not held by a non-site record).
+    if (!hosting_domain_allowed($url)) {
+      form_set_error('parameters][target_domain', t('No site holds @domain but the name is not allowed.', array('@domain' => $url)));
+    }
+  }
 }
 
 /**
@@ -435,8 +996,8 @@ function hosting_grav_hosting_site_context_options(&$task) {
 /**
  * Implements hook_form_FORM_ID_alter().
  *
- * The clone and migrate dialogs ask which DATABASE SERVER the copy should
- * use (hosting_task_migrate_form(), reused verbatim by
+ * The clone, migrate and Grav copy-upgrade dialogs ask which DATABASE SERVER
+ * the copy should use (hosting_task_migrate_form(), reused verbatim by
  * hosting_task_clone_form()) and they offer every server that has an
  * available db service. On a panel that carries both a MySQL server and the
  * flat-file 'none' server, that control is a REQUIRED choice between two
@@ -468,12 +1029,14 @@ function hosting_grav_form_hosting_task_confirm_form_alter(&$form, &$form_state)
     return;
   }
 
-  if (($task == 'clone' || $task == 'migrate')
+  if (($task == 'clone' || $task == 'migrate' || $task == 'grav_copy_upgrade')
     && isset($node->platform) && hosting_grav_platform_is_grav($node->platform)) {
     // Pin the site's own db server. The element has to STAY PRESENT:
     // drush_hosting_clone_pre_hosting_task() and the post-task handlers read
     // $task->task_args['new_db_server'] unguarded, so dropping it turns
-    // every Grav clone into a notice and a wrong comparison.
+    // every Grav clone into a notice and a wrong comparison. The copy
+    // upgrade's own dialog already pins it; this is the shared belt, and it
+    // is what attaches the validation below to that dialog too.
     $form['parameters']['new_db_server'] = array(
       '#type' => 'value',
       '#value' => isset($node->db_server) ? $node->db_server : 0,
