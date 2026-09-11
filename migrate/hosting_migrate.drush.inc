@@ -26,9 +26,57 @@ function drush_hosting_migrate_pre_hosting_task($task) {
       $task->options['profile'] = $profile_instance->short_name;
     }
     else {
-      drush_set_error("HOSTING_NO_VALID_PROFILE", dt("There are no valid install profiles on the target platform to migrate to"));
+      drush_set_error("HOSTING_NO_VALID_PROFILE", _hosting_migrate_no_valid_profile_message($task, $platform));
     }
   }
+}
+
+/**
+ * Explain a missing install profile on the migrate/clone target platform.
+ *
+ * The error this replaces ("There are no valid install profiles on the
+ * target platform to migrate to") named neither the profile that is missing
+ * nor the one action that fixes it, so an operator reading the task log had
+ * nothing to act on. The usual cause is a target platform whose packages
+ * were never registered -- a platform that has not been verified since it
+ * was created, or whose verify failed -- and the profile the site needs is
+ * simply absent from the package list.
+ */
+function _hosting_migrate_no_valid_profile_message($task, $platform = NULL) {
+  $profile_name = '';
+  if (!empty($task->ref->profile)) {
+    $profile = node_load($task->ref->profile);
+    if (is_object($profile)) {
+      if (!empty($profile->short_name)) {
+        $profile_name = $profile->short_name;
+      }
+      elseif (!empty($profile->title)) {
+        $profile_name = $profile->title;
+      }
+    }
+  }
+  if ($profile_name === '') {
+    $profile_name = dt('required');
+  }
+
+  $platform_name = '';
+  if (is_object($platform) && !empty($platform->title)) {
+    $platform_name = $platform->title;
+  }
+  elseif (!empty($task->task_args['target_platform'])) {
+    $target = node_load($task->task_args['target_platform']);
+    if (is_object($target) && !empty($target->title)) {
+      $platform_name = $target->title;
+    }
+  }
+  if ($platform_name === '') {
+    $platform_name = dt('selected as the target');
+  }
+
+  return dt('The @profile install profile is not registered on the target platform @platform; run a Verify task on that platform first.', array(
+    '@profile' => $profile_name,
+    '@platform' => $platform_name,
+  ));
 }
 
 function _hosting_migrate_get_target_profile_name($task) {
