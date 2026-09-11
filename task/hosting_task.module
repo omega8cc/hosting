@@ -1826,6 +1826,9 @@ function _hosting_task_log_table($node, $last_position = 0) {
       elseif ($entry->type == 'warning') {
         $message = '<a name="warning"></a>' . $message;
       }
+      elseif ($entry->type == 'advisory') {
+        $message = '<a name="advisory"></a>' . $message;
+      }
 
       // Add the exec_time to the previous row
       $exec_time = $entry->timestamp - $last_timestamp;
@@ -1911,12 +1914,17 @@ function _hosting_task_log_table($node, $last_position = 0) {
 /**
  * Map entry statuses to coincide with our CSS classes.
  *
+ * 'advisory' joins 'cancel' and 'rollback' as a warning-COLOURED level that
+ * hosting_task_parse_log() does not read: the row stands out in the log
+ * without turning a successful task into a warning.
+ *
  * @todo make this irrelevant.
  * @see _drush_print_log()
  */
 function _hosting_task_log_class($type) {
   switch (strtolower($type)) {
     case 'warning':
+    case 'advisory':   // aegir-specific
     case 'cancel':
     case 'rollback':   // aegir-specific
       $type = 'warning';

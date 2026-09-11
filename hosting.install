@@ -633,3 +633,23 @@ function hosting_update_7304() {
     variable_set('hosting_task_logs_types_display', $display);
   }
 }
+
+/**
+ * Show the new 'advisory' log level on panels with a saved display filter.
+ *
+ * _hosting_task_log_table() renders only the types listed in
+ * hosting_task_logs_types_display. A panel that ran hosting_update_7304 (or
+ * saved the settings form once) carries a SAVED array of the types that
+ * existed then, so a newly introduced level is invisible in every task log
+ * until it is added — the operator sees a task with no explanation in it.
+ * Add the key, and only that key: types an operator deliberately deselected
+ * stay deselected. A panel that never ran 7304 still holds the legacy string
+ * and falls back to hosting_log_types(), which already lists 'advisory'.
+ */
+function hosting_update_7305() {
+  $display = variable_get('hosting_task_logs_types_display', NULL);
+  if (is_array($display) && !empty($display) && !isset($display['advisory'])) {
+    $display['advisory'] = 'advisory';
+    variable_set('hosting_task_logs_types_display', $display);
+  }
+}

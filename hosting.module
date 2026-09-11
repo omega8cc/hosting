@@ -1321,9 +1321,16 @@ function hosting_views_api() {
 
 /**
  * Return a list of log entry types.
+ *
+ * 'advisory' is a warning-coloured level that does NOT downgrade the task
+ * status: hosting_task_parse_log() turns any 'warning' row into a task
+ * status of "warning", which is wrong for a message that only tells the
+ * operator something about the result. Backend code that wants the colour
+ * without the verdict logs 'advisory' instead.
  */
 function hosting_log_types() {
   $known_types = [
+    'advisory',
     'error',
     'info',
     'message',
