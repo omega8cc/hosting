@@ -204,3 +204,56 @@ function hosting_txp_hosting_site_context_options(&$task) {
     $task->context_options['install_method'] = HOSTING_TXP_INSTALL_METHOD;
   }
 }
+
+/**
+ * Implements hook_hosting_tasks_alter().
+ *
+ * The backend refuses Migrate (and the rename it performs) for Textpattern
+ * sites, so the button must not be offered: a queued task that can only fail
+ * is worse than no button.
+ *
+ * Composition matters -- hosting_grav installs the same kind of wrapper on
+ * the same task. Whichever alter runs second has to wrap the first rather
+ * than replace it, so read the CURRENT callback here and remember it, and
+ * never assume the shipped default.
+ */
+function hosting_txp_hosting_tasks_alter(&$tasks) {
+  if (!isset($tasks['site']['migrate'])) {
+    return;
+  }
+  if (isset($tasks['site']['migrate']['access callback'])
+    && $tasks['site']['migrate']['access callback'] == 'hosting_txp_migrate_task_access') {
+    return;
+  }
+  if (!empty($tasks['site']['migrate']['access callback'])) {
+    $tasks['site']['migrate']['hosting_txp_prev_access'] = $tasks['site']['migrate']['access callback'];
+  }
+  $tasks['site']['migrate']['access callback'] = 'hosting_txp_migrate_task_access';
+}
+
+/**
+ * Access callback for the site migrate task.
+ *
+ * Denies Textpattern sites and delegates everything else to whichever
+ * callback was in place before this module wrapped it
+ * (hosting_task_menu_access() when nothing else had). Read at call time from
+ * the task registry, which is already built and statically cached by the time
+ * any access callback runs.
+ */
+function hosting_txp_migrate_task_access($node, $task) {
+  if (isset($node->type) && $node->type == 'site'
+    && isset($node->platform) && hosting_txp_platform_is_txp($node->platform)) {
+    return FALSE;
+  }
+
+  $previous = '';
+  $site_tasks = hosting_available_tasks('site');
+  if (isset($site_tasks[$task]['hosting_txp_prev_access'])) {
+    $previous = $site_tasks[$task]['hosting_txp_prev_access'];
+  }
+  if ($previous !== '' && $previous != 'hosting_txp_migrate_task_access' && function_exists($previous)) {
+    return $previous($node, $task);
+  }
+
+  return hosting_task_menu_access($node, $task);
+}
