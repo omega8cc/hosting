@@ -242,6 +242,52 @@ function hosting_txp_post_hosting_txp_rename_task($task, $data) {
 }
 
 /**
+ * Register the safety copy a task took, from either of its two exits.
+ *
+ * Every task in this family takes an archive of the site before it touches
+ * anything, and the archive is only reachable through the Restore task once
+ * it has a row on the site. The post-task hooks do that on the success exit;
+ * a task that errored never reaches them — Drush leaves the hook chain the
+ * moment the backend propagates an error and takes the rollback exit instead
+ * — which is precisely the exit on which the archive is the recovery. The
+ * rollback hooks below therefore register it too, so the operator is never
+ * sent to a Backups tab that has no such row. The archive path and its size
+ * are set by the backup the pre-hook ran, so both keys are in the backend
+ * output on both exits.
+ *
+ * @param object $task
+ *   The task node, carrying its ref and task_args.
+ * @param array $data
+ *   The backend output.
+ * @param string $description
+ *   The description the backup row is listed under.
+ */
+function _hosting_txp_register_safety_copy($task, $data, $description) {
+  if (!isset($task->ref) || $task->ref->type != 'site') {
+    return;
+  }
+  if (empty($data['context']['backup_file']) || !function_exists('hosting_site_post_hosting_backup_task')) {
+    return;
+  }
+  $task->task_args['description'] = $description;
+  hosting_site_post_hosting_backup_task($task, $data);
+}
+
+/**
+ * Implements hook_hosting_TASK_TYPE_task_rollback().
+ */
+function hosting_txp_hosting_txp_upgrade_task_rollback($task, $data) {
+  _hosting_txp_register_safety_copy($task, $data, t('Pre-upgrade backup'));
+}
+
+/**
+ * Implements hook_hosting_TASK_TYPE_task_rollback().
+ */
+function hosting_txp_hosting_txp_rename_task_rollback($task, $data) {
+  _hosting_txp_register_safety_copy($task, $data, t('Pre-rename backup'));
+}
+
+/**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
  * Cleans up the per-platform marker when a platform is deleted.
