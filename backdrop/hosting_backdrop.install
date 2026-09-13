@@ -17,10 +17,14 @@
  */
 function hosting_backdrop_enable() {
   // Grant the task permissions FIRST, before the sweep below queues anything
-  // (the hosting_grav shape). They cannot live in hosting_custom_settings for
-  // a gated module (its features dependency force-enabled hosting_backdrop on
-  // every box, defeating a sticky _BACKDROP_SUPPORT=NO), so they are
-  // self-contained here and die with the module. db_merge, not
+  // (the hosting_grav shape). The canonical, enforced list is the
+  // hosting_custom_settings user_permission export: it carries these grants
+  // without a features dependency (one force-enabled hosting_backdrop on
+  // every box, defeating a sticky _BACKDROP_SUPPORT=NO), and its alter hooks
+  // skip them wherever this module is disabled, so every features revert
+  // re-asserts them where the module runs. This seed makes the grants live
+  // the moment the module is enabled, ahead of the next revert, and dies
+  // with the module. db_merge, not
   // user_role_grant_permissions: at hook_enable time the dynamic task
   // permissions are not yet in user_permission_get_modules() (hosting builds
   // it from its task registry, rebuilt after enable), so the API call skips
