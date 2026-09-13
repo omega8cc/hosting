@@ -54,9 +54,12 @@ function hosting_grav_enable() {
 /**
  * Grant every Grav task permission to the panel's administrative roles.
  *
- * These cannot live in hosting_custom_settings for a gated module (a features
- * dependency there would force-enable hosting_grav and break ship-dark), so
- * they are self-contained here and die with the module. db_merge, not
+ * The canonical, enforced list is the hosting_custom_settings user_permission
+ * export: it carries these grants without a features dependency, and its
+ * alter hooks skip them wherever this module is disabled, so ship-dark holds
+ * and every features revert re-asserts them where the module runs. This seed
+ * makes the grants live the moment the module is enabled, ahead of the next
+ * revert, and dies with the module. db_merge, not
  * user_role_grant_permissions: at hook_enable time the dynamic task
  * permissions are not yet in user_permission_get_modules() (hosting builds
  * that from its task registry, rebuilt after enable), so the API call skips
