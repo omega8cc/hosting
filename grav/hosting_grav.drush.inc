@@ -22,6 +22,15 @@
  * post-task reads are normalised.
  */
 function drush_hosting_grav_pre_hosting_task($task) {
+  // The commandfile is discovered by path, not by module state: on a box
+  // without Grav support the module is disabled, its .module is never
+  // loaded, and every clone or migrate of ANY site would die here on the
+  // first call into it (seen on a 5.7 rig: 30 of 30 clone tasks failed with
+  // "Call to undefined function hosting_grav_platform_is_grav()"). The
+  // same guard hosting_alias's pre hook carries.
+  if (!module_exists('hosting_grav')) {
+    return;
+  }
   $task = &drush_get_context('HOSTING_TASK');
   if (!isset($task->ref) || !isset($task->ref->type) || $task->ref->type != 'site') {
     return;

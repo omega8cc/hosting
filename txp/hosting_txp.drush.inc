@@ -23,6 +23,12 @@
  * copy and is populated by its own helper.
  */
 function drush_hosting_txp_pre_hosting_task($task) {
+  // Discovered by path, not by module state (see hosting_grav's twin): a
+  // stale txp_* task on a box that disabled the module must not reach the
+  // .module helpers this hook's branches call.
+  if (!module_exists('hosting_txp')) {
+    return;
+  }
   $task = &drush_get_context('HOSTING_TASK');
   if (!isset($task->ref) || !isset($task->ref->type) || $task->ref->type != 'site') {
     return;
