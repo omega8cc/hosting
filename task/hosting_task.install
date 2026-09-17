@@ -425,6 +425,18 @@ function hosting_task_update_7303() {
 }
 
 /**
+ * Implements hook_install().
+ *
+ * A fresh install never runs the update that adds the queued_by column, so the
+ * boundary before which tasks read "not recorded" is set here as well.
+ */
+function hosting_task_install() {
+  if (!variable_get('hosting_task_queued_by_since', 0)) {
+    variable_set('hosting_task_queued_by_since', REQUEST_TIME);
+  }
+}
+
+/**
  * Record which panel login queued a task.
  *
  * A task's node author is the site owner whenever the queue, cron or a shell

@@ -15,13 +15,12 @@ class hosting_task_handler_field_queued_by extends views_handler_field {
     $this->additional_fields['created'] = array('table' => 'node', 'field' => 'created');
   }
 
-  function query() {
-    $this->ensure_my_table();
-    $this->add_additional_fields();
-  }
-
   function render($values) {
-    $created = isset($values->{$this->aliases['created']}) ? $values->{$this->aliases['created']} : 0;
-    return hosting_task_queued_by_label($values->{$this->field_alias}, $created);
+    $created = 0;
+    if (isset($this->aliases['created']) && isset($values->{$this->aliases['created']})) {
+      $created = $values->{$this->aliases['created']};
+    }
+    $queued_by = isset($values->{$this->field_alias}) ? $values->{$this->field_alias} : '';
+    return hosting_task_queued_by_label($queued_by, $created);
   }
 }
