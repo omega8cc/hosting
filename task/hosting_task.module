@@ -618,6 +618,12 @@ function hosting_task_retry($task_id) {
  */
 function hosting_task_queued_by() {
   global $user;
+  // The task runner logs the shell in as uid 1 (task.hosting.inc sets the
+  // 'user' option) before it queues follow-up tasks, so a shell context is
+  // the system whatever account it carries.
+  if (drupal_is_cli()) {
+    return '';
+  }
   if (!empty($user->uid) && !empty($user->name)) {
     return drupal_substr($user->name, 0, 60);
   }
