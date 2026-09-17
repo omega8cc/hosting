@@ -81,17 +81,31 @@ function hosting_task_menu() {
   $items['hosting/task/%node'] = array(
     'page callback' => 'node_page_view',
     'page arguments' => array(2),
-    'access arguments' => array('access task logs'),
+    'access callback' => 'hosting_task_log_access',
+    'access arguments' => array(2),
   );
 
   $items['hosting/task/log/ajax/%node/%/%'] = array(
     'page callback' => 'hosting_task_log_ajax',
     'page arguments' => array(4, 5, 6),
-    'access arguments' => array('access task logs'),
+    'access callback' => 'hosting_task_log_access',
+    'access arguments' => array(4),
     'delivery callback' => 'ajax_deliver',
   );
 
   return $items;
+}
+
+/**
+ * Access callback for the task page and its log feed.
+ *
+ * The permission alone let every holder of 'access task logs' read any task
+ * on the instance by nid, across clients: the node grants that confine a
+ * task to its site's client were never consulted on these two routes, and
+ * the first one renders whatever node the nid names.
+ */
+function hosting_task_log_access($node) {
+  return is_object($node) && user_access('access task logs') && node_access('view', $node);
 }
 
 /**
@@ -273,6 +287,12 @@ function hosting_task_cancel_access($node) {
 function hosting_task_menu_access($node, $task) {
   if (user_access("create " . $task . " task")) {
     if ($node->type == 'site') {
+      // The platform and server branches below check node access; the site
+      // branch never did, so any holder of a 'create <task> task' permission
+      // could task every site on the instance by nid, across clients.
+      if (!node_access('view', $node, $GLOBALS['user'])) {
+        return FALSE;
+      }
       if (hosting_task_outstanding($node->nid, 'delete') || ($node->site_status == HOSTING_SITE_DELETED)) {
         return FALSE;
       }
@@ -542,10 +562,34 @@ function hosting_task_log($vid, $type, $message, $error = '', $timestamp = NULL)
 }
 
 /**
+ * Whether the current user may retry (or run again) the given task.
+ *
+ * The same triple hosting_task_cancel_access() uses: the retry permission,
+ * the permission to create a task of that type, and view access to the node
+ * the task runs on. The retry form carries the task nid as a plain hidden
+ * value, so without this every holder of 'retry failed tasks' could re-queue
+ * any task of any type on any node by posting another nid.
+ */
+function hosting_task_retry_access($node) {
+  if (!is_object($node) || $node->type != 'task' || !user_access('retry failed tasks')) {
+    return FALSE;
+  }
+  if (user_access('administer tasks')) {
+    return TRUE;
+  }
+  $ref = node_load($node->rid);
+  return is_object($ref) && user_access('create ' . $node->task_type . ' task') && node_access('view', $ref);
+}
+
+/**
  * Retry the given task
  */
 function hosting_task_retry($task_id) {
   $node = node_load($task_id);
+  if (!hosting_task_retry_access($node)) {
+    drupal_access_denied();
+    drupal_exit();
+  }
   if ($node->task_status != HOSTING_TASK_QUEUED) {
     drupal_set_message(t("The task is being retried and has been added to the hosting queue again"));
     hosting_task_log($node->vid, 'queue', t("The task is being retried and has been added to the hosting queue again"));
@@ -1735,7 +1779,7 @@ function hosting_task_view($node, $view_mode, $langcode = NULL) {
   }
   $node->content['info']['#suffix'] = '</div>';
 
-  if (user_access('retry failed tasks') && (
+  if (hosting_task_retry_access($node) && (
       $node->task_status == HOSTING_TASK_ERROR ||
       $node->task_status == HOSTING_TASK_WARNING ||
       $node->task_status == HOSTING_TASK_SUCCESS
