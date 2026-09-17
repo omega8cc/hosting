@@ -53,6 +53,20 @@ function hosting_task_views_data() {
     ),
   );
 
+  $data['hosting_task']['queued_by'] = array(
+    'title' => t('Queued by'),
+    'help' => t('The panel login that queued the task; the system when the queue, cron or a shell command did.'),
+    'field' => array(
+      'handler' => 'hosting_task_handler_field_queued_by',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_string',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+  );
   $data['hosting_task']['task_status'] = array(
     'title' => t('Status'),
     'help' => t('Current status of the task.'),
