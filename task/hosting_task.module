@@ -1576,14 +1576,14 @@ function hosting_task_insert($node) {
   $node->executed = isset($node->executed) ? $node->executed : NULL;
   $node->delta = isset($node->delta) ? $node->delta : NULL;
   $fields = array(
-      'vid' => $node->vid,
-      'nid' => $node->nid,
-      'task_type' => $node->task_type,
-      'task_status' => $node->task_status,
-      'rid' => $node->rid,
-      'executed' => $node->executed,
-      'delta' => $node->delta,
-    );
+    'vid' => $node->vid,
+    'nid' => $node->nid,
+    'task_type' => $node->task_type,
+    'task_status' => $node->task_status,
+    'rid' => $node->rid,
+    'executed' => $node->executed,
+    'delta' => $node->delta,
+  );
   if (_hosting_task_has_queued_by()) {
     $fields['queued_by'] = isset($node->queued_by) ? $node->queued_by : '';
   }
