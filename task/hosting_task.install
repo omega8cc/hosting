@@ -51,6 +51,13 @@ function hosting_task_schema() {
         'default' => 0,
         'description' => 'Process ID of the drush runner executing this task revision; 0 when unknown. Lets the dispatcher tell an orphaned PROCESSING row from a live task.',
       ),
+      'queued_by' => array(
+        'type' => 'varchar',
+        'length' => 60,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Login name of the panel user who queued this task revision; empty when the queue, cron or a shell command queued it.',
+      ),
     ),
     'indexes' => array(
       'nid' => array('nid'),
@@ -414,5 +421,43 @@ function hosting_task_update_7303() {
       'default' => 0,
       'description' => 'Process ID of the drush runner executing this task revision; 0 when unknown. Lets the dispatcher tell an orphaned PROCESSING row from a live task.',
     ));
+  }
+}
+
+/**
+ * Implements hook_install().
+ *
+ * A fresh install never runs the update that adds the queued_by column, so the
+ * boundary before which tasks read "not recorded" is set here as well.
+ */
+function hosting_task_install() {
+  if (!variable_get('hosting_task_queued_by_since', 0)) {
+    variable_set('hosting_task_queued_by_since', REQUEST_TIME);
+  }
+}
+
+/**
+ * Record which panel login queued a task.
+ *
+ * A task's node author is the site owner whenever the queue, cron or a shell
+ * command queued it (hosting_add_task() falls back to the reference node's
+ * owner), so the author cannot tell a person's action from the system's. The
+ * new column carries the login name of the panel user who queued the task,
+ * empty for the system; the task page and the task lists show it. The time
+ * of this update is kept so older rows read "not recorded" rather than
+ * "the system".
+ */
+function hosting_task_update_7304() {
+  if (!db_field_exists('hosting_task', 'queued_by')) {
+    db_add_field('hosting_task', 'queued_by', array(
+      'type' => 'varchar',
+      'length' => 60,
+      'not null' => TRUE,
+      'default' => '',
+      'description' => 'Login name of the panel user who queued this task revision; empty when the queue, cron or a shell command queued it.',
+    ));
+  }
+  if (!variable_get('hosting_task_queued_by_since', 0)) {
+    variable_set('hosting_task_queued_by_since', REQUEST_TIME);
   }
 }

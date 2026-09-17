@@ -42,6 +42,7 @@ function hosting_task_views_default_views() {
     'task_status' => 'task_status',
     'title' => 'title',
     'task_type' => 'task_type',
+    'queued_by' => 'queued_by',
     'nid' => 'nid',
     'executed' => 'executed',
   );
@@ -64,6 +65,13 @@ function hosting_task_views_default_views() {
     'task_type' => array(
       'sortable' => 0,
       'default_sort_order' => 'desc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'queued_by' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
@@ -123,6 +131,11 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['task_type']['alter']['alter_text'] = TRUE;
   $handler->display->display_options['fields']['task_type']['alter']['text'] = '[task_type]: [canonical]';
   $handler->display->display_options['fields']['task_type']['element_class'] = 'hosting-status';
+  /* Field: Hosting Task: Queued by */
+  $handler->display->display_options['fields']['queued_by']['id'] = 'queued_by';
+  $handler->display->display_options['fields']['queued_by']['table'] = 'hosting_task';
+  $handler->display->display_options['fields']['queued_by']['field'] = 'queued_by';
+  $handler->display->display_options['fields']['queued_by']['label'] = 'Queued by';
   /* Field: Content: Nid */
   $handler->display->display_options['fields']['nid']['id'] = 'nid';
   $handler->display->display_options['fields']['nid']['table'] = 'node';
@@ -196,6 +209,7 @@ function hosting_task_views_default_views() {
     'task_status' => 'task_status',
     'title' => 'title',
     'task_type' => 'task_type',
+    'queued_by' => 'queued_by',
     'created' => 'created',
     'executed' => 'executed',
     'delta' => 'delta',
@@ -220,6 +234,13 @@ function hosting_task_views_default_views() {
     'task_type' => array(
       'sortable' => 1,
       'default_sort_order' => 'desc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'queued_by' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
@@ -294,6 +315,11 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['task_type']['alter']['alter_text'] = TRUE;
   $handler->display->display_options['fields']['task_type']['alter']['text'] = '[task_type]: [canonical]';
   $handler->display->display_options['fields']['task_type']['element_class'] = 'hosting-status';
+  /* Field: Hosting Task: Queued by */
+  $handler->display->display_options['fields']['queued_by']['id'] = 'queued_by';
+  $handler->display->display_options['fields']['queued_by']['table'] = 'hosting_task';
+  $handler->display->display_options['fields']['queued_by']['field'] = 'queued_by';
+  $handler->display->display_options['fields']['queued_by']['label'] = 'Queued by';
   /* Field: Content: Post date */
   $handler->display->display_options['fields']['created']['id'] = 'created';
   $handler->display->display_options['fields']['created']['table'] = 'node';
@@ -345,6 +371,7 @@ function hosting_task_views_default_views() {
     'task_status' => 'task_status',
     'title' => 'title',
     'task_type' => 'task_type',
+    'queued_by' => 'queued_by',
     'created' => 'created',
     'executed' => 'executed',
     'delta' => 'delta',
@@ -369,6 +396,13 @@ function hosting_task_views_default_views() {
     'task_type' => array(
       'sortable' => 1,
       'default_sort_order' => 'desc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'queued_by' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
@@ -444,6 +478,11 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['task_type']['alter']['alter_text'] = TRUE;
   $handler->display->display_options['fields']['task_type']['alter']['text'] = '[task_type]: [canonical]';
   $handler->display->display_options['fields']['task_type']['element_class'] = 'hosting-status';
+  /* Field: Hosting Task: Queued by */
+  $handler->display->display_options['fields']['queued_by']['id'] = 'queued_by';
+  $handler->display->display_options['fields']['queued_by']['table'] = 'hosting_task';
+  $handler->display->display_options['fields']['queued_by']['field'] = 'queued_by';
+  $handler->display->display_options['fields']['queued_by']['label'] = 'Queued by';
   /* Field: Content: Post date */
   $handler->display->display_options['fields']['created']['id'] = 'created';
   $handler->display->display_options['fields']['created']['table'] = 'node';
