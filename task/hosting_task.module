@@ -600,9 +600,51 @@ function hosting_task_retry($task_id) {
     $node->created = REQUEST_TIME;
     $node->changed = REQUEST_TIME;
     $node->task_status = HOSTING_TASK_QUEUED;
+    $node->queued_by = hosting_task_queued_by();
     node_save($node);
     drupal_goto("node/{$node->nid}");
   }
+}
+
+/**
+ * The login name to record as the queuer of a task.
+ *
+ * Empty when no panel user is behind the request: the queue, cron and shell
+ * commands run as the anonymous user, and the node author they fall back to
+ * (the reference node's owner) says nothing about who acted.
+ *
+ * @return string
+ *   The current user's login name, or '' for the system.
+ */
+function hosting_task_queued_by() {
+  global $user;
+  if (!empty($user->uid) && !empty($user->name)) {
+    return drupal_substr($user->name, 0, 60);
+  }
+  return '';
+}
+
+/**
+ * What the panel shows as the queuer of a task.
+ *
+ * @param string $queued_by
+ *   The recorded login name, possibly empty.
+ * @param int $created
+ *   The task's creation time.
+ *
+ * @return string
+ *   Safe markup: the login name, "the system" for a task the queue, cron or a
+ *   shell command queued, or "not recorded" for a task older than the column.
+ */
+function hosting_task_queued_by_label($queued_by, $created) {
+  if (!empty($queued_by)) {
+    return check_plain($queued_by);
+  }
+  $since = variable_get('hosting_task_queued_by_since', 0);
+  if (!$since || (!empty($created) && $created < $since)) {
+    return t('not recorded');
+  }
+  return t('the system');
 }
 
 /**
@@ -649,6 +691,7 @@ function hosting_add_task($nid, $type, $args = NULL, $status = HOSTING_TASK_QUEU
    * user, but for which the node is set to the right user
    */
   $task->uid = $user->uid ? $user->uid : $node->uid;
+  $task->queued_by = hosting_task_queued_by();
   $task->status = 1;
   $task->task_status = $status;
   if ($status == HOSTING_TASK_QUEUED) {
@@ -1520,6 +1563,7 @@ function hosting_task_insert($node) {
       'rid' => $node->rid,
       'executed' => $node->executed,
       'delta' => $node->delta,
+      'queued_by' => isset($node->queued_by) ? $node->queued_by : '',
     ))
     ->execute();
 
@@ -1560,6 +1604,7 @@ function hosting_task_update($node) {
         'rid' => $node->rid,
         'executed' => $node->executed,
         'delta' => $node->delta,
+        'queued_by' => isset($node->queued_by) ? $node->queued_by : '',
       ))
       ->condition('vid', $node->vid)
       ->execute();
@@ -1633,7 +1678,7 @@ function hosting_task_load($nodes) {
   // Invoke hook_hosting_tasks_alter().
   drupal_alter('hosting_tasks', $types);
   foreach ($nodes as $nid => &$node) {
-    $additions = db_query('SELECT task_type, executed, delta, rid, task_status, r.type as ref_type FROM {hosting_task} t LEFT JOIN {node} r ON t.rid = r.nid WHERE t.vid = :vid', array(':vid' => $node->vid))->fetch();
+    $additions = db_query('SELECT task_type, executed, delta, rid, task_status, queued_by, r.type as ref_type FROM {hosting_task} t LEFT JOIN {node} r ON t.rid = r.nid WHERE t.vid = :vid', array(':vid' => $node->vid))->fetch();
     $result = db_query("SELECT name, value FROM {hosting_task_arguments} WHERE vid = :vid", array(':vid' => $node->vid));
     if (!empty($additions) && !empty($result)) {
       $additions->task_args = array();
@@ -1728,6 +1773,12 @@ function hosting_task_view($node, $view_mode, $langcode = NULL) {
     '#type' => 'item',
     '#title' => drupal_ucfirst($ref->type),
     '#markup' => _hosting_node_link($node->rid),
+  );
+  $node->content['info']['queued_by'] = array(
+    '#type' => 'item',
+    '#title' => t('Queued by'),
+    '#markup' => hosting_task_queued_by_label($node->queued_by, $node->created),
+    '#weight' => 0,
   );
 
   if ($node->task_status != HOSTING_TASK_QUEUED) {
