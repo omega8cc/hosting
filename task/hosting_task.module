@@ -1881,7 +1881,7 @@ function hosting_task_view($node, $view_mode, $langcode = NULL) {
     $node->content['info']['notexecuted'] = array(
       '#type' => 'item',
       '#title' => t('This task has not been processed yet'),
-      '#markup' => t('It will be processed around %date, if the queue is not too crowded. The queue is currently run every %freq, was last run %last and processes %items items at a time. Server time is %time.', array('%freq' => format_interval($queue['frequency']), '%date' => format_date($next, 'custom', 'H:i:sO'), '%last' => hosting_format_interval($queue['last_run']), '%items' => $queue['items'], '%time' => format_date(REQUEST_TIME, 'custom', 'H:i:sO'))),
+      '#markup' => t('It will be processed around %date, if the queue is not too crowded. The queue is currently run every %freq (last run: %last) and processes %items items at a time. Server time is %time.', array('%freq' => format_interval($queue['frequency']), '%date' => format_date($next, 'custom', 'H:i:sO'), '%last' => hosting_format_interval($queue['last_run']), '%items' => $queue['items'], '%time' => format_date(REQUEST_TIME, 'custom', 'H:i:sO'))),
     );
   }
   if ($node->task_status) {
@@ -2425,7 +2425,7 @@ function _hosting_task_list($filter_by, $filter_value, $count = 5, $element = 0,
       );
 
       if (!in_array('created', $skip)) {
-        $row['created'] = t("@interval ago", array('@interval' => format_interval(REQUEST_TIME - $node->created, 1)));
+        $row['created'] = format_interval(REQUEST_TIME - $node->created, 1);
         $headers[t('Created')] = '';
       }
 
@@ -2433,7 +2433,7 @@ function _hosting_task_list($filter_by, $filter_value, $count = 5, $element = 0,
         $row['executed'] = '';
       }
       else {
-        $row['executed'] = t("@interval ago", array('@interval' => format_interval(REQUEST_TIME - $node->changed, 1)));
+        $row['executed'] = format_interval(REQUEST_TIME - $node->changed, 1);
       }
       $headers[t('Executed')] = '';
 

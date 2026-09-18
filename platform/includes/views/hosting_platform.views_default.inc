@@ -284,7 +284,7 @@ function hosting_platform_views_default_views() {
   $handler->display->display_options['fields']['verified']['table'] = 'hosting_platform';
   $handler->display->display_options['fields']['verified']['field'] = 'verified';
   $handler->display->display_options['fields']['verified']['label'] = 'Verified';
-  $handler->display->display_options['fields']['verified']['date_format'] = 'time ago';
+  $handler->display->display_options['fields']['verified']['date_format'] = 'raw time ago';
   /* Field: Hosting Platform: Sites */
   $handler->display->display_options['fields']['sites']['id'] = 'sites';
   $handler->display->display_options['fields']['sites']['table'] = 'hosting_platform';

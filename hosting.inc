@@ -143,8 +143,9 @@ function _hosting_valid_fqdn_ip($fqdn) {
  *   Returns a string representing the given timestamp:
  *   - If the timestamp is the current time: 'Now'.
  *   - If the timestamp is 0 or FALSE: 'Never'
- *   - Otherwise formatted as 'X ago' where 'X' is for example 1 year or 1
- *     minute etc.
+ *   - Otherwise the bare interval, for example 1 year or 1 minute: the panel
+ *     shows every elapsed time without a trailing 'ago', in its lists and on
+ *     its node pages alike.
  *
  * @see format_interval()
  */
@@ -157,7 +158,7 @@ function hosting_format_interval($ts) {
     return t('Never');
   }
 
-  return t("@interval ago", array("@interval" => format_interval(REQUEST_TIME - $ts, 1)));
+  return format_interval(REQUEST_TIME - $ts, 1);
 }
 
 /**
