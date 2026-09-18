@@ -5,7 +5,7 @@
  */
 
 /**
- * Renders hosting_task.queued_by the way the task page does.
+ * Renders hosting_task.queued_by in the one-line form the task lists use.
  *
  * @ingroup views_field_handlers
  */
@@ -21,6 +21,6 @@ class hosting_task_handler_field_queued_by extends views_handler_field {
       $created = $values->{$this->aliases['created']};
     }
     $queued_by = isset($values->{$this->field_alias}) ? $values->{$this->field_alias} : '';
-    return hosting_task_queued_by_label($queued_by, $created);
+    return hosting_task_queued_by_short($queued_by, $created);
   }
 }

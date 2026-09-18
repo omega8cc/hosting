@@ -669,6 +669,35 @@ function hosting_task_queued_by_label($queued_by, $created) {
 }
 
 /**
+ * The queuer of a task as the task lists show it.
+ *
+ * The lists keep every row on one line, so the two fixed readings shrink to
+ * an abbreviation; the full wording, or the full login a narrow column
+ * clips, stays one hover away in the title.
+ *
+ * @param string $queued_by
+ *   The recorded login name, possibly empty.
+ * @param int $created
+ *   The task's creation time.
+ *
+ * @return string
+ *   Safe markup.
+ */
+function hosting_task_queued_by_short($queued_by, $created) {
+  $full = hosting_task_queued_by_label($queued_by, $created);
+  if (!empty($queued_by)) {
+    $short = $full;
+  }
+  elseif ($full == t('the system')) {
+    $short = t('sys');
+  }
+  else {
+    $short = t('n/a');
+  }
+  return '<span title="' . $full . '">' . $short . '</span>';
+}
+
+/**
  * Helper function to generate new task node
  */
 function hosting_add_task($nid, $type, $args = NULL, $status = HOSTING_TASK_QUEUED) {
