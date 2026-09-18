@@ -82,6 +82,29 @@ td.hosting-actions .hosting-button-disabled {
   text-transform: none;
 }
 
+/* One line per task. The view trims a long name the way the sites list
+   trims its platform column; this is the backstop for a window too narrow
+   even for the trimmed name: no cell wraps, and the task name is the one
+   that gives. A zero max-width with a full width hands the name whatever
+   the other columns leave; the full name stays in the cell's title. */
+.view-hosting-task-list table.views-table th,
+.view-hosting-task-list table.views-table td {
+  white-space: nowrap;
+}
+
+.view-hosting-task-list table.views-table td.views-field-task-type {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.view-hosting-task-list table.views-table td.views-field-queued-by {
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /**
  * Status icons, colors.
  */
