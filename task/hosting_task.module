@@ -2425,7 +2425,7 @@ function _hosting_task_list($filter_by, $filter_value, $count = 5, $element = 0,
       );
 
       if (!in_array('created', $skip)) {
-        $row['created'] = t("@interval ago", array('@interval' => format_interval(REQUEST_TIME - $node->created, 1)));
+        $row['created'] = format_interval(REQUEST_TIME - $node->created, 1);
         $headers[t('Created')] = '';
       }
 
@@ -2433,7 +2433,7 @@ function _hosting_task_list($filter_by, $filter_value, $count = 5, $element = 0,
         $row['executed'] = '';
       }
       else {
-        $row['executed'] = t("@interval ago", array('@interval' => format_interval(REQUEST_TIME - $node->changed, 1)));
+        $row['executed'] = format_interval(REQUEST_TIME - $node->changed, 1);
       }
       $headers[t('Executed')] = '';
 
