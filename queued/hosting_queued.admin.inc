@@ -51,7 +51,7 @@ function hosting_queued_settings_form($form, &$form_state) {
   $form['hosting_queued_process_started'] = array(
     '#type' => 'item',
     '#title' => t('Runner status'),
-    '#markup' => !empty($last_seen) ? t('Last started: @interval.', array('@interval' => format_interval(REQUEST_TIME - $last_seen))) : t('Never started.'),
+    '#markup' => !empty($last_seen) ? t('Last started: @interval ago.', array('@interval' => format_interval(REQUEST_TIME - $last_seen))) : t('Never started.'),
   );
 
   $form['hosting_queued_post_task_delay'] = array(

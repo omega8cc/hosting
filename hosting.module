@@ -609,7 +609,7 @@ function hosting_queue_summary_block() {
         'last_run' => t('Last run'),
       ) as $key => $title) {
         if ($key == 'last_run') {
-          $info[$key] = hosting_format_interval($info[$key]);
+          $info[$key] = hosting_format_interval($info[$key], FALSE);
         }
         elseif ($key == 'frequency') {
           $info[$key] = t('every @interval', array('@interval' => format_interval($info[$key])));
@@ -908,7 +908,7 @@ function hosting_queues_configure($form, &$form_state) {
     );
 
     $form[$queue]["last_run"] = array(
-      '#markup' => hosting_format_interval(variable_get('hosting_queue_' . $queue . '_last_run', FALSE)),
+      '#markup' => hosting_format_interval(variable_get('hosting_queue_' . $queue . '_last_run', FALSE), FALSE),
     );
     $form[$queue]['frequency']['#prefix'] = "<div class='hosting-queue-frequency'>";
     $form[$queue]['frequency']['#suffix'] = "</div>";

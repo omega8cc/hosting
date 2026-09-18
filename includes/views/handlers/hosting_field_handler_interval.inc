@@ -9,7 +9,7 @@ class hosting_field_handler_interval extends views_handler_field {
 
   function render($values) {
     $value = $values->{$this->field_alias};
-    return hosting_format_interval($value);
+    return hosting_format_interval($value, FALSE);
   }
 
 }
