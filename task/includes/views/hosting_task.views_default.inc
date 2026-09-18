@@ -42,7 +42,6 @@ function hosting_task_views_default_views() {
     'task_status' => 'task_status',
     'title' => 'title',
     'task_type' => 'task_type',
-    'queued_by' => 'queued_by',
     'nid' => 'nid',
     'executed' => 'executed',
   );
@@ -65,13 +64,6 @@ function hosting_task_views_default_views() {
     'task_type' => array(
       'sortable' => 0,
       'default_sort_order' => 'desc',
-      'align' => '',
-      'separator' => '',
-      'empty_column' => 0,
-    ),
-    'queued_by' => array(
-      'sortable' => 0,
-      'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
@@ -108,6 +100,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['title']['table'] = 'node';
   $handler->display->display_options['fields']['title']['field'] = 'title';
   $handler->display->display_options['fields']['title']['relationship'] = 'rid';
+  $handler->display->display_options['fields']['title']['link_to_node'] = FALSE;
   $handler->display->display_options['fields']['title']['exclude'] = TRUE;
   /* Field: Content: Path */
   $handler->display->display_options['fields']['path']['id'] = 'path';
@@ -122,6 +115,8 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['canonical']['relationship'] = 'rid';
   $handler->display->display_options['fields']['canonical']['exclude'] = TRUE;
   $handler->display->display_options['fields']['canonical']['alter']['make_link'] = TRUE;
+  $handler->display->display_options['fields']['canonical']['alter']['max_length'] = '30';
+  $handler->display->display_options['fields']['canonical']['alter']['trim'] = TRUE;
   $handler->display->display_options['fields']['canonical']['alter']['path'] = '[path]';
   /* Field: Hosting Task: Type */
   $handler->display->display_options['fields']['task_type']['id'] = 'task_type';
@@ -129,13 +124,8 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['task_type']['field'] = 'task_type';
   $handler->display->display_options['fields']['task_type']['label'] = 'Task';
   $handler->display->display_options['fields']['task_type']['alter']['alter_text'] = TRUE;
-  $handler->display->display_options['fields']['task_type']['alter']['text'] = '[task_type]: [canonical]';
+  $handler->display->display_options['fields']['task_type']['alter']['text'] = '<span title="[title]">[task_type]: [canonical]</span>';
   $handler->display->display_options['fields']['task_type']['element_class'] = 'hosting-status';
-  /* Field: Hosting Task: Queued by */
-  $handler->display->display_options['fields']['queued_by']['id'] = 'queued_by';
-  $handler->display->display_options['fields']['queued_by']['table'] = 'hosting_task';
-  $handler->display->display_options['fields']['queued_by']['field'] = 'queued_by';
-  $handler->display->display_options['fields']['queued_by']['label'] = 'Queued by';
   /* Field: Content: Nid */
   $handler->display->display_options['fields']['nid']['id'] = 'nid';
   $handler->display->display_options['fields']['nid']['table'] = 'node';
@@ -291,6 +281,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['title']['table'] = 'node';
   $handler->display->display_options['fields']['title']['field'] = 'title';
   $handler->display->display_options['fields']['title']['relationship'] = 'rid';
+  $handler->display->display_options['fields']['title']['link_to_node'] = FALSE;
   $handler->display->display_options['fields']['title']['exclude'] = TRUE;
   $handler->display->display_options['fields']['title']['element_class'] = 'hosting-status';
   /* Field: Content: Path */
@@ -306,6 +297,8 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['canonical']['relationship'] = 'rid';
   $handler->display->display_options['fields']['canonical']['exclude'] = TRUE;
   $handler->display->display_options['fields']['canonical']['alter']['make_link'] = TRUE;
+  $handler->display->display_options['fields']['canonical']['alter']['max_length'] = '40';
+  $handler->display->display_options['fields']['canonical']['alter']['trim'] = TRUE;
   $handler->display->display_options['fields']['canonical']['alter']['path'] = '[path]';
   /* Field: Hosting Task: Type */
   $handler->display->display_options['fields']['task_type']['id'] = 'task_type';
@@ -313,24 +306,24 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['task_type']['field'] = 'task_type';
   $handler->display->display_options['fields']['task_type']['label'] = 'Task';
   $handler->display->display_options['fields']['task_type']['alter']['alter_text'] = TRUE;
-  $handler->display->display_options['fields']['task_type']['alter']['text'] = '[task_type]: [canonical]';
+  $handler->display->display_options['fields']['task_type']['alter']['text'] = '<span title="[title]">[task_type]: [canonical]</span>';
   $handler->display->display_options['fields']['task_type']['element_class'] = 'hosting-status';
   /* Field: Hosting Task: Queued by */
   $handler->display->display_options['fields']['queued_by']['id'] = 'queued_by';
   $handler->display->display_options['fields']['queued_by']['table'] = 'hosting_task';
   $handler->display->display_options['fields']['queued_by']['field'] = 'queued_by';
-  $handler->display->display_options['fields']['queued_by']['label'] = 'Queued by';
+  $handler->display->display_options['fields']['queued_by']['label'] = 'By';
   /* Field: Content: Post date */
   $handler->display->display_options['fields']['created']['id'] = 'created';
   $handler->display->display_options['fields']['created']['table'] = 'node';
   $handler->display->display_options['fields']['created']['field'] = 'created';
   $handler->display->display_options['fields']['created']['label'] = 'Created';
-  $handler->display->display_options['fields']['created']['date_format'] = 'time ago';
+  $handler->display->display_options['fields']['created']['date_format'] = 'raw time ago';
   /* Field: Hosting Task: Executed */
   $handler->display->display_options['fields']['executed']['id'] = 'executed';
   $handler->display->display_options['fields']['executed']['table'] = 'hosting_task';
   $handler->display->display_options['fields']['executed']['field'] = 'executed';
-  $handler->display->display_options['fields']['executed']['date_format'] = 'time ago';
+  $handler->display->display_options['fields']['executed']['date_format'] = 'raw time ago';
   /* Field: Hosting Task: Execution time */
   $handler->display->display_options['fields']['delta']['id'] = 'delta';
   $handler->display->display_options['fields']['delta']['table'] = 'hosting_task';
@@ -454,6 +447,7 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['title']['table'] = 'node';
   $handler->display->display_options['fields']['title']['field'] = 'title';
   $handler->display->display_options['fields']['title']['relationship'] = 'rid';
+  $handler->display->display_options['fields']['title']['link_to_node'] = FALSE;
   $handler->display->display_options['fields']['title']['exclude'] = TRUE;
   $handler->display->display_options['fields']['title']['element_class'] = 'hosting-status';
   /* Field: Content: Path */
@@ -469,6 +463,8 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['canonical']['relationship'] = 'rid';
   $handler->display->display_options['fields']['canonical']['exclude'] = TRUE;
   $handler->display->display_options['fields']['canonical']['alter']['make_link'] = TRUE;
+  $handler->display->display_options['fields']['canonical']['alter']['max_length'] = '40';
+  $handler->display->display_options['fields']['canonical']['alter']['trim'] = TRUE;
   $handler->display->display_options['fields']['canonical']['alter']['path'] = 'path';
   /* Field: Hosting Task: Type */
   $handler->display->display_options['fields']['task_type']['id'] = 'task_type';
@@ -476,24 +472,24 @@ function hosting_task_views_default_views() {
   $handler->display->display_options['fields']['task_type']['field'] = 'task_type';
   $handler->display->display_options['fields']['task_type']['label'] = 'Task';
   $handler->display->display_options['fields']['task_type']['alter']['alter_text'] = TRUE;
-  $handler->display->display_options['fields']['task_type']['alter']['text'] = '[task_type]: [canonical]';
+  $handler->display->display_options['fields']['task_type']['alter']['text'] = '<span title="[title]">[task_type]: [canonical]</span>';
   $handler->display->display_options['fields']['task_type']['element_class'] = 'hosting-status';
   /* Field: Hosting Task: Queued by */
   $handler->display->display_options['fields']['queued_by']['id'] = 'queued_by';
   $handler->display->display_options['fields']['queued_by']['table'] = 'hosting_task';
   $handler->display->display_options['fields']['queued_by']['field'] = 'queued_by';
-  $handler->display->display_options['fields']['queued_by']['label'] = 'Queued by';
+  $handler->display->display_options['fields']['queued_by']['label'] = 'By';
   /* Field: Content: Post date */
   $handler->display->display_options['fields']['created']['id'] = 'created';
   $handler->display->display_options['fields']['created']['table'] = 'node';
   $handler->display->display_options['fields']['created']['field'] = 'created';
   $handler->display->display_options['fields']['created']['label'] = 'Created';
-  $handler->display->display_options['fields']['created']['date_format'] = 'time ago';
+  $handler->display->display_options['fields']['created']['date_format'] = 'raw time ago';
   /* Field: Hosting Task: Executed */
   $handler->display->display_options['fields']['executed']['id'] = 'executed';
   $handler->display->display_options['fields']['executed']['table'] = 'hosting_task';
   $handler->display->display_options['fields']['executed']['field'] = 'executed';
-  $handler->display->display_options['fields']['executed']['date_format'] = 'time ago';
+  $handler->display->display_options['fields']['executed']['date_format'] = 'raw time ago';
   /* Field: Hosting Task: Execution time */
   $handler->display->display_options['fields']['delta']['id'] = 'delta';
   $handler->display->display_options['fields']['delta']['table'] = 'hosting_task';
