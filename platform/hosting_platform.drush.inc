@@ -118,7 +118,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
       }
     }
 
-    // Refresh the platform's revert-artifact leftover list (D-035) from the
+    // Refresh the platform's revert-artifact leftover list from the
     // same backend sites scan the auto-import loop consumes. Recording them
     // is what makes the "Import leftover" platform task able to offer them;
     // the list self-heals (a leftover removed out-of-band disappears on the
@@ -202,7 +202,7 @@ function hosting_platform_post_hosting_delete_task($task, $data) {
     ->execute();
   // Clean up package instances.
   hosting_package_instance_sync($task->ref->nid, 'platform');
-  // Drop the recorded revert-artifact leftover list (D-035), and retire any
+  // Drop the recorded revert-artifact leftover list, and retire any
   // leftover pseudo-sites still exposed on this platform: their purge task
   // dispatches against the platform context, which no longer exists, so a
   // surviving pseudo-site would be a permanently un-retirable dead-end. The
@@ -253,7 +253,7 @@ function hosting_platform_post_hosting_unlock_task($task, $data) {
 /**
  * Implements drush_HOOK_pre_hosting_task().
  *
- * Populates the backend invocation for the leftover_import task (D-035): the
+ * Populates the backend invocation for the leftover_import task: the
  * task rides its platform node's own context — only the leftover name needs
  * forwarding. Fail-closed re-checks: the name must still be in the platform's
  * recorded list (a purge or manual cleanup since form time makes the task
@@ -288,7 +288,7 @@ function drush_hosting_platform_pre_hosting_task($task) {
 /**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
- * Registers the pseudo-site node for an exposed leftover (D-035). The node is
+ * Registers the pseudo-site node for an exposed leftover. The node is
  * a regular hosting_site record so it appears in the UI (badged and marked),
  * but it is created DISABLED with no_auto_task (context registered, no
  * install/import queued — there is nothing to install) and with SSL/cron

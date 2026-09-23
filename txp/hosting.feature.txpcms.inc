@@ -14,7 +14,7 @@ function hosting_txp_hosting_feature() {
   // commandfile-discovery basename blacklist — the key 'txp' would skip the
   // .drush/sys/provision/txp/ engine layer on every backend Drush call
   // whenever the feature is off, silently routing existing Textpattern
-  // platforms through the Drupal paths (the D-023 lesson).
+  // platforms through the Drupal paths (as the old 'backdrop' key once did).
   $features['txpcms'] = array(
     'title' => t('Textpattern CMS platforms'),
     'description' => t('Treat Textpattern codebases as a first-class platform type: partition Textpattern and Drupal platforms at site creation, and install Textpattern sites as multisite entries through the TXP path.'),

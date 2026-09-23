@@ -10,7 +10,7 @@
  * "no database" server selectable; its context writes the literal
  * db_service_type = 'NONE', which Provision_Context_server::spawn_service()
  * maps to Provision_Service_null — every backend db call becomes a silent
- * no-op (boa-grav map par.1.3). Phase 2 (KahunaCart on MySQL) is then
+ * no-op. Phase 2 (KahunaCart on MySQL) is then
  * "repoint db_server at a real MySQL node".
  */
 

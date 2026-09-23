@@ -307,7 +307,7 @@ function hosting_task_menu_access($node, $task) {
         }
       }
 
-      // Leftover pseudo-sites (exposed revert artifacts, D-035) support
+      // Leftover pseudo-sites (exposed revert artifacts) support
       // exactly ONE action: their purge task. Enable would dispatch against
       // a backend context that does not exist and the standard delete is the
       // wrong remover — hosting_site's leftover_purge access callback owns
@@ -346,7 +346,7 @@ function hosting_task_menu_access($node, $task) {
         return FALSE;
       }
       // If the platform's been locked, we can unlock it, delete, batch migrate existing sites or verify.
-      // leftover_import (exposing a stranded revert artifact, D-035) is
+      // leftover_import (exposing a stranded revert artifact) is
       // housekeeping and stays available in both states.
       if ($node->platform_status == HOSTING_PLATFORM_LOCKED) {
         $platform_tasks = array('verify', 'unlock', 'delete', 'migrate', 'dlock', 'dunlock', 'leftover_import');
@@ -1786,6 +1786,18 @@ function hosting_task_retry_form_submit($form, &$form_state) {
 }
 
 /**
+ * Whether the current user may update the status of the given task.
+ *
+ * The update-status form carries the task vid as a plain hidden value, and a
+ * task with no log yet parses as successful, so without this every holder of
+ * 'update status of tasks' could mark any task on the instance done, a queued
+ * one on another client's site included, by posting another vid.
+ */
+function hosting_task_update_status_access($node) {
+  return is_object($node) && $node->type == 'task' && user_access('update status of tasks') && node_access('view', $node);
+}
+
+/**
  * Adds button to update the status of task nodes stuck in the 'processing' state.
  */
 function hosting_task_update_status_form($form, &$form_state, $vid) {
@@ -1806,7 +1818,18 @@ function hosting_task_update_status_form($form, &$form_state, $vid) {
  * Submit handler for the 'update status' button.
  */
 function hosting_task_update_status_form_submit($form, &$form_state) {
-  hosting_task_update_status($form_state['values']['task']);
+  $task = node_load(NULL, $form_state['values']['task']);
+  if (!hosting_task_update_status_access($task)) {
+    drupal_access_denied();
+    drupal_exit();
+  }
+  // The button is offered on a processing task only: a task that has since
+  // finished keeps the status its run gave it, and a queued one is not marked
+  // done in place of a cancel.
+  if ($task->task_status != HOSTING_TASK_PROCESSING) {
+    return;
+  }
+  hosting_task_update_status($task);
   if (module_exists('overlay')) {
     overlay_close_dialog();
   }
@@ -1909,7 +1932,7 @@ function hosting_task_view($node, $view_mode, $langcode = NULL) {
     }
   }
 
-  if (user_access('update status of tasks') && ($node->task_status == HOSTING_TASK_PROCESSING)) {
+  if (hosting_task_update_status_access($node) && ($node->task_status == HOSTING_TASK_PROCESSING)) {
     $node->content['update-status'] = array(
       'form' => drupal_get_form('hosting_task_update_status_form', $node->vid),
       '#weight' => 5,

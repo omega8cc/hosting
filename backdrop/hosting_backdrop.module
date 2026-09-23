@@ -728,7 +728,7 @@ function hosting_backdrop_post_hosting_backdrop_upgrade_task($task, $data) {
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
  * Creates the frontend node for the DARK Drupal 7 intermediate produced by
- * the backdrop_d6_upgrade task (D-026: an inspectable hostmaster node with
+ * the backdrop_d6_upgrade task (an inspectable hostmaster node with
  * clone/import posture). Same explicit dark states as the Backdrop upgrade
  * post-task: SSL/LE disabled, cron off, import=1 so the queued import flips
  * the node ENABLED once the backend context reports the site installed.
