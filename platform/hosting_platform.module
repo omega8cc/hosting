@@ -159,7 +159,7 @@ function hosting_platform_hosting_tasks() {
 }
 
 /**
- * Return the recorded revert-artifact leftover list for a platform (D-035).
+ * Return the recorded revert-artifact leftover list for a platform.
  *
  * Recorded by hosting_platform_post_hosting_verify_task() from the backend
  * sites scan; the auto-import loop skips these names instead of adopting

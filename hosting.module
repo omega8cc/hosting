@@ -1237,7 +1237,7 @@ function hosting_context_name($nid) {
  * The .restore suffix is the deploy swap-staging path (deploy.provision.inc,
  * Drupal and Backdrop layers alike); .original is matched as the historical
  * sibling of the same artifact class. Deliberately broad (case-insensitive
- * suffix only): this is the "never adopt as a site" predicate (D-035).
+ * suffix only): this is the "never adopt as a site" predicate.
  *
  * @param string $name
  *   The candidate name.

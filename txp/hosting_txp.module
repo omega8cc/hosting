@@ -23,7 +23,7 @@
  *    what txp_upgrade does. There is nothing to upgrade in place.
  *
  * Plain D7 idiom throughout because Hostmaster IS Drupal 7 — not for
- * PHP-floor reasons (TXP's own floor is 8.4, boa-txp D-008).
+ * PHP-floor reasons (TXP's own floor is 8.4).
  */
 
 /**
