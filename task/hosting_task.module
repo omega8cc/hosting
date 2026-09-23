@@ -307,7 +307,7 @@ function hosting_task_menu_access($node, $task) {
         }
       }
 
-      // Leftover pseudo-sites (exposed revert artifacts, D-035) support
+      // Leftover pseudo-sites (exposed revert artifacts) support
       // exactly ONE action: their purge task. Enable would dispatch against
       // a backend context that does not exist and the standard delete is the
       // wrong remover — hosting_site's leftover_purge access callback owns
@@ -346,7 +346,7 @@ function hosting_task_menu_access($node, $task) {
         return FALSE;
       }
       // If the platform's been locked, we can unlock it, delete, batch migrate existing sites or verify.
-      // leftover_import (exposing a stranded revert artifact, D-035) is
+      // leftover_import (exposing a stranded revert artifact) is
       // housekeeping and stays available in both states.
       if ($node->platform_status == HOSTING_PLATFORM_LOCKED) {
         $platform_tasks = array('verify', 'unlock', 'delete', 'migrate', 'dlock', 'dunlock', 'leftover_import');

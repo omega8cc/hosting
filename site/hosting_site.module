@@ -366,7 +366,7 @@ function hosting_site_hosting_tasks() {
 }
 
 /**
- * Determine whether a site node is a leftover pseudo-site (D-035).
+ * Determine whether a site node is a leftover pseudo-site.
  *
  * A pseudo-site is an exposed revert artifact (sites/<site>.restore stranded
  * by an interrupted task), registered by the platform leftover_import task so

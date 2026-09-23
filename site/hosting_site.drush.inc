@@ -117,7 +117,7 @@ function drush_hosting_site_pre_hosting_task($task) {
 }
 
 /**
- * Populate the backend invocation for the leftover_purge task (D-035).
+ * Populate the backend invocation for the leftover_purge task.
  *
  * The pseudo-site node has NO backend context (nothing was ever installed
  * under its name), so the invocation is re-targeted at its PLATFORM context:
@@ -297,7 +297,7 @@ function hosting_site_post_hosting_delete_task($task, $data) {
 /**
  * Implements hook_post_hosting_TASK_TYPE_task().
  *
- * Retires the pseudo-site after a successful leftover purge (D-035),
+ * Retires the pseudo-site after a successful leftover purge,
  * mirroring the standard site delete post-task, and drops the leftover from
  * the platform's recorded list immediately (the next verify would too, but
  * the button should go now).

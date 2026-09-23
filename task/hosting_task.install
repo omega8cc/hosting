@@ -373,7 +373,7 @@ function hosting_task_update_7301() {
 }
 
 /**
- * Grant the revert-artifact leftover task permissions (D-035).
+ * Grant the revert-artifact leftover task permissions.
  *
  * The task feature's role_permissions only apply at feature-enable time;
  * existing instances get the same grants here: both leftover permissions to
