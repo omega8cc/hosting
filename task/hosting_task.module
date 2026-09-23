@@ -577,8 +577,19 @@ function hosting_task_retry_access($node) {
   if (user_access('administer tasks')) {
     return TRUE;
   }
+  // No 'create install task' permission exists: an Install is queued by
+  // creating the site, so a failed one may be retried by whoever may create
+  // sites. A finished Install is never re-run this way: on a live site an
+  // install that fails for any reason but "already installed" rolls the site
+  // back to disabled.
+  if ($node->task_type == 'install' && $node->task_status == HOSTING_TASK_ERROR) {
+    $permission = 'create site';
+  }
+  else {
+    $permission = 'create ' . $node->task_type . ' task';
+  }
   $ref = node_load($node->rid);
-  return is_object($ref) && user_access('create ' . $node->task_type . ' task') && node_access('view', $ref);
+  return is_object($ref) && user_access($permission) && node_access('view', $ref);
 }
 
 /**
