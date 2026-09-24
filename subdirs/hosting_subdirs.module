@@ -23,7 +23,7 @@ function hosting_subdirs_form_alter(&$form, &$form_state, $form_id) {
  */
 function hosting_subdirs_alter_alias_documentation($form, $form_state) {
   // Explain about base URLS in the context of subdirectories.
-  $domain_help = 'Hint: If you plan to use a subdomain (e.g., example.com/site1, and also use the root domain (e.g., example.com), you must create a site with the root domain *before* adding sites in its subdirectories. Note: Once the first site in a subdirectory is created and the parent site also exists, the parent site must be re-verified (just once) to turn on the web server configuration for the first (and any future) sites in its subdirectory.';
+  $domain_help = 'Hint: To serve a site from a subdirectory of a domain (e.g., example.com/site1), enter that address as its domain. The root domain (e.g., example.com) may be a site here or not, created before or after the sites in its subdirectories. Note: Once a site in a subdirectory is installed, its parent site is verified again automatically, which turns on the web server configuration for the first (and any future) sites in its subdirectory.';
   if (isset($form['title']['#description'])) {
     $form['title']['#description'] .= $domain_help;
   }
@@ -74,6 +74,15 @@ function hosting_subdirs_validate_alias($site, $alias, $key) {
     $subdir = explode('/', $alias, 2);
   }
   else {
+    // A domain that carries subdirectory sites is served by its own vhost; as
+    // this site's alias it would answer here, where they are not included (for
+    // the site's own subdirectory, a redirect to itself). An alias the site
+    // already has is left to stand.
+    $existing = isset($site->aliases) ? (array) $site->aliases : array();
+    if (!in_array($alias, $existing) && hosting_subdirs_carries_subdirs($alias)) {
+      form_set_error("aliases][$key", t('@alias carries subdirectory sites: create it as a site of its own rather than an alias.', array('@alias' => $alias)));
+      return;
+    }
     // No subdirectory in use, so validate normally.
     return hosting_alias_validate_alias($site, $alias, $key);
   }
@@ -84,6 +93,74 @@ function hosting_subdirs_validate_alias($site, $alias, $key) {
   if (!hosting_subdirs_valid_fqdn_subdir($alias)) {
     form_set_error("aliases][$key", t('The domain name @alias is not a valid subdir url', array('@alias' => $alias)));
   }
+  elseif ($error = hosting_subdirs_address_error($alias)) {
+    form_set_error("aliases][$key", $error);
+  }
+}
+
+/**
+ * Whether sites live in subdirectories of $domain.
+ */
+function hosting_subdirs_carries_subdirs($domain) {
+  return (bool) db_query("SELECT COUNT(*) FROM {hosting_site_alias} a INNER JOIN {node} n ON n.vid = a.vid INNER JOIN {hosting_site} s ON s.vid = n.vid WHERE a.alias LIKE :prefix AND s.status <> :deleted", array(':prefix' => db_like($domain) . '/%', ':deleted' => HOSTING_SITE_DELETED))->fetchField();
+}
+
+/**
+ * Implements hook_hosting_automatic_aliases_alter().
+ *
+ * An automatic alias (the www companion, the host's subdomain) never takes a
+ * domain that carries subdirectory sites: those stay with that domain's own
+ * vhost. The form refuses the same for a custom alias.
+ */
+function hosting_subdirs_hosting_automatic_aliases_alter(&$aliases, $context) {
+  foreach ($aliases as $key => $alias) {
+    if (hosting_subdirs_carries_subdirs($alias)) {
+      unset($aliases[$key]);
+    }
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ *
+ * The automatic aliases alter runs last, after hosting_alias adds its own.
+ */
+function hosting_subdirs_module_implements_alter(&$implementations, $hook) {
+  if ($hook == 'hosting_automatic_aliases_alter' && isset($implementations['hosting_subdirs'])) {
+    $group = $implementations['hosting_subdirs'];
+    unset($implementations['hosting_subdirs']);
+    $implementations['hosting_subdirs'] = $group;
+  }
+}
+
+/**
+ * Why a subdirectory address cannot be served, or FALSE when it can.
+ *
+ * @param string $address
+ *   A cleaned subdirectory address (example.com/site1).
+ */
+function hosting_subdirs_address_error($address) {
+  list($parent, $subdir) = explode('/', $address, 2);
+  // Locations every site's vhost carries from the shared include: a
+  // subdirectory by one of these names would duplicate one, which nginx
+  // refuses for the whole server. The backend checks the rendered include
+  // itself; this list only spares the round trip.
+  $reserved = array(
+    'ads.txt', 'autodiscover/autodiscover.xml', 'bgp-start', 'cdn/farfuture',
+    'core/cron.php', 'cron', 'cron.php', 'downloads', 'favicon.ico', 'files',
+    'fpm-ping', 'fpm-status', 'index.php', 'js', 'llms.txt', 'robots.txt',
+    'sw.js', 'vendor/composer',
+  );
+  if (in_array($subdir, $reserved)) {
+    return t('The subdirectory /@subdir is reserved by the web server configuration every site shares.', array('@subdir' => $subdir));
+  }
+  // The parent's vhost is the one that serves its subdirectories, and a
+  // domain that is another site's alias belongs to that site's vhost.
+  $owner = db_query("SELECT n.title FROM {hosting_site_alias} a INNER JOIN {node} n ON n.vid = a.vid INNER JOIN {hosting_site} s ON s.vid = n.vid WHERE a.alias = :alias AND s.status <> :deleted", array(':alias' => $parent, ':deleted' => HOSTING_SITE_DELETED))->fetchField();
+  if ($owner && $owner != $parent) {
+    return t('@parent is an alias of @site: use @site/@subdir instead.', array('@parent' => $parent, '@site' => $owner, '@subdir' => $subdir));
+  }
+  return FALSE;
 }
 
 /**
@@ -126,6 +203,14 @@ function hosting_subdirs_node_presave($node) {
  * Allow aliases with subdirectories.
  */
 function hosting_subdirs_site_form_validate($form, &$form_state) {
+  // A new site entered as a subdirectory address gets it as its alias in
+  // presave, past the alias checks below, so check the address here.
+  if (!empty($form_state['values']['title'])) {
+    $title = hosting_site_clean_domain($form_state['values']['title']);
+    if (hosting_subdirs_is_a_subdir($title) && ($error = hosting_subdirs_address_error($title))) {
+      form_set_error('title', $error);
+    }
+  }
   if (isset($form_state['values']['aliases'])) {
     $aliases = $form_state['values']['aliases'] = array_filter($form_state['values']['aliases']);
     foreach ($aliases as $key => $alias) {
