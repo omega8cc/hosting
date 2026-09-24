@@ -265,9 +265,35 @@ function hosting_task_cancel_access($node) {
   }
   // 'cancel own tasks' allows cancelling any task the user *could have* created,
   // on nodes she can view.
-  if (user_access('cancel own tasks') && user_access('create ' . $node->task_type . ' task') && node_access('view', $node)) {
-    return TRUE;
+  if (user_access('cancel own tasks') && node_access('view', $node)) {
+    $ref = node_load($node->rid);
+    $permission = is_object($ref) ? _hosting_task_create_permission($node->task_type, $ref->type) : NULL;
+    if ($permission !== NULL && user_access($permission)) {
+      return TRUE;
+    }
   }
+}
+
+/**
+ * The permission that lets a user queue a task of this type on this kind of
+ * node, or NULL when the type has none of its own (Install, Import).
+ *
+ * Most task types are gated by 'create <type> task'. The Git tasks name the
+ * node kind as well ('create site git-checkout task', 'create platform
+ * git-pull task'), and that name wins where it exists, so a platform Git pull
+ * is never judged by the site permission of the same task type.
+ */
+function _hosting_task_create_permission($task_type, $ref_type) {
+  $permissions = &drupal_static(__FUNCTION__);
+  if (!isset($permissions)) {
+    $permissions = module_invoke_all('permission');
+  }
+  foreach (array('create ' . $ref_type . ' ' . $task_type . ' task', 'create ' . $task_type . ' task') as $permission) {
+    if (isset($permissions[$permission])) {
+      return $permission;
+    }
+  }
+  return NULL;
 }
 
 /**
@@ -582,14 +608,17 @@ function hosting_task_retry_access($node) {
   // sites. A finished Install is never re-run this way: on a live site an
   // install that fails for any reason but "already installed" rolls the site
   // back to disabled.
+  $ref = node_load($node->rid);
+  if (!is_object($ref)) {
+    return FALSE;
+  }
   if ($node->task_type == 'install' && $node->task_status == HOSTING_TASK_ERROR) {
     $permission = 'create site';
   }
   else {
-    $permission = 'create ' . $node->task_type . ' task';
+    $permission = _hosting_task_create_permission($node->task_type, $ref->type);
   }
-  $ref = node_load($node->rid);
-  return is_object($ref) && user_access($permission) && node_access('view', $ref);
+  return $permission !== NULL && user_access($permission) && node_access('view', $ref);
 }
 
 /**
