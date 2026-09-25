@@ -72,7 +72,7 @@ function hosting_site_drush_context_import($context, &$node) {
     }
     $node->profile = $profile->package_id;
 
-    $client = node_load(HOSTING_DEFAULT_CLIENT);
+    $client = node_load(hosting_get_default_client());
     if ($context->client_name) {
       $client = hosting_import_client($context->client_name);
     }

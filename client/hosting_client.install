@@ -371,3 +371,10 @@ function hosting_client_update_7001(&$sandbox) {
 function hosting_client_update_7002() {
   variable_set('hosting_client_require_client_to_create_site', 1);
 }
+
+/**
+ * Point the default client at a live client when it names a deleted one.
+ */
+function hosting_client_update_7003() {
+  hosting_get_default_client();
+}
