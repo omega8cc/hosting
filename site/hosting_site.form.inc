@@ -401,6 +401,13 @@ function hosting_site_validate($node, &$form) {
     }
     $node->client = $client->nid;
   }
+  elseif (!isset($node->new_client) && !empty($node->client)
+    && function_exists('hosting_get_client') && !hosting_get_client($node->client)) {
+    // The site form's client field is free text, and the check above runs
+    // only for forms that set new_client: an unknown name reached
+    // hosting_site_insert() and failed there on a NULL client.
+    form_set_error('client', t('Please fill in a valid client'));
+  }
 
   // TODO: maybe we should allow creation of sites that conflict with HOSTING_SITE_DISABLED (which would then need to be renamed before being re-enabled)
   if (!hosting_domain_allowed($url, (array) $node)) {

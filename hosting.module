@@ -468,6 +468,50 @@ function hosting_node_help($type) {
 }
 
 /**
+ * The client for sites created without anyone choosing one.
+ *
+ * hosting_default_client can name a client node deleted since it was set,
+ * and HOSTING_DEFAULT_CLIENT then resolves to no client: every site a
+ * platform verify imported with it failed on hosting_site.client, which
+ * refuses NULL. This returns the stored default while it is still a client,
+ * else the admin client (hosting_admin_client), repairing the variable. It
+ * never falls back to any other client: a tenant's client made the default
+ * would receive every site imported without an owner, and its users with
+ * it. With no live admin client either, the stored value is returned and the
+ * insert fails as it did before.
+ *
+ * @param array $exclude
+ *   Client nids that must not be chosen: those deleted in this request,
+ *   whose node rows still exist while hook_node_delete() runs.
+ *
+ * @return int
+ *   A client nid, or the stored default when neither candidate is live.
+ */
+function hosting_get_default_client(array $exclude = array()) {
+  $exclude = array_map('intval', $exclude);
+  $stored = (int) variable_get('hosting_default_client', 1);
+  $admin = (int) variable_get('hosting_admin_client', 1);
+  foreach (array($stored, $admin) as $candidate) {
+    if (!$candidate || in_array($candidate, $exclude, TRUE)) {
+      continue;
+    }
+    if (!db_query("SELECT COUNT(*) FROM {node} WHERE nid = :nid AND type = 'client'", array(':nid' => $candidate))->fetchField()) {
+      continue;
+    }
+    if ($candidate != $stored) {
+      if ($candidate == 1) {
+        variable_del('hosting_default_client');
+      }
+      else {
+        variable_set('hosting_default_client', $candidate);
+      }
+    }
+    return $candidate;
+  }
+  return $stored;
+}
+
+/**
  * Implements hook_init().
  */
 function hosting_init() {

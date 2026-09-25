@@ -1111,6 +1111,14 @@ function hosting_client_node_delete($node) {
       ->condition('pid', $node->nid)
       ->execute();
   }
+  if ($node->type == 'client') {
+    // Keep the default client live. Every client deleted in this request is
+    // excluded: a bulk delete runs this hook for each node before any of
+    // their node rows is removed.
+    $deleted = &drupal_static(__FUNCTION__, array());
+    $deleted[] = (int) $node->nid;
+    hosting_get_default_client($deleted);
+  }
 }
 
 /**

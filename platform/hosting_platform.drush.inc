@@ -109,7 +109,7 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
           $site->import = TRUE;
           $site->title = $url;
           $site->platform = $node->nid;
-          $site->client = HOSTING_DEFAULT_CLIENT;
+          $site->client = hosting_get_default_client();
           $site->db_server = HOSTING_DEFAULT_DB_SERVER;
           node_save($site);
           drush_log(dt("Imported existing site !domain", array('!domain' => _hosting_node_link($site->nid))));
@@ -330,7 +330,13 @@ function hosting_platform_post_hosting_leftover_import_task($task, $data) {
   $site->no_auto_task = TRUE;
   $site->verified = 0;
   $site->profile = 0;
-  $site->client = is_object($base_site) && !empty($base_site->client) ? $base_site->client : HOSTING_DEFAULT_CLIENT;
+  // The base site's client can be a deleted node (deleting a client never
+  // moves its sites), and inheriting it failed the insert on a NULL client.
+  $base_client = is_object($base_site) && !empty($base_site->client) ? $base_site->client : 0;
+  if ($base_client && function_exists('hosting_get_client') && !hosting_get_client($base_client)) {
+    $base_client = 0;
+  }
+  $site->client = $base_client ? $base_client : hosting_get_default_client();
   $site->db_server = is_object($base_site) && !empty($base_site->db_server) ? $base_site->db_server : HOSTING_DEFAULT_DB_SERVER;
   $site->db_name = isset($info['db_name']) && is_string($info['db_name']) ? $info['db_name'] : '';
   $site->aliases = array();
