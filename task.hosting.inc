@@ -404,6 +404,12 @@ function drush_hosting_task() {
   }
   // Run the actual command. Adding alias here to work around Drush API.
   $output = provision_backend_invoke($alias, $task->task_command, $task->args, $task->options, $mode);
+  // Drush returns FALSE, and sets no error, when the command printed nothing:
+  // it never ran (a launcher that knows no such command exits quietly).
+  // Every task command reports back, even when it fails.
+  if ($output === FALSE && !drush_get_error() && !drush_get_context('DRUSH_SIMULATE')) {
+    drush_set_error('HOSTING_TASK_NO_OUTPUT', dt('The @command command for @alias returned nothing: it did not run.', array('@command' => $task->task_command, '@alias' => $alias)));
+  }
   // Pass the drush output back to the HOOK_post_hosting_TASK_task() and
   // HOOK_hosting_TASK_task_rollback() hooks, as the $data argument.
   drush_set_context('HOSTING_DRUSH_OUTPUT', $output);
