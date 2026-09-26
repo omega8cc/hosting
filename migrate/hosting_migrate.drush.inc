@@ -107,6 +107,45 @@ function _hosting_migrate_get_target_profile_name($task) {
  */
 function hosting_migrate_post_hosting_migrate_task($task, $data) {
   if ($task->ref->type == 'site') {
+    _hosting_migrate_record_on_target($task, $data);
+  }
+}
+
+/**
+ * Implements hook_hosting_TASK_TYPE_task_rollback().
+ *
+ * A migrate whose post phase failed after the source was retired finishes
+ * forward in the backend: the site stays on its target platform
+ * (provision_migrate_failure_outcome()), and its result says so in
+ * migrate_kept_on_target. The node follows it there the way a completed
+ * migrate's does, so a Verify cannot pull the record back onto a platform
+ * where the site is gone; the task stays failed. Nothing changes without that
+ * flag naming this task's own target platform.
+ */
+function hosting_migrate_hosting_migrate_task_rollback($task, $data) {
+  if ($task->ref->type != 'site' || !is_array($data)
+    || empty($data['context']['migrate_kept_on_target'])) {
+    return;
+  }
+  $target = hosting_context_name($task->task_args['target_platform']);
+  if ($data['context']['migrate_kept_on_target'] !== $target) {
+    drush_log(dt('The backend kept the site on @kept, not on this task\'s target @target: the site record is left as it is.', array('@kept' => $data['context']['migrate_kept_on_target'], '@target' => (string) $target)), 'warning');
+    return;
+  }
+  drush_log(dt('The migrate failed after the source was retired: the site stays on @target, and its record follows it.', array('@target' => $target)), 'warning');
+  _hosting_migrate_record_on_target($task, $data);
+}
+
+/**
+ * Record a migrated site on its target platform.
+ *
+ * The site's name, database, profile, platform and packages from the
+ * backend's result, the migration package as a Pre-migration backup, and a
+ * Verify to rewrite the vhost. Used by the post hook of a completed migrate
+ * and by the rollback of one the backend finished forward.
+ */
+function _hosting_migrate_record_on_target($task, $data) {
+  if ($task->ref->type == 'site') {
     $target = $task->task_args['target_platform'];
     $site = $task->ref;
 
