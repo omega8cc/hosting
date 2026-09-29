@@ -215,7 +215,7 @@ function hosting_site_post_hosting_install_task($task, $data) {
     node_save($task->ref);
 
     if ($context['login_link']) {
-      drush_log($context['login_link']);
+      drush_log(dt('One-time login link generated; the site page offers it for 24 hours to users allowed to reset the password.'));
       // we need to store the timestamp too because expire only means it can be deleted
       // after an amount of time, not will be deleted.
       $cache = array(
