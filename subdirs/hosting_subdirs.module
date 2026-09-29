@@ -160,7 +160,25 @@ function hosting_subdirs_address_error($address) {
   if ($owner && $owner != $parent) {
     return t('@parent is an alias of @site: use @site/@subdir instead.', array('@parent' => $parent, '@site' => $owner, '@subdir' => $subdir));
   }
+  // Only Drupal and Backdrop sites carry subdirectory sites: a Grav or
+  // Textpattern site's vhost includes no subdirectory configs.
+  $platform = db_query("SELECT s.platform FROM {hosting_site} s INNER JOIN {node} n ON n.vid = s.vid WHERE n.type = 'site' AND n.title = :title AND s.status <> :deleted", array(':title' => $parent, ':deleted' => HOSTING_SITE_DELETED))->fetchField();
+  if (hosting_subdirs_platform_is_foreign($platform)) {
+    return t('@parent is a Grav or Textpattern site, which cannot carry subdirectory sites.', array('@parent' => $parent));
+  }
   return FALSE;
+}
+
+/**
+ * Whether a platform runs Grav or Textpattern, neither of which is served
+ * from a subdirectory or carries subdirectory sites.
+ */
+function hosting_subdirs_platform_is_foreign($platform) {
+  if (empty($platform)) {
+    return FALSE;
+  }
+  return (module_exists('hosting_grav') && hosting_grav_platform_is_grav($platform))
+    || (module_exists('hosting_txp') && hosting_txp_platform_is_txp($platform));
 }
 
 /**
@@ -215,6 +233,19 @@ function hosting_subdirs_site_form_validate($form, &$form_state) {
     $aliases = $form_state['values']['aliases'] = array_filter($form_state['values']['aliases']);
     foreach ($aliases as $key => $alias) {
       hosting_subdirs_validate_alias($form_state['node'], $alias, $key);
+    }
+  }
+  // Only Drupal and Backdrop sites live in a subdirectory.
+  $platform = !empty($form_state['values']['platform']) ? $form_state['values']['platform'] : (isset($form_state['node']->platform) ? $form_state['node']->platform : 0);
+  if (hosting_subdirs_platform_is_foreign($platform)) {
+    $message = t('Only Drupal and Backdrop sites can live in a subdirectory.');
+    if (!empty($title) && hosting_subdirs_is_a_subdir($title)) {
+      form_set_error('title', $message);
+    }
+    foreach (!empty($aliases) ? $aliases : array() as $key => $alias) {
+      if (hosting_subdirs_is_a_subdir(hosting_site_clean_domain($alias))) {
+        form_set_error("aliases][$key", $message);
+      }
     }
   }
 }
