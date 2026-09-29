@@ -66,11 +66,25 @@ function hosting_site_drush_context_import($context, &$node) {
       }
     }
 
-    // Log an error if there is still no profile.
-    if (!$profile) {
-      drush_set_error("HOSTING_SITE_IMPORT_ERROR", dt("Could not find the Profile !profile for Platfrom ID !platform", array('!profile' => $context->profile, '!platform' => $node->platform)));
+    if ($profile) {
+      $node->profile = $profile->package_id;
     }
-    $node->profile = $profile->package_id;
+    else {
+      // The platform's packages are registered by its verify, which a new
+      // instance queues beside its hostmaster site's import; the runner can
+      // take the import first. A site node already recording the profile the
+      // context names keeps it. Anything else is an error, and the node keeps
+      // what it records: its profile column takes no empty value.
+      $recorded = empty($node->profile) ? FALSE : node_load($node->profile);
+      if ($recorded && $recorded->type == 'package'
+        && isset($recorded->package_type) && $recorded->package_type == 'profile'
+        && isset($recorded->short_name) && $recorded->short_name === $context->profile) {
+        drush_log(dt("The Profile !profile is not registered for Platfrom ID !platform yet; the site keeps its recorded profile", array('!profile' => $context->profile, '!platform' => $node->platform)), 'notice');
+      }
+      else {
+        drush_set_error("HOSTING_SITE_IMPORT_ERROR", dt("Could not find the Profile !profile for Platfrom ID !platform", array('!profile' => $context->profile, '!platform' => $node->platform)));
+      }
+    }
 
     $client = node_load(hosting_get_default_client());
     if ($context->client_name) {
