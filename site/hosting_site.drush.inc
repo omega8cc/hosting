@@ -272,6 +272,14 @@ function hosting_site_post_hosting_restore_task($task, $data) {
     // unlabelled archive of unknown completeness.
     hosting_site_add_backup($task->ref->nid, $platform->web_server, $data['context']['backup_file'], t('Generated before being restored to a previous version'), $data['context']['backup_file_size'], hosting_site_backup_mode_from_context($data));
   }
+  // The restored site runs on the database its deploy made; record it now,
+  // as the Verify post-task would, not at the next Verify.
+  if ($task->ref->type == 'site' && !empty($data['self']['db_name'])
+    && $data['self']['db_name'] !== $task->ref->db_name) {
+    $task->ref->db_name = $data['self']['db_name'];
+    $task->ref->no_verify = TRUE;
+    node_save($task->ref);
+  }
 }
 
 /**
