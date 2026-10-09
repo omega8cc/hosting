@@ -778,7 +778,7 @@ function hosting_platform_delete($node) {
     ->execute();
   // The platform's own package instances, then every row that still names
   // the platform (its profiles' packages, keyed by instance iids).
-  $own = db_query("SELECT iid FROM {hosting_package_instance} WHERE rid = :rid", array(':rid' => $node->nid))->fetchCol();
+  $own = db_query("SELECT iid FROM {hosting_package_instance} WHERE rid = :rid AND platform IN (0, :rid)", array(':rid' => $node->nid))->fetchCol();
   hosting_package_instances_delete($own);
   hosting_package_instances_delete_by_platform($node->nid);
 

@@ -53,9 +53,14 @@ function hosting_package_instance_sync($rid, $type) {
   // Mark every instance of this entity; the ones the sync does not see
   // again are removed at the end. A profile's instances are keyed by the
   // profile instance's own iid, which can equal the nid of a site or a
-  // platform, so a profile sync stays within its platform (rows written
-  // before the platform column existed carry 0).
-  $scope = ($type == 'profile' && $platform) ? array(0, $platform) : NULL;
+  // platform, so every sync stays within its own platform: a platform's and
+  // a profile's rows name the platform, a site's rows name the site's
+  // platform or -1 for site-specific packages; rows written before the
+  // platform column existed carry 0.
+  $scope = NULL;
+  if ($platform) {
+    $scope = ($type == 'site') ? array(0, -1, $platform) : array(0, $platform);
+  }
   $mark = db_update('hosting_package_instance')
     ->fields(array(
       'status' => -1, // @todo remove magic number?
@@ -153,7 +158,7 @@ function hosting_package_instances_delete($iids) {
  * A profile's packages are recorded with rid = the profile instance's iid.
  * An iid can equal a node nid, so only rows that name the same platform (or
  * none, for rows older than the platform column) and whose rid is not a
- * node count.
+ * site or platform nid count: those are the only nodes that own rows here.
  *
  * @param array $iids
  *   Profile instance ids.
@@ -171,7 +176,7 @@ function hosting_package_instance_children($iids, $platform) {
   }
   return db_query("SELECT i.iid
                    FROM {hosting_package_instance} i
-                   LEFT JOIN {node} n ON n.nid = i.rid
+                   LEFT JOIN {node} n ON n.nid = i.rid AND n.type IN ('site', 'platform')
                    WHERE i.rid IN (:iids) AND i.platform IN (:platforms) AND n.nid IS NULL",
                    array(':iids' => $iids, ':platforms' => array(0, $platform)))->fetchCol();
 }
