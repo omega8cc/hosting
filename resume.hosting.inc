@@ -25,7 +25,7 @@ function drush_hosting_resume() {
     ':status' => HOSTING_PLATFORM_ENABLED,
   ))->fetchField();
   if ($platform_id) {
-    if (!hosting_context_register($platform_id, ltrim($old_platform, '@'))) {
+    if (!hosting_context_register($platform_id, ltrim($old_platform, '@'), TRUE)) {
       drush_log(dt('The old platform node @nid keeps its current context name.', array('@nid' => $platform_id)), 'warning');
     }
   }
@@ -64,12 +64,16 @@ function drush_hosting_resume() {
   // the new one loses its command line and its queue, because the next
   // Verify of the site writes its alias for the old root, where no
   // drushrc.php is left.
+  $why = '';
   try {
-    $named = hosting_context_register($platform_id, ltrim($new_platform, '@'));
+    $named = hosting_context_register($platform_id, ltrim($new_platform, '@'), TRUE);
+    if (!$named) {
+      $why = dt('another live node holds it');
+    }
   }
   catch (PDOException $e) {
-    drush_log($e->getMessage(), 'error');
     $named = FALSE;
+    $why = $e->getMessage();
   }
 
   drush_log('fixing platform for site node');
@@ -79,10 +83,11 @@ function drush_hosting_resume() {
   provision_backend_invoke(d()->name, 'hosting-setup');
 
   if (!$named) {
-    return drush_set_error('HOSTING_RESUME_PLATFORM_NAME', dt('The new platform @path (node @nid) could not take the context name @name: another live node holds it. The site @site runs on node @nid under the name the panel gave it; release or rename the holder, then verify the platform.', array(
+    return drush_set_error('HOSTING_RESUME_PLATFORM_NAME', dt('The new platform @path (node @nid) could not take the context name @name: @why. The site @site runs on node @nid under the name the panel gave it; release or rename the holder, then verify the platform.', array(
       '@path' => $platform_root,
       '@nid' => $platform_id,
       '@name' => ltrim($new_platform, '@'),
+      '@why' => $why,
       '@site' => d()->name,
     )));
   }

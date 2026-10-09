@@ -1203,23 +1203,32 @@ function hosting_context_load($name) {
  * Add a node to the context lookup db.
  *
  * A context name is unique. A name still held by another node is released
- * first when that node is gone, or is a site or platform whose record says
- * deleted: its delete task would have removed the row, and a row left
- * behind (a platform marked deleted by a status write, a delete that never
- * finished) otherwise stops the next registration of the name with a
- * duplicate-key exception in the middle of the command that needed it. A
- * name held by a live node is a real conflict: reported, never taken over.
+ * first when that node is gone, or is a site, platform or server whose
+ * record says deleted and that no live site still runs on: its delete task
+ * would have removed the row, and a row left behind (a platform marked
+ * deleted by a status write, a delete that never finished) otherwise stops
+ * the next registration of the name with a duplicate-key exception in the
+ * middle of the command that needed it. A name held by a live node is a
+ * real conflict: never taken over. By default it throws, so a node save in
+ * progress rolls back as it did on the duplicate key; a caller that decides
+ * for itself (hosting-resume) passes $report_only and gets FALSE.
  *
  * @param int $nid
  *   The nid of the node to associate to the given provision context name.
  * @param string $name
  *   The name of the provision context.
+ * @param bool $report_only
+ *   TRUE to log a live holder and return FALSE instead of throwing.
  *
  * @return bool
  *   TRUE when the name is registered to the node; FALSE when another live
- *   node holds it and the node keeps whatever name it had.
+ *   node holds it and $report_only was given (the node keeps whatever name
+ *   it had).
+ *
+ * @throws Exception
+ *   When another live node holds the name and $report_only is FALSE.
  */
-function hosting_context_register($nid, $name) {
+function hosting_context_register($nid, $name, $report_only = FALSE) {
   $holder = (int) db_query("SELECT nid FROM {hosting_context} WHERE name = :name AND nid <> :nid", array(':name' => $name, ':nid' => $nid))->fetchField();
   if ($holder) {
     $args = array('%name' => $name, '%holder' => $holder, '%nid' => $nid);
@@ -1231,10 +1240,13 @@ function hosting_context_register($nid, $name) {
       }
     }
     else {
-      $message = t('The context name %name is held by node %holder, which is not deleted; node %nid keeps its current name.', $args);
-      watchdog('hosting', 'The context name %name is held by node %holder, which is not deleted; node %nid keeps its current name.', $args, WATCHDOG_ERROR);
-      if (function_exists('drush_set_error')) {
-        drush_set_error('HOSTING_CONTEXT_NAME_TAKEN', strip_tags($message));
+      $message = t('The context name %name is held by node %holder, which is live; node %nid keeps its current name.', $args);
+      watchdog('hosting', 'The context name %name is held by node %holder, which is live; node %nid keeps its current name.', $args, WATCHDOG_ERROR);
+      if (!$report_only) {
+        throw new Exception(strip_tags($message));
+      }
+      if (function_exists('drush_log')) {
+        drush_log(strip_tags($message), 'warning');
       }
       else {
         drupal_set_message($message, 'error');
@@ -1281,8 +1293,10 @@ function hosting_context_register($nid, $name) {
 /**
  * Whether the node holding a context name is gone or recorded as deleted.
  *
- * Only a site or a platform can be deleted and still exist as a node; every
- * other holder is live.
+ * A site, a platform or a server can be deleted and still exist as a node;
+ * every other holder is live. A platform a live site still runs on is never
+ * stale whatever its status says: BOA parks old panel platforms at the
+ * deleted status and sets the live one back a moment later.
  *
  * @param int $nid
  *   The holder's nid.
@@ -1297,11 +1311,20 @@ function hosting_context_holder_is_stale($nid) {
   }
   if ($node->type == 'platform') {
     $deleted = defined('HOSTING_PLATFORM_DELETED') ? HOSTING_PLATFORM_DELETED : -2;
-    return isset($node->platform_status) && $node->platform_status == $deleted;
+    if (!isset($node->platform_status) || $node->platform_status != $deleted) {
+      return FALSE;
+    }
+    $site_deleted = defined('HOSTING_SITE_DELETED') ? HOSTING_SITE_DELETED : -2;
+    $live = db_query_range("SELECT 1 FROM {hosting_site} s INNER JOIN {node} n ON n.vid = s.vid WHERE s.platform = :nid AND s.status <> :deleted", 0, 1, array(':nid' => $nid, ':deleted' => $site_deleted))->fetchField();
+    return !$live;
   }
   if ($node->type == 'site') {
     $deleted = defined('HOSTING_SITE_DELETED') ? HOSTING_SITE_DELETED : -2;
     return isset($node->site_status) && $node->site_status == $deleted;
+  }
+  if ($node->type == 'server') {
+    $deleted = defined('HOSTING_SERVER_DELETED') ? HOSTING_SERVER_DELETED : -2;
+    return isset($node->server_status) && $node->server_status == $deleted;
   }
   return FALSE;
 }

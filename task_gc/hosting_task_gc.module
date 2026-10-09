@@ -14,7 +14,7 @@ function hosting_task_gc_hosting_queues() {
   $count = hosting_task_gc_count();
   $queue['task_gc'] = array(
     'name' => t('Task GC'),
-    'description' => t('Collect the tasks of deleted sites and platforms, old task logs, package leftovers and the context names of deleted sites and platforms.'),
+    'description' => t('Collect the tasks of deleted sites and platforms, old task logs, package leftovers and the context names of deleted sites and of nodes that are gone.'),
     // Run queue sequentially. always with the same parameters.
     'type' => HOSTING_QUEUE_TYPE_BATCH,
     'frequency' => strtotime("1 hour", 0),
@@ -93,7 +93,7 @@ function hosting_task_gc_queue() {
 
   $released = hosting_task_gc_delete_stale_contexts(variable_get('hosting_task_gc_contexts_per_run', 200));
   if ($released) {
-    watchdog('hosting_task_gc', 'Released @num context name(s) of deleted or missing nodes.', array('@num' => $released));
+    watchdog('hosting_task_gc', 'Released @num context name(s) of deleted sites or gone nodes.', array('@num' => $released));
   }
 
   // The next dispatch counts again, so the queue idles once everything is
@@ -229,13 +229,14 @@ function hosting_task_gc_prune_logs() {
 }
 
 /**
- * Release the context names of nodes that are gone or deleted, at most $limit.
+ * Release the context names of deleted sites and of gone nodes, at most $limit.
  *
- * A site's or platform's delete task removes its context row. A row left
- * behind (a platform marked deleted by a status write, a delete that never
- * finished, a node removed past the hooks) keeps a name no other node can
- * take, and the next hostmaster migration that needs that name stops on a
- * duplicate key. The node itself stays, as after a delete task.
+ * A site's delete task removes its context row; a row left behind (a delete
+ * that never finished, a node removed past the hooks) keeps a name no other
+ * node can take. Platforms are left alone whatever their status: BOA parks
+ * old panel platforms at the deleted status and deletes them later by their
+ * context name, so their rows are released only on demand, by
+ * hosting_context_register() when another node needs the name.
  *
  * @return int
  *   The number of rows released.
@@ -249,7 +250,7 @@ function hosting_task_gc_delete_stale_contexts($limit) {
 }
 
 /**
- * Whether any context row names a node that is gone or deleted.
+ * Whether any context row names a deleted site or a node that is gone.
  */
 function hosting_task_gc_stale_contexts_pending() {
   return (bool) db_query_range(hosting_task_gc_stale_contexts_sql(), 0, 1, hosting_task_gc_stale_contexts_args())->fetchField();
@@ -262,10 +263,8 @@ function hosting_task_gc_stale_contexts_sql() {
   return "SELECT c.nid FROM {hosting_context} c
             LEFT JOIN {node} n ON n.nid = c.nid
             LEFT JOIN {hosting_site} s ON s.nid = c.nid AND s.vid = n.vid
-            LEFT JOIN {hosting_platform} p ON p.nid = c.nid AND p.vid = n.vid
           WHERE n.nid IS NULL
              OR (n.type = 'site' AND s.status = :site_deleted)
-             OR (n.type = 'platform' AND p.status = :platform_deleted)
           ORDER BY c.nid";
 }
 
@@ -273,7 +272,7 @@ function hosting_task_gc_stale_contexts_sql() {
  * The placeholders of hosting_task_gc_stale_contexts_sql().
  */
 function hosting_task_gc_stale_contexts_args() {
-  return array(':site_deleted' => HOSTING_SITE_DELETED, ':platform_deleted' => HOSTING_PLATFORM_DELETED);
+  return array(':site_deleted' => HOSTING_SITE_DELETED);
 }
 
 /**
