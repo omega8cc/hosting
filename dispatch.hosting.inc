@@ -15,7 +15,7 @@
  */
 function drush_hosting_dispatch() {
   $now = REQUEST_TIME;
-  variable_set("hosting_dispatch_last_run", $now);
+  hosting_queue_set_last_run('dispatch', $now);
   drush_log(dt("Dispatching queues."));
   $platform = node_load(HOSTING_OWN_PLATFORM);
   $root = $platform->publish_path;
@@ -51,13 +51,9 @@ function drush_hosting_dispatch() {
         // and each forked a full batch -- up to 2x the configured limit. The
         // re-read plus the synchronous stamp below make this semaphore actually
         // serialize: a run behind it sees the fresh timestamp and is gated out.
-        // Drupal 7 loads the whole variable table into $conf once at bootstrap, so
-        // a sibling dispatcher's variable_set() is invisible to variable_get()
-        // until we reload from the DB -- without this the re-read returns our own
-        // stale bootstrap value and the serialization is a no-op (same idiom as
-        // queued/hosting_queued.drush.inc).
-        global $conf;
-        $conf = variable_initialize();
+        // The stamp lives in the hosting_queue_run table and is read from it on
+        // every call, so a sibling's write is seen here without reloading the
+        // variable table.
         // For the tasks queue, first reap PROCESSING rows whose runner
         // process is gone: a runner that dies without its shutdown handler
         // (signal kill, code-tree swap during a hostmaster upgrade, host
@@ -74,7 +70,10 @@ function drush_hosting_dispatch() {
           }
           $info['running_items'] = hosting_task_count_running();
         }
-        $last = variable_get("hosting_queue_{$queue}_last_run", $info["last"]);
+        $last = hosting_queue_last_run($queue);
+        if ($last === FALSE) {
+          $last = $info["last"];
+        }
         if (($now - $last) >= $info["calc_frequency"] || drush_get_option('force', FALSE)) {
           $count = $info['calc_items'] - $info['running_items'];
           if ($count <= 0) {
@@ -83,7 +82,7 @@ function drush_hosting_dispatch() {
           else {
             // Stamp the run now, before forking, so a dispatch serialized behind
             // this semaphore is gated out instead of launching a second batch.
-            variable_set("hosting_queue_{$queue}_last_run", $now);
+            hosting_queue_set_last_run($queue, $now);
             drush_log(dt("Found @running running tasks, starting @count out of @max items.",
                     array(
                       '@running' => $info['running_items'],
