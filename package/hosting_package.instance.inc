@@ -22,13 +22,6 @@
  *   profile.
  */
 function hosting_package_instance_sync($rid, $type) {
-  db_update('hosting_package_instance')
-    ->fields(array(
-      'status' => -1, // @todo remove magic number?
-    ))
-    ->condition('rid', $rid)
-    ->execute();
-
   $map = _hosting_package_plural_map();
   // phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection
   $args = func_get_args();
@@ -39,6 +32,7 @@ function hosting_package_instance_sync($rid, $type) {
   $type = array_shift($args);
 
   // Figure out the platform nid
+  $platform = 0;
   if ($type == 'platform') {
     $platform = $rid;
   }
@@ -56,6 +50,22 @@ function hosting_package_instance_sync($rid, $type) {
     watchdog('hosting_package', 'Unrecognized entity type (' . $type . ') passed to hosting_package_instance_sync().', array(), WATCHDOG_WARNING);
   }
 
+  // Mark every instance of this entity; the ones the sync does not see
+  // again are removed at the end. A profile's instances are keyed by the
+  // profile instance's own iid, which can equal the nid of a site or a
+  // platform, so a profile sync stays within its platform (rows written
+  // before the platform column existed carry 0).
+  $scope = ($type == 'profile' && $platform) ? array(0, $platform) : NULL;
+  $mark = db_update('hosting_package_instance')
+    ->fields(array(
+      'status' => -1, // @todo remove magic number?
+    ))
+    ->condition('rid', $rid);
+  if ($scope) {
+    $mark->condition('platform', $scope, 'IN');
+  }
+  $mark->execute();
+
   foreach ($map as $plural => $key) {
     $merged = array();
     foreach ($args as $index => $arg) {
@@ -65,10 +75,14 @@ function hosting_package_instance_sync($rid, $type) {
     }
 
     foreach ($merged as $name => $package) {
-      $instance = hosting_package_instance_load(array(
+      $conditions = array(
         'i.rid' => $rid,
         'i.package_id' => $package['package_id'],
-      ));
+      );
+      if ($scope) {
+        $conditions['i.platform'] = $scope;
+      }
+      $instance = hosting_package_instance_load($conditions);
       if (!$instance) {
         $instance = new stdClass();
         $instance->rid = $rid;
@@ -85,10 +99,185 @@ function hosting_package_instance_sync($rid, $type) {
       hosting_package_instance_save($instance);
     }
   }
-  db_delete('hosting_package_instance')
+
+  // Whatever is still marked is gone from the codebase. A platform's stale
+  // rows include its vanished profile instances, and a profile's packages
+  // are keyed by that instance's iid: nothing would ever look those rows up
+  // again, and they were the bulk of a long-lived master's instance table.
+  $stale = db_select('hosting_package_instance', 'i')
+    ->fields('i', array('iid'))
     ->condition('rid', $rid)
-    ->condition('status', -1) // @todo remove magic number?
-    ->execute();
+    ->condition('status', -1); // @todo remove magic number?
+  if ($scope) {
+    $stale->condition('platform', $scope, 'IN');
+  }
+  $stale = $stale->execute()->fetchCol();
+  if (!empty($stale)) {
+    if ($type == 'platform') {
+      hosting_package_instances_delete(hosting_package_instance_children($stale, $platform));
+    }
+    hosting_package_instances_delete($stale);
+  }
+}
+
+/**
+ * Delete package instances together with their language rows.
+ *
+ * @param array $iids
+ *   Instance ids.
+ *
+ * @return int
+ *   The number of instances deleted.
+ */
+function hosting_package_instances_delete($iids) {
+  $iids = array_values(array_unique(array_filter(array_map('intval', (array) $iids))));
+  if (empty($iids)) {
+    return 0;
+  }
+  foreach (array_chunk($iids, 500) as $chunk) {
+    db_delete('hosting_package_languages')
+      ->condition('iid', $chunk, 'IN')
+      ->execute();
+    db_delete('hosting_package_instance')
+      ->condition('iid', $chunk, 'IN')
+      ->execute();
+  }
+  // Clear the static cache for languages of package instances.
+  _hosting_package_instances_load_languages(NULL, TRUE);
+  return count($iids);
+}
+
+/**
+ * The instances keyed by the given profile instances.
+ *
+ * A profile's packages are recorded with rid = the profile instance's iid.
+ * An iid can equal a node nid, so only rows that name the same platform (or
+ * none, for rows older than the platform column) and whose rid is not a
+ * node count.
+ *
+ * @param array $iids
+ *   Profile instance ids.
+ * @param int $platform
+ *   The platform nid the profiles belong to.
+ *
+ * @return array
+ *   Instance ids.
+ */
+function hosting_package_instance_children($iids, $platform) {
+  $iids = array_values(array_unique(array_filter(array_map('intval', (array) $iids))));
+  $platform = (int) $platform;
+  if (empty($iids) || $platform <= 0) {
+    return array();
+  }
+  return db_query("SELECT i.iid
+                   FROM {hosting_package_instance} i
+                   LEFT JOIN {node} n ON n.nid = i.rid
+                   WHERE i.rid IN (:iids) AND i.platform IN (:platforms) AND n.nid IS NULL",
+                   array(':iids' => $iids, ':platforms' => array(0, $platform)))->fetchCol();
+}
+
+/**
+ * Delete every package instance recorded for a platform.
+ *
+ * Covers the platform's own rows and the profile children keyed by its
+ * profile instances' iids. A live site's rows are never touched: a platform
+ * cannot be deleted while it carries sites, and the guard costs nothing.
+ *
+ * @param int $platform
+ *   The platform nid.
+ *
+ * @return int
+ *   The number of instances deleted.
+ */
+function hosting_package_instances_delete_by_platform($platform) {
+  $platform = (int) $platform;
+  if ($platform <= 0) {
+    return 0;
+  }
+  $iids = db_query("SELECT i.iid
+                    FROM {hosting_package_instance} i
+                    WHERE i.platform = :platform
+                    AND i.rid NOT IN (SELECT s.nid FROM {hosting_site} s INNER JOIN {node} n ON n.vid = s.vid WHERE s.status <> :deleted)",
+                    array(':platform' => $platform, ':deleted' => _hosting_package_deleted_status('site')))->fetchCol();
+  return hosting_package_instances_delete($iids);
+}
+
+/**
+ * Whether any package instance belongs to no live platform or site.
+ */
+function hosting_package_instances_gc_pending() {
+  return (bool) db_query_range(_hosting_package_instances_gc_select('1'), 0, 1, _hosting_package_instances_gc_args())->fetchField();
+}
+
+/**
+ * Collect package instances that belong to no live platform or site.
+ *
+ * The rows of a deleted platform used to survive it: its profile children
+ * were keyed by instance iids nobody looked up again, and a long-lived
+ * master carried hundreds of thousands of them. Site-specific packages
+ * (platform -1) and rows written before the platform column existed (0)
+ * are left alone; a live site's rows are never touched. Bounded so a queue
+ * run never holds the table.
+ *
+ * @param int $limit
+ *   The most instances to delete in one call.
+ *
+ * @return int
+ *   The number of instances deleted.
+ */
+function hosting_package_instances_gc($limit = 2000) {
+  $limit = max(1, (int) $limit);
+  $iids = db_query_range(_hosting_package_instances_gc_select('i.iid'), 0, $limit, _hosting_package_instances_gc_args())->fetchCol();
+  $deleted = hosting_package_instances_delete($iids);
+
+  // Language rows whose instance is gone.
+  $orphans = db_query_range("SELECT DISTINCT l.iid
+                             FROM {hosting_package_languages} l
+                             LEFT JOIN {hosting_package_instance} i ON i.iid = l.iid
+                             WHERE i.iid IS NULL", 0, $limit)->fetchCol();
+  if (!empty($orphans)) {
+    db_delete('hosting_package_languages')
+      ->condition('iid', $orphans, 'IN')
+      ->execute();
+  }
+  return $deleted;
+}
+
+/**
+ * The SELECT of the leftover instances; see hosting_package_instances_gc().
+ */
+function _hosting_package_instances_gc_select($fields) {
+  return "SELECT " . $fields . "
+          FROM {hosting_package_instance} i
+          WHERE i.platform > 0
+          AND i.platform NOT IN (SELECT p.nid FROM {hosting_platform} p INNER JOIN {node} n ON n.vid = p.vid WHERE p.status <> :pdeleted)
+          AND i.rid NOT IN (SELECT s.nid FROM {hosting_site} s INNER JOIN {node} m ON m.vid = s.vid WHERE s.status <> :sdeleted)";
+}
+
+/**
+ * The arguments of _hosting_package_instances_gc_select().
+ */
+function _hosting_package_instances_gc_args() {
+  return array(
+    ':pdeleted' => _hosting_package_deleted_status('platform'),
+    ':sdeleted' => _hosting_package_deleted_status('site'),
+  );
+}
+
+/**
+ * The status value that marks a deleted site or platform.
+ *
+ * The constants live in the site and platform modules, which may not be
+ * loaded when this include runs on its own.
+ */
+function _hosting_package_deleted_status($type) {
+  if ($type == 'platform' && defined('HOSTING_PLATFORM_DELETED')) {
+    return HOSTING_PLATFORM_DELETED;
+  }
+  if ($type == 'site' && defined('HOSTING_SITE_DELETED')) {
+    return HOSTING_SITE_DELETED;
+  }
+  return -2;
 }
 
 function _hosting_package_instance_languages($instance) {

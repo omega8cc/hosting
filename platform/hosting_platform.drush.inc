@@ -200,8 +200,14 @@ function hosting_platform_post_hosting_delete_task($task, $data) {
   db_delete('hosting_platform_client_access')
     ->condition('pid', $task->ref->nid)
     ->execute();
-  // Clean up package instances.
+  // Clean up package instances: the platform's own rows first, then every
+  // row that still names the platform, which is where its profiles'
+  // packages live (keyed by the profile instances the first step removed).
   hosting_package_instance_sync($task->ref->nid, 'platform');
+  $leftovers = hosting_package_instances_delete_by_platform($task->ref->nid);
+  if ($leftovers) {
+    drush_log(dt('Removed @n package instance(s) of the deleted platform.', array('@n' => $leftovers)), 'ok');
+  }
   // Drop the recorded revert-artifact leftover list, and retire any
   // leftover pseudo-sites still exposed on this platform: their purge task
   // dispatches against the platform context, which no longer exists, so a
