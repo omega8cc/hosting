@@ -18,7 +18,7 @@ function hosting_task_gc_hosting_feature() {
   $features['task_gc'] = array(
     // Title to display in form.
     'title' => t('Task garbage collection'),
-    'description' => t('Cleanup task records for deleted sites.'),
+    'description' => t('Collect the tasks of deleted sites and platforms, old task logs and package leftovers.'),
     // Initial status.
     'status' => HOSTING_FEATURE_DISABLED,
     // Module to enable/disable alongside feature.

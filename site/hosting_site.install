@@ -78,6 +78,12 @@ function hosting_site_schema() {
       ),
     ),
     'primary key' => array('vid'),
+    'indexes' => array(
+      // Sites are looked up by nid from every module, and counted per
+      // platform and status on the platform pages and by the queues.
+      'hosting_site_nid_idx' => array('nid'),
+      'hosting_site_platform_idx' => array('platform', 'status'),
+    ),
   );
 
   $schema['hosting_site_backups'] = array(
@@ -522,5 +528,20 @@ function hosting_site_update_7302() {
     db_add_field('hosting_site_backups', 'backup_mode',
       array('type' => 'varchar', 'length' => 64, 'not null' => FALSE)
     );
+  }
+}
+
+/**
+ * Index the site table by nid and by platform and status.
+ *
+ * The table's only key was the revision id; every lookup by nid (most modules
+ * do one per site node) and every count of a platform's sites scanned it.
+ */
+function hosting_site_update_7303() {
+  if (!db_index_exists('hosting_site', 'hosting_site_nid_idx')) {
+    db_add_index('hosting_site', 'hosting_site_nid_idx', array('nid'));
+  }
+  if (!db_index_exists('hosting_site', 'hosting_site_platform_idx')) {
+    db_add_index('hosting_site', 'hosting_site_platform_idx', array('platform', 'status'));
   }
 }

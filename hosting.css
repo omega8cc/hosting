@@ -105,6 +105,22 @@ td.hosting-actions .hosting-button-disabled {
   text-overflow: ellipsis;
 }
 
+/* One line per site, the task lists' rule: the view trims a long name the
+   way it has always trimmed the Platform column, with the full name in the
+   link's title; this is the backstop for a window too narrow even for the
+   trimmed name: no cell wraps, and the site name is the one that gives. */
+.view-hosting-site-list table.views-table th,
+.view-hosting-site-list table.views-table td {
+  white-space: nowrap;
+}
+
+.view-hosting-site-list table.views-table td.views-field-canonical {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
 /**
  * Status icons, colors.
  */
