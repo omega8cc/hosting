@@ -46,7 +46,8 @@ function hosting_task_gc_queue() {
   $old_user = $user;
   $user = user_load(1);
 
-  // Tasks of deleted sites and platforms, and tasks whose node is gone.
+  // Tasks of deleted sites and platforms, tasks whose referenced node is
+  // gone, and task rows whose own node is gone.
   $budget = max(1, (int) variable_get('hosting_task_gc_tasks_per_run', 200));
   foreach (hosting_task_gc_list_entities() as $nid) {
     if ($budget <= 0) {
@@ -56,6 +57,9 @@ function hosting_task_gc_queue() {
   }
   if ($budget > 0) {
     $budget -= hosting_task_gc_delete_orphan_tasks($budget);
+  }
+  if ($budget > 0) {
+    $budget -= hosting_task_gc_delete_nodeless_rows($budget);
   }
 
   // Restore the user.
@@ -86,32 +90,43 @@ function hosting_task_gc_queue() {
       watchdog('hosting_task_gc', 'Deleted @num package instances of deleted platforms.', array('@num' => $removed));
     }
   }
+
+  // The next dispatch counts again, so the queue idles once everything is
+  // collected and wakes as soon as there is more.
+  cache_clear_all('hosting_task_gc_count_sites', 'cache');
 }
 
 /**
- * Deleted sites and platforms that still have tasks.
+ * Deleted sites and platforms that still have finished tasks.
  *
  * @return array
- *   Node ids, a few of each kind.
+ *   Node ids, a few of each kind, oldest first.
  */
 function hosting_task_gc_list_entities() {
-  $nids = db_query_range("SELECT DISTINCT s.nid
-                          FROM {hosting_site} s INNER JOIN {hosting_task} t ON s.nid = t.rid
-                          WHERE s.status = :status", 0, 5, array(':status' => HOSTING_SITE_DELETED))->fetchCol();
+  $sites = db_query_range("SELECT DISTINCT s.nid
+                           FROM {hosting_site} s INNER JOIN {hosting_task} t ON s.nid = t.rid
+                           WHERE s.status = :status ORDER BY s.nid", 0, 5, array(':status' => HOSTING_SITE_DELETED))->fetchCol();
   $platforms = db_query_range("SELECT DISTINCT p.nid
                                FROM {hosting_platform} p INNER JOIN {hosting_task} t ON p.nid = t.rid
-                               WHERE p.status = :status", 0, 5, array(':status' => HOSTING_PLATFORM_DELETED))->fetchCol();
-  return array_merge($nids, $platforms);
+                               WHERE p.status = :status ORDER BY p.nid", 0, 5, array(':status' => HOSTING_PLATFORM_DELETED))->fetchCol();
+  return array_merge($sites, $platforms);
 }
 
 /**
- * Delete the tasks of a node, at most $limit of them.
+ * Delete the finished tasks of a node, at most $limit of them.
+ *
+ * A task still queued or running (the delete task of the platform itself
+ * marks the platform deleted before it finishes) is left for a later run.
  *
  * @return int
  *   The number of task nodes deleted.
  */
 function hosting_task_gc_delete_tasks($rid, $limit) {
-  $tasks = db_query_range("SELECT DISTINCT nid FROM {hosting_task} WHERE rid = :rid", 0, max(1, (int) $limit), array(':rid' => $rid))->fetchCol();
+  $tasks = db_query_range("SELECT DISTINCT t.nid
+                           FROM {hosting_task} t INNER JOIN {node} n ON n.vid = t.vid
+                           WHERE t.rid = :rid AND t.task_status NOT IN (:live)
+                           ORDER BY t.nid", 0, max(1, (int) $limit),
+                           array(':rid' => $rid, ':live' => array(HOSTING_TASK_QUEUED, HOSTING_TASK_PROCESSING)))->fetchCol();
   return hosting_task_gc_delete_task_nodes($tasks);
 }
 
@@ -124,12 +139,31 @@ function hosting_task_gc_delete_tasks($rid, $limit) {
 function hosting_task_gc_delete_orphan_tasks($limit) {
   $tasks = db_query_range("SELECT DISTINCT t.nid
                            FROM {hosting_task} t LEFT JOIN {node} r ON r.nid = t.rid
-                           WHERE r.nid IS NULL", 0, max(1, (int) $limit))->fetchCol();
+                           WHERE r.nid IS NULL ORDER BY t.nid", 0, max(1, (int) $limit))->fetchCol();
   return hosting_task_gc_delete_task_nodes($tasks);
 }
 
 /**
+ * Delete task rows whose own task node no longer exists, at most $limit.
+ *
+ * A node deleted past the task module's hook leaves its hosting_task,
+ * argument and log rows behind; node_delete() cannot reach them.
+ *
+ * @return int
+ *   The number of task ids cleaned.
+ */
+function hosting_task_gc_delete_nodeless_rows($limit) {
+  $nids = db_query_range("SELECT DISTINCT t.nid
+                          FROM {hosting_task} t LEFT JOIN {node} n ON n.nid = t.nid
+                          WHERE n.nid IS NULL ORDER BY t.nid", 0, max(1, (int) $limit))->fetchCol();
+  return hosting_task_gc_delete_task_rows($nids);
+}
+
+/**
  * Delete task nodes in batches; hook_delete removes their rows and logs.
+ *
+ * Rows a node delete could not reach (a task node that no longer loads) are
+ * removed directly, so a run never spends its budget on the same ids again.
  *
  * @return int
  *   The number of task nodes deleted.
@@ -141,8 +175,34 @@ function hosting_task_gc_delete_task_nodes($nids) {
   }
   foreach (array_chunk($nids, 50) as $chunk) {
     node_delete_multiple($chunk);
+    hosting_task_gc_delete_task_rows($chunk);
   }
   watchdog('hosting_task_gc', 'Deleted @num task node(s).', array('@num' => count($nids)));
+  return count($nids);
+}
+
+/**
+ * Delete the task, argument and log rows of the given task ids.
+ *
+ * @return int
+ *   The number of task ids cleaned.
+ */
+function hosting_task_gc_delete_task_rows($nids) {
+  $nids = array_values(array_unique(array_filter(array_map('intval', (array) $nids))));
+  if (empty($nids)) {
+    return 0;
+  }
+  foreach (array_chunk($nids, 50) as $chunk) {
+    db_delete('hosting_task_log')
+      ->condition('nid', $chunk, 'IN')
+      ->execute();
+    db_delete('hosting_task_arguments')
+      ->condition('nid', $chunk, 'IN')
+      ->execute();
+    db_delete('hosting_task')
+      ->condition('nid', $chunk, 'IN')
+      ->execute();
+  }
   return count($nids);
 }
 
@@ -191,15 +251,18 @@ function hosting_task_gc_list_sites() {
  * Get the number of items with garbage to collect.
  *
  * Deleted sites and platforms that still have tasks, tasks whose node is
- * gone, plus one for old task logs and one for package leftovers when any
- * are pending. The queue only runs while this is above zero.
+ * gone, task rows whose own node is gone, plus one for old task logs and one
+ * for package leftovers when any are pending. The queue only runs while this
+ * is above zero.
  *
  * @return int
  *   The number of items.
  */
 function hosting_task_gc_count() {
-  // This query can be super expensive to run, so only run it once every hour.
-  if ($cache = cache_get('hosting_task_gc_count_sites')) {
+  // This query can be super expensive to run, so only run it once every hour
+  // (the cache layer does not expire an entry by itself).
+  $cache = cache_get('hosting_task_gc_count_sites');
+  if ($cache && !empty($cache->expire) && $cache->expire > REQUEST_TIME) {
     return $cache->data;
   }
   $count = (int) db_query("SELECT COUNT(DISTINCT s.nid)
@@ -211,6 +274,9 @@ function hosting_task_gc_count() {
   $count += (int) db_query("SELECT COUNT(DISTINCT t.nid)
                             FROM {hosting_task} t LEFT JOIN {node} r ON r.nid = t.rid
                             WHERE r.nid IS NULL")->fetchField();
+  $count += (int) db_query("SELECT COUNT(DISTINCT t.nid)
+                            FROM {hosting_task} t LEFT JOIN {node} n ON n.nid = t.nid
+                            WHERE n.nid IS NULL")->fetchField();
   if (hosting_task_gc_old_logs_pending()) {
     $count++;
   }
