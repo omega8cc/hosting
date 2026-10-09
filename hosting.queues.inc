@@ -148,8 +148,10 @@ function hosting_get_queues($refresh = FALSE) {
  */
 function hosting_queue_last_run($queue) {
   if (!hosting_queue_run_table_exists()) {
-    $value = variable_get('hosting_queue_' . $queue . '_last_run', FALSE);
-    return $value === FALSE ? FALSE : (int) $value;
+    // Before update 7306: the variable, read from its table rather than from
+    // this process's bootstrap copy, so a sibling dispatcher's stamp is seen.
+    $raw = db_query("SELECT value FROM {variable} WHERE name = :name", array(':name' => 'hosting_queue_' . $queue . '_last_run'))->fetchField();
+    return $raw === FALSE ? FALSE : (int) @unserialize($raw);
   }
   $value = db_query("SELECT last_run FROM {hosting_queue_run} WHERE queue = :queue", array(':queue' => $queue))->fetchField();
   return $value === FALSE ? FALSE : (int) $value;
