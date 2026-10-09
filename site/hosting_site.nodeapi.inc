@@ -417,6 +417,7 @@ function hosting_site_node_update($node) {
  * Implements hook_load().
  */
 function hosting_site_load($nodes) {
+  $server_nids = array();
   foreach ($nodes as $nid => &$node) {
     $additions = db_query(
       'SELECT  client, db_server, db_name, platform, profile, web_server, publish_path,
@@ -430,9 +431,24 @@ function hosting_site_load($nodes) {
     foreach ($additions as $property => &$value) {
       $node->$property = is_numeric($value) ? (int) $value : $value;
     }
+    if (!empty($node->web_server)) {
+      $server_nids[$node->web_server] = $node->web_server;
+    }
+    if (!empty($node->db_server)) {
+      $server_nids[$node->db_server] = $node->db_server;
+    }
   }
+  unset($node);
 
-  // Create a "servers" array based on our two base servers.
-  $node->servers['web'] = node_load($node->web_server);
-  $node->servers['db'] = node_load($node->db_server);
+  // Create a "servers" array on every site from its two base servers: one
+  // load for the distinct servers, then each site gets its own pair. Set
+  // after the loop on the loop's leftover reference, only the last site of a
+  // multi-load had it.
+  $servers = $server_nids ? node_load_multiple(array_values($server_nids)) : array();
+  foreach ($nodes as $nid => $node) {
+    $node->servers = array(
+      'web' => (!empty($node->web_server) && isset($servers[$node->web_server])) ? $servers[$node->web_server] : FALSE,
+      'db' => (!empty($node->db_server) && isset($servers[$node->db_server])) ? $servers[$node->db_server] : FALSE,
+    );
+  }
 }
