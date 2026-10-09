@@ -61,6 +61,10 @@ function hosting_task_schema() {
     ),
     'indexes' => array(
       'nid' => array('nid'),
+      // Every node page lists the tasks of its node, and the dispatcher counts
+      // and picks tasks by status many times a minute.
+      'hosting_task_rid_idx' => array('rid'),
+      'hosting_task_status_idx' => array('task_status', 'executed'),
     ),
     'primary key' => array('vid'),
   );
@@ -459,5 +463,22 @@ function hosting_task_update_7304() {
   }
   if (!variable_get('hosting_task_queued_by_since', 0)) {
     variable_set('hosting_task_queued_by_since', REQUEST_TIME);
+  }
+}
+
+/**
+ * Index the task table by referenced node and by status.
+ *
+ * Every node page lists the tasks of its node, the task collector finds the
+ * tasks of a deleted site or platform by it, and the dispatcher counts and
+ * picks tasks by status many times a minute; the table had only the nid key,
+ * so each of those scanned every task ever recorded.
+ */
+function hosting_task_update_7305() {
+  if (!db_index_exists('hosting_task', 'hosting_task_rid_idx')) {
+    db_add_index('hosting_task', 'hosting_task_rid_idx', array('rid'));
+  }
+  if (!db_index_exists('hosting_task', 'hosting_task_status_idx')) {
+    db_add_index('hosting_task', 'hosting_task_status_idx', array('task_status', 'executed'));
   }
 }

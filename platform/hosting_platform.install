@@ -56,6 +56,11 @@ function hosting_platform_schema() {
       ),
     ),
     'primary key' => array('vid'),
+    'indexes' => array(
+      // Platforms are joined and looked up by nid everywhere; the only key
+      // was the revision id.
+      'hosting_platform_nid_idx' => array('nid'),
+    ),
   );
 
   return $schema;
@@ -219,4 +224,16 @@ function hosting_platform_update_6208() {
     db_drop_field($ret, 'hosting_platform', 'release_id');
   }
   return $ret;
+}
+
+/**
+ * Index the platform table by nid.
+ *
+ * Sites, package instances and tasks join it on nid, and every site load
+ * and platform lookup reads it by nid; the only key was the revision id.
+ */
+function hosting_platform_update_7300() {
+  if (!db_index_exists('hosting_platform', 'hosting_platform_nid_idx')) {
+    db_add_index('hosting_platform', 'hosting_platform_nid_idx', array('nid'));
+  }
 }

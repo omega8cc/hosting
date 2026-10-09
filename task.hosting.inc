@@ -197,6 +197,23 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // and the reaper's grace).
       $task->executed = time();
 
+      // A site or platform recorded as deleted has no context left (its
+      // delete task removed it): a task other than the delete itself is not
+      // run. Run against @none, as before, it re-created the deleted node's
+      // alias and verified a phantom server context named "none", then
+      // reported success. Refused here, before the command hook, so no
+      // module rollback hook runs (an install's or import's would set the
+      // deleted site back to disabled); marked failed first, so the queue
+      // does not re-select a task left queued.
+      if ((($ref->type == 'site' && isset($ref->site_status) && $ref->site_status == HOSTING_SITE_DELETED)
+        || ($ref->type == 'platform' && isset($ref->platform_status) && $ref->platform_status == HOSTING_PLATFORM_DELETED))
+        && $task->task_type != 'delete') {
+        $task->task_status = HOSTING_TASK_ERROR;
+        $task->revision = TRUE;
+        node_save($task);
+        return drush_set_error('HOSTING_TASK_TARGET_DELETED', dt('@title (node @nid) is deleted: the @type task is not run.', array('@title' => $ref->title, '@nid' => $ref->nid, '@type' => $task->task_type)));
+      }
+
       // Now you can safely access task arguments.
       // A backup task created without an explicit mode (CLI hosting-task,
       // API hosting_add_task, queued nightly backups) must produce the same
