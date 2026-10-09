@@ -190,6 +190,7 @@ function hosting_site_views_default_views() {
   $handler->display->display_options['fields']['canonical']['alter']['path'] = '[path]';
   $handler->display->display_options['fields']['canonical']['alter']['alt'] = '[canonical]';
   $handler->display->display_options['fields']['canonical']['alter']['max_length'] = '40';
+  $handler->display->display_options['fields']['canonical']['alter']['word_boundary'] = FALSE;
   $handler->display->display_options['fields']['canonical']['alter']['trim'] = TRUE;
   $handler->display->display_options['fields']['canonical']['element_class'] = 'hosting-status';
   $handler->display->display_options['fields']['canonical']['element_label_class'] = 'hosting-status';

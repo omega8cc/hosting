@@ -59,6 +59,19 @@ class hosting_site_field_handler_canonical extends views_handler_field {
   }
 
   /**
+   * Views sets the link's title only when it differs from the link text, so
+   * a name it did not trim carries none; the sites list's stylesheet can
+   * still clip that name in the theme's fixed-width column, and the full
+   * name must stay one hover away.
+   */
+  function render_as_link($alter, $text, $tokens) {
+    if (!empty($alter['alt']) && !isset($alter['link_attributes']['title'])) {
+      $alter['link_attributes']['title'] = $alter['alt'];
+    }
+    return parent::render_as_link($alter, $text, $tokens);
+  }
+
+  /**
    * Views breaks a trimmed domain on the word boundary just past a dot and
    * then appends its ellipsis, so the name would end in four dots.
    */
