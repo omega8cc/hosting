@@ -234,7 +234,7 @@ function _hosting_package_load($param) {
 function hosting_get_packages_by_type($type) {
   $nid = db_query("SELECT p.nid
                    FROM {hosting_package} p
-                   INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
+                   INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid AND n.type = 'package'
                    WHERE p.package_type = :package_type
                    ORDER BY p.nid ASC", array(':package_type' => $type))->fetchField();
 
@@ -271,7 +271,7 @@ function hosting_get_default_profile($default = NULL) {
 function hosting_get_package($short_name, $type) {
   $nid = db_query("SELECT p.nid
                    FROM {hosting_package} p
-                   INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
+                   INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid AND n.type = 'package'
                    WHERE p.short_name = :short_name
                    AND p.package_type = :type
                    ORDER BY p.nid ASC", array(

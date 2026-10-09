@@ -48,8 +48,9 @@ function hosting_package_schema() {
     'primary key' => array('vid'),
     'indexes' => array(
       'hosting_package_nid_idx' => array('nid'),
-      // Every package the verify reports is looked up by name and type.
-      'hosting_package_short_name_idx' => array('short_name', 'package_type'),
+      // Every package the verify reports is looked up by name and type. The
+      // name is prefixed so the key fits every row format in utf8mb4.
+      'hosting_package_short_name_idx' => array(array('short_name', 191), 'package_type'),
     ),
   );
 
@@ -574,7 +575,7 @@ function hosting_package_update_7302() {
     db_add_index('hosting_package_instance', 'hosting_package_platform_idx', array('platform', 'status', 'package_id'));
   }
   if (!db_index_exists('hosting_package', 'hosting_package_short_name_idx')) {
-    db_add_index('hosting_package', 'hosting_package_short_name_idx', array('short_name', 'package_type'));
+    db_add_index('hosting_package', 'hosting_package_short_name_idx', array(array('short_name', 191), 'package_type'));
   }
   if (!db_index_exists('hosting_package_languages', 'hosting_package_languages_iid_idx')) {
     db_add_index('hosting_package_languages', 'hosting_package_languages_iid_idx', array('iid'));
@@ -593,32 +594,45 @@ function hosting_package_update_7302() {
  */
 function hosting_package_update_7303(&$sandbox) {
   if (!isset($sandbox['nids'])) {
-    db_query("DELETE FROM {hosting_package} WHERE nid NOT IN (SELECT nid FROM {node})");
     $sandbox['nids'] = array();
-    $groups = db_query("SELECT p.short_name, p.package_type, MIN(p.nid) AS keep
+    // Every name and type that has more than one row, counting rows whose
+    // node is gone: an instance or a site profile may still point at one of
+    // those, and it is re-pointed with the live duplicates before the row
+    // goes. A group with no live package node is left alone.
+    $groups = db_query("SELECT p.short_name, p.package_type,
+                          MIN(CASE WHEN n.nid IS NOT NULL THEN p.nid END) AS keep
                         FROM {hosting_package} p
-                        INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
+                        LEFT JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid AND n.type = 'package'
                         GROUP BY p.short_name, p.package_type
                         HAVING COUNT(DISTINCT p.nid) > 1");
     foreach ($groups as $group) {
-      $dups = db_query("SELECT DISTINCT p.nid
-                        FROM {hosting_package} p
-                        INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
-                        WHERE p.short_name = :short_name AND p.package_type = :type AND p.nid <> :keep",
-                        array(':short_name' => $group->short_name, ':type' => $group->package_type, ':keep' => $group->keep))->fetchCol();
-      if (empty($dups)) {
+      if (empty($group->keep)) {
+        continue;
+      }
+      $others = db_query("SELECT DISTINCT p.nid
+                          FROM {hosting_package} p
+                          WHERE p.short_name = :short_name AND p.package_type = :type AND p.nid <> :keep",
+                          array(':short_name' => $group->short_name, ':type' => $group->package_type, ':keep' => $group->keep))->fetchCol();
+      if (empty($others)) {
         continue;
       }
       db_update('hosting_package_instance')
         ->fields(array('package_id' => $group->keep))
-        ->condition('package_id', $dups, 'IN')
+        ->condition('package_id', $others, 'IN')
         ->execute();
       db_update('hosting_site')
         ->fields(array('profile' => $group->keep))
-        ->condition('profile', $dups, 'IN')
+        ->condition('profile', $others, 'IN')
         ->execute();
-      $sandbox['nids'] = array_merge($sandbox['nids'], $dups);
+      $live = db_query("SELECT DISTINCT p.nid
+                        FROM {hosting_package} p
+                        INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid AND n.type = 'package'
+                        WHERE p.nid IN (:nids)", array(':nids' => $others))->fetchCol();
+      $sandbox['nids'] = array_merge($sandbox['nids'], $live);
     }
+    // Rows without a package node: node_delete() cannot reach them, and
+    // nothing points at them any more.
+    db_query("DELETE FROM {hosting_package} WHERE nid NOT IN (SELECT nid FROM {node} WHERE type = 'package')");
     $sandbox['total'] = count($sandbox['nids']);
     $sandbox['done'] = 0;
   }
