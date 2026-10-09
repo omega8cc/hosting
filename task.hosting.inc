@@ -362,6 +362,16 @@ function drush_hosting_task() {
   // Make sure argument order is correct.
   ksort($task->args);
 
+  // A site or platform recorded as deleted has no context left (its delete
+  // task removed it): a task other than the delete itself is not run. Run
+  // against @none, as before, it re-created the deleted node's alias and
+  // verified a phantom server context named "none", then reported success.
+  if ((($task->ref->type == 'site' && $task->ref->site_status == HOSTING_SITE_DELETED)
+    || ($task->ref->type == 'platform' && $task->ref->platform_status == HOSTING_PLATFORM_DELETED))
+    && $task->task_type != 'delete') {
+    return drush_set_error('HOSTING_TASK_TARGET_DELETED', dt('@title (node @nid) is deleted: the @type task is not run.', array('@title' => $task->ref->title, '@nid' => $task->ref->nid, '@type' => $task->task_type)));
+  }
+
   // If this task type needs it, run provision-save to create the named context.
   if (!empty($task->task_info['provision_save'])) {
     // Invoke hook_hosting_TASK_OBJECT_context_options()

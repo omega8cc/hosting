@@ -1202,12 +1202,47 @@ function hosting_context_load($name) {
 /**
  * Add a node to the context lookup db.
  *
+ * A context name is unique. A name still held by another node is released
+ * first when that node is gone, or is a site or platform whose record says
+ * deleted: its delete task would have removed the row, and a row left
+ * behind (a platform marked deleted by a status write, a delete that never
+ * finished) otherwise stops the next registration of the name with a
+ * duplicate-key exception in the middle of the command that needed it. A
+ * name held by a live node is a real conflict: reported, never taken over.
+ *
  * @param int $nid
  *   The nid of the node to associate to the given provision context name.
  * @param string $name
  *   The name of the provision context.
+ *
+ * @return bool
+ *   TRUE when the name is registered to the node; FALSE when another live
+ *   node holds it and the node keeps whatever name it had.
  */
 function hosting_context_register($nid, $name) {
+  $holder = (int) db_query("SELECT nid FROM {hosting_context} WHERE name = :name AND nid <> :nid", array(':name' => $name, ':nid' => $nid))->fetchField();
+  if ($holder) {
+    $args = array('%name' => $name, '%holder' => $holder, '%nid' => $nid);
+    if (hosting_context_holder_is_stale($holder)) {
+      hosting_context_delete($holder);
+      watchdog('hosting', 'Released the context name %name from node %holder, which is deleted, for node %nid.', $args, WATCHDOG_NOTICE);
+      if (function_exists('drush_log')) {
+        drush_log(strip_tags(t('Released the context name %name from node %holder, which is deleted, for node %nid.', $args)), 'ok');
+      }
+    }
+    else {
+      $message = t('The context name %name is held by node %holder, which is not deleted; node %nid keeps its current name.', $args);
+      watchdog('hosting', 'The context name %name is held by node %holder, which is not deleted; node %nid keeps its current name.', $args, WATCHDOG_ERROR);
+      if (function_exists('drush_set_error')) {
+        drush_set_error('HOSTING_CONTEXT_NAME_TAKEN', strip_tags($message));
+      }
+      else {
+        drupal_set_message($message, 'error');
+      }
+      return FALSE;
+    }
+  }
+
   // Check first to see if this nid exists in the system. If so, update its
   // name.
   if ($result = db_query("SELECT nid FROM {hosting_context} WHERE nid = :nid", array(':nid' => $nid))->fetch()) {
@@ -1240,6 +1275,35 @@ function hosting_context_register($nid, $name) {
   // Add the new alias.
   $path = array('source' => "node/$nid", 'alias' => "hosting/c/$name");
   path_save($path);
+  return TRUE;
+}
+
+/**
+ * Whether the node holding a context name is gone or recorded as deleted.
+ *
+ * Only a site or a platform can be deleted and still exist as a node; every
+ * other holder is live.
+ *
+ * @param int $nid
+ *   The holder's nid.
+ *
+ * @return bool
+ *   TRUE when the name can be released.
+ */
+function hosting_context_holder_is_stale($nid) {
+  $node = node_load($nid);
+  if (!$node) {
+    return TRUE;
+  }
+  if ($node->type == 'platform') {
+    $deleted = defined('HOSTING_PLATFORM_DELETED') ? HOSTING_PLATFORM_DELETED : -2;
+    return isset($node->platform_status) && $node->platform_status == $deleted;
+  }
+  if ($node->type == 'site') {
+    $deleted = defined('HOSTING_SITE_DELETED') ? HOSTING_SITE_DELETED : -2;
+    return isset($node->site_status) && $node->site_status == $deleted;
+  }
+  return FALSE;
 }
 
 /**

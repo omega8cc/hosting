@@ -14,7 +14,7 @@ function hosting_task_gc_hosting_queues() {
   $count = hosting_task_gc_count();
   $queue['task_gc'] = array(
     'name' => t('Task GC'),
-    'description' => t('Collect the tasks of deleted sites and platforms, old task logs and package leftovers.'),
+    'description' => t('Collect the tasks of deleted sites and platforms, old task logs, package leftovers and the context names of deleted sites and platforms.'),
     // Run queue sequentially. always with the same parameters.
     'type' => HOSTING_QUEUE_TYPE_BATCH,
     'frequency' => strtotime("1 hour", 0),
@@ -89,6 +89,11 @@ function hosting_task_gc_queue() {
     if ($removed) {
       watchdog('hosting_task_gc', 'Deleted @num package instances of deleted platforms.', array('@num' => $removed));
     }
+  }
+
+  $released = hosting_task_gc_delete_stale_contexts(variable_get('hosting_task_gc_contexts_per_run', 200));
+  if ($released) {
+    watchdog('hosting_task_gc', 'Released @num context name(s) of deleted or missing nodes.', array('@num' => $released));
   }
 
   // The next dispatch counts again, so the queue idles once everything is
@@ -224,6 +229,54 @@ function hosting_task_gc_prune_logs() {
 }
 
 /**
+ * Release the context names of nodes that are gone or deleted, at most $limit.
+ *
+ * A site's or platform's delete task removes its context row. A row left
+ * behind (a platform marked deleted by a status write, a delete that never
+ * finished, a node removed past the hooks) keeps a name no other node can
+ * take, and the next hostmaster migration that needs that name stops on a
+ * duplicate key. The node itself stays, as after a delete task.
+ *
+ * @return int
+ *   The number of rows released.
+ */
+function hosting_task_gc_delete_stale_contexts($limit) {
+  $nids = db_query_range(hosting_task_gc_stale_contexts_sql(), 0, max(1, (int) $limit), hosting_task_gc_stale_contexts_args())->fetchCol();
+  foreach ($nids as $nid) {
+    hosting_context_delete($nid);
+  }
+  return count($nids);
+}
+
+/**
+ * Whether any context row names a node that is gone or deleted.
+ */
+function hosting_task_gc_stale_contexts_pending() {
+  return (bool) db_query_range(hosting_task_gc_stale_contexts_sql(), 0, 1, hosting_task_gc_stale_contexts_args())->fetchField();
+}
+
+/**
+ * The stale context rows, oldest node first; status read on the current revision.
+ */
+function hosting_task_gc_stale_contexts_sql() {
+  return "SELECT c.nid FROM {hosting_context} c
+            LEFT JOIN {node} n ON n.nid = c.nid
+            LEFT JOIN {hosting_site} s ON s.nid = c.nid AND s.vid = n.vid
+            LEFT JOIN {hosting_platform} p ON p.nid = c.nid AND p.vid = n.vid
+          WHERE n.nid IS NULL
+             OR (n.type = 'site' AND s.status = :site_deleted)
+             OR (n.type = 'platform' AND p.status = :platform_deleted)
+          ORDER BY c.nid";
+}
+
+/**
+ * The placeholders of hosting_task_gc_stale_contexts_sql().
+ */
+function hosting_task_gc_stale_contexts_args() {
+  return array(':site_deleted' => HOSTING_SITE_DELETED, ':platform_deleted' => HOSTING_PLATFORM_DELETED);
+}
+
+/**
  * Whether any task log entry is older than the configured age.
  */
 function hosting_task_gc_old_logs_pending() {
@@ -251,8 +304,8 @@ function hosting_task_gc_list_sites() {
  * Get the number of items with garbage to collect.
  *
  * Deleted sites and platforms that still have tasks, tasks whose node is
- * gone, task rows whose own node is gone, plus one for old task logs and one
- * for package leftovers when any are pending. The queue only runs while this
+ * gone, task rows whose own node is gone, plus one for old task logs, one
+ * for package leftovers and one for stale context names when any are pending. The queue only runs while this
  * is above zero.
  *
  * @return int
@@ -281,6 +334,9 @@ function hosting_task_gc_count() {
     $count++;
   }
   if (function_exists('hosting_package_instances_gc_pending') && hosting_package_instances_gc_pending()) {
+    $count++;
+  }
+  if (hosting_task_gc_stale_contexts_pending()) {
     $count++;
   }
   cache_set('hosting_task_gc_count_sites', $count, 'cache', REQUEST_TIME + 3600);
