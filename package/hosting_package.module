@@ -226,12 +226,19 @@ function _hosting_package_load($param) {
 }
 
 /**
- * @todo document this function
+ * Load the first package node of a type.
+ *
+ * Only a package row whose node still exists counts, and the lowest nid
+ * wins, so repeated lookups agree.
  */
 function hosting_get_packages_by_type($type) {
-  $result = db_query("SELECT nid FROM {hosting_package} WHERE package_type = :package_type", array(':package_type' => $type));
+  $nid = db_query("SELECT p.nid
+                   FROM {hosting_package} p
+                   INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
+                   WHERE p.package_type = :package_type
+                   ORDER BY p.nid ASC", array(':package_type' => $type))->fetchField();
 
-  if ($nid = $result->fetchField()) {
+  if ($nid) {
     return node_load($nid);
   }
   return FALSE;
@@ -254,19 +261,24 @@ function hosting_get_default_profile($default = NULL) {
 }
 
 /**
- * @todo document this function
+ * Load the package node of a given short name and type.
+ *
+ * A package row whose node is gone must not be returned: node_load() of it
+ * is FALSE, and the verify's sync reads FALSE as "no such package" and
+ * creates a new package node on every run. Only rows with a live node
+ * count, and the lowest nid wins, so repeated lookups agree.
  */
 function hosting_get_package($short_name, $type) {
-  $result = db_query("SELECT nid
-                      FROM {hosting_package}
-                      WHERE short_name = :short_name
-                      AND package_type = :type
-                     ", array(
-                       ':short_name' => $short_name,
-                       ':type' => $type,
-                      )
-                    );
-  if ($nid = $result->fetchField()) {
+  $nid = db_query("SELECT p.nid
+                   FROM {hosting_package} p
+                   INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
+                   WHERE p.short_name = :short_name
+                   AND p.package_type = :type
+                   ORDER BY p.nid ASC", array(
+                     ':short_name' => $short_name,
+                     ':type' => $type,
+                   ))->fetchField();
+  if ($nid) {
     return node_load($nid);
   }
   return FALSE;

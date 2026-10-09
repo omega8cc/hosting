@@ -46,7 +46,11 @@ function hosting_package_schema() {
       ),
     ),
     'primary key' => array('vid'),
-    'indexes' => array('hosting_package_nid_idx' => array('nid')),
+    'indexes' => array(
+      'hosting_package_nid_idx' => array('nid'),
+      // Every package the verify reports is looked up by name and type.
+      'hosting_package_short_name_idx' => array('short_name', 'package_type'),
+    ),
   );
 
   $schema['hosting_package_instance'] = array(
@@ -102,6 +106,10 @@ function hosting_package_schema() {
     'indexes' => array(
       'hosting_package_rid_idx' => array('rid'),
       'hosting_package_id_idx' => array('package_id'),
+      // Lookups by the owning platform (per-site package version checks, the
+      // package pages' site counts, leftover collection) ran as full scans:
+      // a long-lived master carries hundreds of thousands of rows here.
+      'hosting_package_platform_idx' => array('platform', 'status', 'package_id'),
     ),
   );
 
@@ -117,6 +125,9 @@ function hosting_package_schema() {
         'not null' => TRUE,
         'default' => '',
       ),
+    ),
+    'indexes' => array(
+      'hosting_package_languages_iid_idx' => array('iid'),
     ),
   );
 
@@ -546,4 +557,79 @@ function hosting_package_update_7301() {
   );
 
   db_change_field('hosting_package_instance', 'filename', 'filename', $spec);
+}
+
+/**
+ * Index the package tables for the lookups the front end and the verify run.
+ *
+ * The per-site package version check, the package pages' site counts and the
+ * leftover collection select instances by platform; the verify looks every
+ * reported package up by name and type; every loaded instance reads its
+ * languages by iid. None of those columns was indexed, so each lookup scanned
+ * the whole table, and the instance table of a long-lived master holds
+ * hundreds of thousands of rows.
+ */
+function hosting_package_update_7302() {
+  if (!db_index_exists('hosting_package_instance', 'hosting_package_platform_idx')) {
+    db_add_index('hosting_package_instance', 'hosting_package_platform_idx', array('platform', 'status', 'package_id'));
+  }
+  if (!db_index_exists('hosting_package', 'hosting_package_short_name_idx')) {
+    db_add_index('hosting_package', 'hosting_package_short_name_idx', array('short_name', 'package_type'));
+  }
+  if (!db_index_exists('hosting_package_languages', 'hosting_package_languages_iid_idx')) {
+    db_add_index('hosting_package_languages', 'hosting_package_languages_iid_idx', array('iid'));
+  }
+}
+
+/**
+ * Drop package rows without a node and merge duplicate package nodes.
+ *
+ * A package row whose node was gone was returned first by the name lookup,
+ * so every verify created another package node of the same name and type
+ * (thousands of "drupal" platform packages on a long-lived master). The
+ * dead rows go; every instance and every site profile that points at a
+ * duplicate is re-pointed at the oldest surviving node of that name and
+ * type; the duplicates are then deleted in batches.
+ */
+function hosting_package_update_7303(&$sandbox) {
+  if (!isset($sandbox['nids'])) {
+    db_query("DELETE FROM {hosting_package} WHERE nid NOT IN (SELECT nid FROM {node})");
+    $sandbox['nids'] = array();
+    $groups = db_query("SELECT p.short_name, p.package_type, MIN(p.nid) AS keep
+                        FROM {hosting_package} p
+                        INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
+                        GROUP BY p.short_name, p.package_type
+                        HAVING COUNT(DISTINCT p.nid) > 1");
+    foreach ($groups as $group) {
+      $dups = db_query("SELECT DISTINCT p.nid
+                        FROM {hosting_package} p
+                        INNER JOIN {node} n ON n.nid = p.nid AND n.vid = p.vid
+                        WHERE p.short_name = :short_name AND p.package_type = :type AND p.nid <> :keep",
+                        array(':short_name' => $group->short_name, ':type' => $group->package_type, ':keep' => $group->keep))->fetchCol();
+      if (empty($dups)) {
+        continue;
+      }
+      db_update('hosting_package_instance')
+        ->fields(array('package_id' => $group->keep))
+        ->condition('package_id', $dups, 'IN')
+        ->execute();
+      db_update('hosting_site')
+        ->fields(array('profile' => $group->keep))
+        ->condition('profile', $dups, 'IN')
+        ->execute();
+      $sandbox['nids'] = array_merge($sandbox['nids'], $dups);
+    }
+    $sandbox['total'] = count($sandbox['nids']);
+    $sandbox['done'] = 0;
+  }
+
+  $batch = array_splice($sandbox['nids'], 0, 50);
+  if (!empty($batch)) {
+    node_delete_multiple($batch);
+    $sandbox['done'] += count($batch);
+  }
+  $sandbox['#finished'] = empty($sandbox['total']) ? 1 : min(1, $sandbox['done'] / $sandbox['total']);
+  if ($sandbox['#finished'] >= 1) {
+    return format_plural($sandbox['done'], 'Merged 1 duplicate package node.', 'Merged @count duplicate package nodes.');
+  }
 }
