@@ -38,6 +38,7 @@ function hosting_alias_schema() {
       ),
     ),
     'indexes' => array(
+      'nid' => array('nid'),
       'vid' => array('vid'),
       'alias' => array('alias'),
     ),
@@ -101,4 +102,14 @@ function hosting_alias_update_6204() {
   }
 
   return $ret;
+}
+
+/**
+ * An index on the site nid: the collector deletes the rows of deleted sites
+ * by nid, and the UNION it scans joins on it.
+ */
+function hosting_alias_update_6205() {
+  if (!db_index_exists('hosting_site_alias', 'nid')) {
+    db_add_index('hosting_site_alias', 'nid', array('nid'));
+  }
 }

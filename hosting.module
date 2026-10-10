@@ -1295,8 +1295,9 @@ function hosting_context_register($nid, $name, $report_only = FALSE) {
  *
  * A site, a platform or a server can be deleted and still exist as a node;
  * every other holder is live. A platform a live site still runs on is never
- * stale whatever its status says: BOA parks old panel platforms at the
- * deleted status and sets the live one back a moment later.
+ * stale whatever its status says: BOA parks every old panel platform at the
+ * deleted status in one write that spares the live one, and the live one's
+ * row still names it should that write ever miss.
  *
  * @param int $nid
  *   The holder's nid.
