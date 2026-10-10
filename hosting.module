@@ -539,6 +539,36 @@ function hosting_theme() {
 }
 
 /**
+ * Implements hook_preprocess_status_report().
+ *
+ * Two of core's rows read wrong on the control panel. BOA keeps the update
+ * manager switched off here and rebuilds the panel with each Octopus upgrade,
+ * so core's advice to enable it becomes the reason it is off, as information
+ * rather than a warning. The hostmaster profile carries no version, so its
+ * row would end in a bare dash; it names the profile alone. Rows are matched
+ * by title: core sorts them into a plain list before theming.
+ */
+function hosting_preprocess_status_report(&$variables) {
+  if (empty($variables['requirements']) || !is_array($variables['requirements'])) {
+    return;
+  }
+  $profile = drupal_get_profile();
+  $info = system_get_info('module', $profile);
+  foreach ($variables['requirements'] as $key => $requirement) {
+    if (!isset($requirement['title'])) {
+      continue;
+    }
+    if ($requirement['title'] == t('Update notifications') && !module_exists('update')) {
+      $variables['requirements'][$key]['severity'] = REQUIREMENT_INFO;
+      $variables['requirements'][$key]['description'] = t('BOA keeps the update manager switched off on the Ægir control panel and rebuilds the panel with each Octopus upgrade.');
+    }
+    elseif ($requirement['title'] == t('Install profile') && !empty($info['name']) && empty($info['version'])) {
+      $variables['requirements'][$key]['value'] = t('%profile_name (%profile)', array('%profile_name' => $info['name'], '%profile' => $profile));
+    }
+  }
+}
+
+/**
  * Generates a link to a node.
  */
 function _hosting_node_link($nid, $title = NULL) {
