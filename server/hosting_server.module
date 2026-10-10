@@ -354,7 +354,7 @@ function hosting_server_form($node, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Human-readable name'),
     '#default_value' => isset($node->human_name) ? $node->human_name : '',
-    '#description' => t('<strong>Optional, but recommended.</strong> Internally, Aegir refers to servers by their hostname. The value of this field will be used throughout the UI, and allows for more meaningful names. While not enforced by the system, it is highly recommended that the name assigned to a server be unique.'),
+    '#description' => t('<strong>Optional, but recommended.</strong> Internally, Ægir refers to servers by their hostname. The value of this field will be used throughout the UI, and allows for more meaningful names. While not enforced by the system, it is highly recommended that the name assigned to a server be unique.'),
     '#weight' => 1,
   );
 
@@ -753,12 +753,12 @@ function hosting_server_field_extra_fields() {
   $return['node']['server'] = array(
     'display' => array(
       'info' => array(
-        'label' => t('Aegir Server Information'),
+        'label' => t('Ægir Server Information'),
         'description' => t('Detailed information about this server.'),
         'weight' => 0,
       ),
       'tasks_view' => array(
-        'label' => t('Aegir Server Tasks'),
+        'label' => t('Ægir Server Tasks'),
         'description' => t('List of available tasks.'),
         'weight' => 1,
       ),
@@ -924,7 +924,7 @@ function _hosting_server_preprocess_classes(&$classes, $rows) {
 function hosting_server_form_hosting_settings_alter(&$form, $form_state) {
   $form['hosting_default_db_server'] = array(
     '#title' => 'Default database server',
-    '#description' => 'When importing sites, and during some other operations, Aegir will use this database, if none was specified.',
+    '#description' => 'When importing sites, and during some other operations, Ægir will use this database, if none was specified.',
     '#type' => 'select',
     '#options' => hosting_get_servers('db'),
     '#default_value' => variable_get('hosting_default_db_server', 4),

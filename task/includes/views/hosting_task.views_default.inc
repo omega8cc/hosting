@@ -13,7 +13,7 @@ function hosting_task_views_default_views() {
   // Exported view: hosting_task_list
   $view = new view();
   $view->name = 'hosting_task_list';
-  $view->description = 'Display a list of tasks in Aegir.';
+  $view->description = 'Display a list of tasks in Ægir.';
   $view->tag = 'hosting_task';
   $view->base_table = 'node';
   $view->human_name = 'Hosting Task list';

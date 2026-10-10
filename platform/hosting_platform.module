@@ -857,7 +857,7 @@ function hosting_platform_validate($node, &$form) {
     }
 
     if (is_null($node->web_server)) {
-      form_set_error('web_server', t('Platform needs to be associated with a webserver. Make sure you have a verified webserver on this Aegir install!'));
+      form_set_error('web_server', t('Platform needs to be associated with a webserver. Make sure you have a verified webserver on this Ægir install!'));
     }
   }
 }
@@ -1035,12 +1035,12 @@ function hosting_platform_field_extra_fields() {
   $return['node']['platform'] = array(
     'display' => array(
       'info' => array(
-        'label' => t('Aegir Platform Information'),
+        'label' => t('Ægir Platform Information'),
         'description' => t('Detailed information about this platform.'),
         'weight' => 0,
       ),
       'tasks_view' => array(
-        'label' => t('Aegir Platform Tasks'),
+        'label' => t('Ægir Platform Tasks'),
         'description' => t('List of available tasks.'),
         'weight' => 1,
       ),
