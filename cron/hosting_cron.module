@@ -386,7 +386,12 @@ function hosting_cron_node_update($node) {
  */
 function hosting_cron_is_hostmaster_site($node) {
   $hostmaster = hosting_get_hostmaster_site_nid();
-  return !empty($hostmaster) && isset($node->nid) && (int) $node->nid === (int) $hostmaster;
+  if (empty($hostmaster)) {
+    // The install records the nid right after it saves the site: while
+    // nothing is recorded yet, the stock install's node 10 is the panel.
+    $hostmaster = 10;
+  }
+  return isset($node->nid) && (int) $node->nid === (int) $hostmaster;
 }
 
 /**
