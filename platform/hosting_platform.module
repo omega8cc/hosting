@@ -705,7 +705,11 @@ function hosting_platform_insert($node) {
     ))
     ->execute();
   if (!isset($node->old_vid)) {
-    hosting_context_register($node->nid, 'platform_' . _hosting_platform_context_name($node->title));
+    // A caller that must finish whatever happens to the name (hosting-resume
+    // moving the panel) sets context_report_only: a live holder is reported,
+    // not thrown, and the new platform keeps no name until the holder is
+    // released or renamed.
+    hosting_context_register($node->nid, 'platform_' . _hosting_platform_context_name($node->title), !empty($node->context_report_only));
   }
 }
 

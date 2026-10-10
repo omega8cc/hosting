@@ -1,5 +1,5 @@
 name = Hosting task garbage collection
-description = Removes the tasks of deleted sites and platforms, old task logs, package leftovers, the context names of deleted sites and of nodes that are gone, and the queued revisions of finished tasks.
+description = Removes the tasks of deleted sites and platforms, old task logs, package leftovers, the context names of deleted sites and of nodes that are gone, the queued revisions of finished tasks, package nodes nothing carries, and the backup, cron and alias rows of deleted sites.
 core = 7.x
 package = Hosting
 dependencies[] = hosting_site

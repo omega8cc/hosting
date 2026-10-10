@@ -211,7 +211,11 @@ function drush_hosting_task_validate($id, $type = NULL) {
         $task->task_status = HOSTING_TASK_ERROR;
         $task->revision = TRUE;
         node_save($task);
-        return drush_set_error('HOSTING_TASK_TARGET_DELETED', dt('@title (node @nid) is deleted: the @type task is not run.', array('@title' => $ref->title, '@nid' => $ref->nid, '@type' => $task->task_type)));
+        // The task log callback is not installed yet and a forked runner's
+        // output is thrown away: write the reason on the failed revision.
+        $reason = dt('@title (node @nid) is deleted: the @type task is not run.', array('@title' => $ref->title, '@nid' => $ref->nid, '@type' => $task->task_type));
+        hosting_task_log($task->vid, 'error', $reason);
+        return drush_set_error('HOSTING_TASK_TARGET_DELETED', $reason);
       }
 
       // Now you can safely access task arguments.

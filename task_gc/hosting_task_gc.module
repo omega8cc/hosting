@@ -101,6 +101,21 @@ function hosting_task_gc_queue() {
     watchdog('hosting_task_gc', 'Deleted @num queued revision(s) of finished tasks.', array('@num' => $pruned));
   }
 
+  $removed = hosting_task_gc_delete_unused_packages(variable_get('hosting_task_gc_packages_per_run', 100));
+  if ($removed) {
+    watchdog('hosting_task_gc', 'Deleted @num package node(s) no platform or site carries.', array('@num' => $removed));
+  }
+
+  $removed = hosting_task_gc_delete_stale_backups(variable_get('hosting_task_gc_backups_per_run', 500));
+  if ($removed) {
+    watchdog('hosting_task_gc', 'Deleted @num backup record(s) of deleted sites whose file is gone.', array('@num' => $removed));
+  }
+
+  $removed = hosting_task_gc_delete_site_rows(variable_get('hosting_task_gc_site_rows_per_run', 500));
+  if ($removed) {
+    watchdog('hosting_task_gc', 'Deleted the cron and alias rows of @num deleted or gone site(s).', array('@num' => $removed));
+  }
+
   // The next dispatch counts again, so the queue idles once everything is
   // collected and wakes as soon as there is more.
   cache_clear_all('hosting_task_gc_count_sites', 'cache');
@@ -332,6 +347,210 @@ function hosting_task_gc_queued_revisions_args() {
 }
 
 /**
+ * Delete package nodes no platform or site carries, at most $limit of them.
+ *
+ * A package node is the registry entry of a module, theme, profile or
+ * distribution; the instance rows name the platforms and sites that carry
+ * it. Deleting a platform removes its instances and never the package nodes,
+ * so a long-lived panel keeps every package that ever shipped on any
+ * platform. Only nodes older than a day go: a verify creates the node a
+ * moment before it writes the first instance. hook_delete() removes the
+ * package row; the next verify of a carrier creates the node again.
+ *
+ * @return int
+ *   The number of nodes deleted.
+ */
+function hosting_task_gc_delete_unused_packages($limit) {
+  // A running verify may be writing the first instance of a node this leg
+  // would read as unused: wait for a quiet run.
+  if (hosting_task_gc_tasks_running()) {
+    return 0;
+  }
+  $nids = db_query_range(hosting_task_gc_unused_packages_sql(), 0, max(1, (int) $limit), hosting_task_gc_unused_packages_args())->fetchCol();
+  if ($nids) {
+    // Read again right before the delete: a task that started meanwhile may
+    // have named one of them.
+    $nids = db_query("SELECT n.nid FROM {node} n
+                        LEFT JOIN {hosting_package_instance} i ON i.package_id = n.nid
+                      WHERE n.nid IN (:nids) AND i.iid IS NULL", array(':nids' => $nids))->fetchCol();
+  }
+  if ($nids && !hosting_task_gc_tasks_running()) {
+    node_delete_multiple($nids);
+    return count($nids);
+  }
+  return 0;
+}
+
+/**
+ * Whether a package node no instance names exists.
+ */
+function hosting_task_gc_unused_packages_pending() {
+  return (bool) db_query_range(hosting_task_gc_unused_packages_sql(), 0, 1, hosting_task_gc_unused_packages_args())->fetchField();
+}
+
+/**
+ * The package nodes without an instance, oldest first.
+ */
+function hosting_task_gc_unused_packages_sql() {
+  // A site's profile names its package node directly, instance or not.
+  return "SELECT n.nid FROM {node} n
+            LEFT JOIN {hosting_package_instance} i ON i.package_id = n.nid
+          WHERE n.type = 'package' AND i.iid IS NULL AND n.created < :cutoff
+            AND n.nid NOT IN (SELECT s.profile FROM {hosting_site} s WHERE s.profile > 0)
+          ORDER BY n.nid";
+}
+
+/**
+ * Whether a task is running on this panel right now (current revisions).
+ */
+function hosting_task_gc_tasks_running() {
+  return (bool) db_query_range("SELECT t.nid FROM {hosting_task} t INNER JOIN {node} n ON n.vid = t.vid WHERE t.task_status = :processing", 0, 1, array(':processing' => HOSTING_TASK_PROCESSING))->fetchField();
+}
+
+/**
+ * The placeholders of hosting_task_gc_unused_packages_sql().
+ */
+function hosting_task_gc_unused_packages_args() {
+  return array(':cutoff' => REQUEST_TIME - 86400);
+}
+
+/**
+ * Delete the backup records of deleted sites whose file is gone, at most
+ * $limit of them.
+ *
+ * A site's delete task records its last backup and nothing removes the row
+ * afterwards; the backup files are purged after their retention, so the rows
+ * point at nothing for good. A record whose file still exists stays until
+ * the file goes; a record of a site node that is gone goes in any case. Only
+ * records on this server are judged by their file.
+ *
+ * @return int
+ *   The number of records deleted.
+ */
+function hosting_task_gc_delete_stale_backups($limit) {
+  $limit = max(1, (int) $limit);
+  // Records of site nodes that are gone need no file check: they go first,
+  // so they never wait behind kept records.
+  $gone = db_query_range("SELECT b.bid FROM {hosting_site_backups} b LEFT JOIN {node} n ON n.nid = b.site WHERE n.nid IS NULL ORDER BY b.bid", 0, $limit)->fetchCol();
+  if ($gone) {
+    db_delete('hosting_site_backups')->condition('bid', $gone, 'IN')->execute();
+    if (count($gone) >= $limit) {
+      return count($gone);
+    }
+  }
+  $bids = array();
+  // Records whose file still exists stay and would fill a window of the
+  // oldest rows for good, so four windows are read for one window of deletes.
+  foreach (hosting_task_gc_stale_backups_rows($limit * 4) as $row) {
+    if (hosting_task_gc_backup_record_is_stale($row)) {
+      $bids[] = $row->bid;
+      if (count($bids) >= $limit) {
+        break;
+      }
+    }
+  }
+  if ($bids) {
+    db_delete('hosting_site_backups')->condition('bid', $bids, 'IN')->execute();
+  }
+  return count($gone) + count($bids);
+}
+
+/**
+ * Whether a backup record of a gone or deleted site points at no file.
+ */
+function hosting_task_gc_stale_backups_pending() {
+  foreach (hosting_task_gc_stale_backups_rows(max(1, (int) variable_get('hosting_task_gc_backups_per_run', 500)) * 4) as $row) {
+    if (hosting_task_gc_backup_record_is_stale($row)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Whether a record of a gone or deleted site can go: the site node is gone,
+ * or the file is gone from a directory this panel can search. A directory it
+ * cannot search (a store not mounted right now) says nothing about the file.
+ */
+function hosting_task_gc_backup_record_is_stale($row) {
+  if (!empty($row->gone)) {
+    return TRUE;
+  }
+  $file = (string) $row->filename;
+  $dir = dirname($file);
+  if ($file === '' || $file[0] !== '/' || !is_dir($dir) || !is_executable($dir)) {
+    return FALSE;
+  }
+  return !file_exists($file);
+}
+
+/**
+ * The backup records of gone or deleted sites on this server, oldest first.
+ *
+ * @return array
+ *   Rows with bid, filename and gone (1 when the site node is gone).
+ */
+function hosting_task_gc_stale_backups_rows($limit) {
+  $master = (int) db_query("SELECT nid FROM {hosting_context} WHERE name = :name", array(':name' => 'server_master'))->fetchField();
+  if (!$master) {
+    return array();
+  }
+  return db_query_range("SELECT b.bid, b.filename, (n.nid IS NULL) AS gone
+                           FROM {hosting_site_backups} b
+                           LEFT JOIN {node} n ON n.nid = b.site
+                           LEFT JOIN {hosting_site} s ON s.nid = b.site AND s.vid = n.vid
+                         WHERE b.web_server = :master
+                           AND (n.nid IS NULL OR (n.type = 'site' AND s.status = :site_deleted))
+                         ORDER BY b.timestamp, b.bid", 0, max(1, (int) $limit), array(':master' => $master, ':site_deleted' => HOSTING_SITE_DELETED))->fetchAll();
+}
+
+/**
+ * Delete the cron and alias rows of deleted or gone sites, at most $limit
+ * sites per run.
+ *
+ * Both tables are cleaned by hook_node_delete() only, which a site's delete
+ * task never fires: the site node stays, recorded as deleted, with its
+ * interval and aliases beside it for good.
+ *
+ * @return int
+ *   The number of sites whose rows were deleted.
+ */
+function hosting_task_gc_delete_site_rows($limit) {
+  $nids = db_query_range(hosting_task_gc_site_rows_sql(), 0, max(1, (int) $limit), hosting_task_gc_site_rows_args())->fetchCol();
+  if ($nids) {
+    db_delete('hosting_cron')->condition('nid', $nids, 'IN')->execute();
+    db_delete('hosting_site_alias')->condition('nid', $nids, 'IN')->execute();
+  }
+  return count($nids);
+}
+
+/**
+ * Whether a cron or alias row of a deleted or gone site exists.
+ */
+function hosting_task_gc_site_rows_pending() {
+  return (bool) db_query_range(hosting_task_gc_site_rows_sql(), 0, 1, hosting_task_gc_site_rows_args())->fetchField();
+}
+
+/**
+ * The sites with cron or alias rows that are deleted or gone, lowest nid first.
+ */
+function hosting_task_gc_site_rows_sql() {
+  return "SELECT DISTINCT x.nid FROM (SELECT nid FROM {hosting_cron} UNION SELECT nid FROM {hosting_site_alias}) x
+            LEFT JOIN {node} n ON n.nid = x.nid
+            LEFT JOIN {hosting_site} s ON s.nid = x.nid AND s.vid = n.vid
+          WHERE n.nid IS NULL
+             OR (n.type = 'site' AND s.status = :site_deleted)
+          ORDER BY x.nid";
+}
+
+/**
+ * The placeholders of hosting_task_gc_site_rows_sql().
+ */
+function hosting_task_gc_site_rows_args() {
+  return array(':site_deleted' => HOSTING_SITE_DELETED);
+}
+
+/**
  * Whether any task log entry is older than the configured age.
  */
 function hosting_task_gc_old_logs_pending() {
@@ -396,6 +615,15 @@ function hosting_task_gc_count() {
     $count++;
   }
   if (hosting_task_gc_queued_revisions_pending()) {
+    $count++;
+  }
+  if (hosting_task_gc_unused_packages_pending()) {
+    $count++;
+  }
+  if (hosting_task_gc_stale_backups_pending()) {
+    $count++;
+  }
+  if (hosting_task_gc_site_rows_pending()) {
     $count++;
   }
   cache_set('hosting_task_gc_count_sites', $count, 'cache', REQUEST_TIME + 3600);
