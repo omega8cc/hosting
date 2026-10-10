@@ -13,7 +13,7 @@ function hosting_server_views_default_views() {
   // Exported view: hosting_server_list
   $view = new view();
   $view->name = 'hosting_server_list';
-  $view->description = 'A list of servers in Aegir.';
+  $view->description = 'A list of servers in Ægir.';
   $view->tag = 'default';
   $view->base_table = 'node';
   $view->human_name = 'Hosting Server List';

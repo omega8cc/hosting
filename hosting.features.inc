@@ -86,7 +86,7 @@ function hosting_features_form($form, &$form_state) {
     '#collapsed' => TRUE,
     '#collapsible' => TRUE,
     '#weight' => -10,
-    '#description' => t("These features are central to Aegir's functionality, and thus cannot be disabled."),
+    '#description' => t("These features are central to Ægir's functionality, and thus cannot be disabled."),
   );
 
   $experimental = array(
@@ -102,7 +102,7 @@ function hosting_features_form($form, &$form_state) {
     '#title' => t('Advanced'),
     '#collapsed' => TRUE,
     '#collapsible' => TRUE,
-    '#description' => t('Advanced features require a deep knowledge of Aegir and Drupal to be considered safe, so use at your own risk.'),
+    '#description' => t('Advanced features require a deep knowledge of Ægir and Drupal to be considered safe, so use at your own risk.'),
   );
 
   $features = hosting_get_features(TRUE);

@@ -13,7 +13,7 @@ function hosting_platform_views_default_views() {
   // Exported view: hosting_platform_list
   $view = new view();
   $view->name = 'hosting_platform_list';
-  $view->description = 'Display a list of platforms in Aegir.';
+  $view->description = 'Display a list of platforms in Ægir.';
   $view->tag = 'hosting_platform';
   $view->base_table = 'node';
   $view->human_name = 'Hosting Platform List';

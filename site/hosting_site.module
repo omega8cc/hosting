@@ -350,7 +350,7 @@ function hosting_site_hosting_tasks() {
 
   $tasks['site']['import'] = array(
     'title' => t('Import'),
-    'description' => t('Import an existing site into Aegir'),
+    'description' => t('Import an existing site into Ægir'),
     'hidden' => TRUE,
   );
 
