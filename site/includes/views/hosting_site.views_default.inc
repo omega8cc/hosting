@@ -13,7 +13,7 @@ function hosting_site_views_default_views() {
   // Exported view: hosting_site_list
   $view = new view();
   $view->name = 'hosting_site_list';
-  $view->description = 'Display a list of sites hosted in Aegir.';
+  $view->description = 'Display a list of sites hosted in Ægir.';
   $view->tag = 'hosting_site';
   $view->base_table = 'node';
   $view->human_name = 'Hosting Site List';

@@ -13,7 +13,7 @@ function hosting_client_views_default_views() {
   // Exported view: hosting_client_list
   $view = new view();
   $view->name = 'hosting_client_list';
-  $view->description = 'Display a list of clients in Aegir.';
+  $view->description = 'Display a list of clients in Ægir.';
   $view->tag = 'hosting_client';
   $view->base_table = 'node';
   $view->human_name = 'Hosting Clients List';

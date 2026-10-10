@@ -40,7 +40,7 @@ function hosting_quota_menu() {
 
   $items['admin/hosting/quotas'] = array(
     'title' => 'Quotas',
-    'description' => 'Aegir client quotas',
+    'description' => 'Ægir client quotas',
     'page callback' => 'hosting_quota_admin_client_list',
     'access arguments' => array('view all quotas'),
     'type' => MENU_LOCAL_TASK,

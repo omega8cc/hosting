@@ -125,12 +125,12 @@ function hosting_site_field_extra_fields() {
   $return['node']['site'] = array(
     'display' => array(
       'info' => array(
-        'label' => t('Aegir Site Information'),
+        'label' => t('Ægir Site Information'),
         'description' => t('Detailed information about this site.'),
         'weight' => 0,
       ),
       'tasks_view' => array(
-        'label' => t('Aegir Site Tasks'),
+        'label' => t('Ægir Site Tasks'),
         'description' => t('List of available tasks.'),
         'weight' => 1,
       ),
