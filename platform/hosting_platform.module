@@ -652,9 +652,6 @@ function hosting_platform_form(&$node) {
  * After build callback for the hosting_platform_form.
  */
 function hosting_platform_form_platform_after_build($form) {
-
-  drupal_add_js(drupal_get_path('module', 'hosting_platform') . '/hosting_platform.js');
-
   $form['frommakefile']['makefile']['#attributes']['class'][] = ' hosting-platform-working-copy-source';
   $form['frommakefile']['make_working_copy']['#attributes']['class'][] = ' hosting-platform-working-copy-target';
 

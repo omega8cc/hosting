@@ -72,7 +72,7 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
 /**
  * pre_render form callback
  *
- * Add the needed .js and .css files to render the form correctly before printing it
+ * Add the form check URL to the page settings before the form is printed.
  */
 function _hosting_site_form_pre_render($elements) {
   static $settings_added = FALSE;
@@ -83,7 +83,6 @@ function _hosting_site_form_pre_render($elements) {
     drupal_add_js($setting, 'setting');
   }
 
-  drupal_add_js(drupal_get_path('module', 'hosting_site') . '/hosting_site.form.js');
   return $elements;
 }
 
@@ -267,7 +266,9 @@ function hosting_site_form($node, &$form_state) {
     $selected_profile = $form_state['values']['profile'];
   }
   else {
-    $selected_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->nid;
+    // No instance of the default profile yet loads as an empty array.
+    $default_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()));
+    $selected_profile = is_object($default_profile) ? $default_profile->nid : NULL;
   }
 
   // Load platforms for the selected profile.
@@ -278,7 +279,8 @@ function hosting_site_form($node, &$form_state) {
     $default_platform = $q['platform'];
 
     // Since platform is predetermined, limit the options based on the selected platform.
-    $selected_profile = hosting_package_instance_load(array('platform' => $default_platform, 'package_type' => 'profile'))->nid;
+    $platform_profile = hosting_package_instance_load(array('platform' => $default_platform, 'package_type' => 'profile'));
+    $selected_profile = is_object($platform_profile) ? $platform_profile->nid : NULL;
     $platforms = hosting_get_profile_platforms($selected_profile);
 
     $form['profile']['#default_value'] = $selected_profile;
@@ -297,7 +299,7 @@ function hosting_site_form($node, &$form_state) {
     $default_platform = NULL;
   }
 
-  if (!array_key_exists($default_platform, $platforms)) {
+  if (!isset($default_platform) || !array_key_exists($default_platform, $platforms)) {
     // Default to the first platform, if none was passed in the path.
     $default_platform = current(array_keys($platforms));
   }

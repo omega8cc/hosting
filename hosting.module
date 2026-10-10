@@ -81,13 +81,6 @@ function hosting_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['hosting/js'] = array(
-    'title' => 'ahah callback',
-    'page callback' => 'hosting_js_page',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-
   $items['hosting/maintenance'] = array(
     'title' => 'Site maintenance',
     'page callback' => 'hosting_site_maintenance',
@@ -163,40 +156,6 @@ function hosting_menu_hostmaster_access() {
  */
 function hosting_menu_hostmaster_redirect() {
   drupal_goto('hosting/c/hostmaster');
-}
-
-/**
- * Page callback for a page to be rendered in modal frame.
- */
-function hosting_js_page() {
-  modalframe_child_js();
-
-  $args = func_get_args();
-  $path = implode('/', $args);
-
-  // In case Aegir is running in a sub-directory, the base_path should be
-  // stripped away here. Remove the leading slash from base_path as $path
-  // doesn't have one either.
-  $path = str_replace(ltrim(base_path(), '/'), '', $path);
-
-  menu_set_active_item($path);
-
-  if ($router_item = menu_get_item($path)) {
-    if ($router_item['access']) {
-      if ($router_item['file']) {
-        require_once $router_item['file'];
-      }
-      $return = call_user_func_array($router_item['page_callback'], $router_item['page_arguments']);
-    }
-    else {
-      $return = drupal_access_denied();
-    }
-  }
-  // Menu status constants are integers; page content is a string.
-  if (is_int($return) && module_exists('overlay')) {
-    overlay_close_dialog();
-  }
-  return $return;
 }
 
 /**
@@ -590,7 +549,7 @@ function _hosting_node_link($nid, $title = NULL) {
   if (!isset($title)) {
     $title = isset($node->title) ? $node->title : NULL;
     // Override with the redirect target, when available.
-    $title = $node->type == 'site' ? hosting_site_canonical_url($node) : $title;
+    $title = (is_object($node) && $node->type == 'site') ? hosting_site_canonical_url($node) : $title;
     // Override with the human-readable name, when available.
     $title = isset($node->human_name) && strlen($node->human_name) ? $node->human_name : $title;
   }
@@ -877,7 +836,7 @@ function _hosting_node_add($type = '') {
 function hosting_queues($key = '') {
   $queues = hosting_get_queues();
   $output = '';
-  if ($queues[$key]) {
+  if (!empty($queues[$key])) {
     if ($queues[$key]['name']) {
       $output .= "<h1>" . $queues[$key]['name'] . "</h1>";
     }
@@ -1452,6 +1411,62 @@ function hosting_views_api() {
 }
 
 /**
+ * Implements hook_preprocess_views_view_table().
+ *
+ * The site, platform, server, package and task lists show a status only as
+ * a row colour and an icon: an excluded status field in its CSS class mode
+ * names the row class. Each row also gets that status as hidden text in its
+ * first cell, so a screen reader announces it.
+ */
+function hosting_preprocess_views_view_table(&$vars) {
+  $view = $vars['view'];
+  if (empty($view->field) || empty($vars['rows'])) {
+    return;
+  }
+  foreach ($view->field as $handler) {
+    if ($handler instanceof hosting_task_handler_field_status) {
+      $options = &$handler->options['alter'];
+    }
+    elseif ($handler instanceof hosting_field_handler_status) {
+      $options = &$handler->options;
+    }
+    else {
+      continue;
+    }
+    if (empty($handler->options['exclude']) || !isset($options['status_mode']) || $options['status_mode'] != 'class') {
+      unset($options);
+      continue;
+    }
+    foreach (array_keys($vars['rows']) as $num) {
+      if (!isset($view->result[$num]) || empty($vars['rows'][$num]) || !is_array($vars['rows'][$num])) {
+        continue;
+      }
+      $options['status_mode'] = 'text';
+      $text = trim(strip_tags((string) $handler->render($view->result[$num])));
+      $options['status_mode'] = 'class';
+      if ($text === '') {
+        continue;
+      }
+      // The first cell that is not a bulk operations checkbox, so the status
+      // is read with the row's name.
+      $first = NULL;
+      foreach (array_keys($vars['rows'][$num]) as $field_id) {
+        if ($first === NULL) {
+          $first = $field_id;
+        }
+        if (!isset($view->field[$field_id]) || strpos(get_class($view->field[$field_id]), 'views_bulk_operations') === FALSE) {
+          $first = $field_id;
+          break;
+        }
+      }
+      $vars['rows'][$num][$first] = '<span class="element-invisible">' . check_plain($text) . ': </span>' . $vars['rows'][$num][$first];
+    }
+    unset($options);
+    return;
+  }
+}
+
+/**
  * Return a list of log entry types.
  *
  * 'advisory' is a warning-coloured level that does NOT downgrade the task
@@ -1498,7 +1513,10 @@ function hosting_settings($form, &$form_state) {
     }
   }
   natcasesort($profiles);
-  $default_value = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->short_name;
+  // No instance of the default profile yet (no site platform) loads as an
+  // empty array, not an object.
+  $default_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()));
+  $default_value = is_object($default_profile) ? $default_profile->short_name : NULL;
   $form['hosting_default_profile'] = array(
     '#type' => 'select',
     '#title' => t('Default profile'),
