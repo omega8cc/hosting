@@ -564,7 +564,7 @@ function _hosting_node_link($nid, $title = NULL) {
  */
 function hosting_block_info() {
   $blocks['hosting_supporting_aegir'] = array(
-    'info' => t('Support Aegir'),
+    'info' => t('Support Ægir 3'),
     'enabled' => 1,
     'status' => 1,
     'region' => 'sidebar_second',
@@ -581,7 +581,7 @@ function hosting_block_view($delta) {
   switch ($delta) {
     case 'hosting_supporting_aegir':
       $out = array(
-        'title' => t('Support Aegir'),
+        'title' => t('Support Ægir 3'),
         'content' => hosting_supporting_aegir_block(),
       );
       break;
@@ -646,23 +646,19 @@ function hosting_queue_block() {
 }
 
 /**
- * Build a 'Support Aegir' block.
+ * Build the 'Support Ægir 3' block.
+ *
+ * Shown to holders of 'administer hosting' only, never to client accounts.
  */
 function hosting_supporting_aegir_block() {
   if (user_access('administer hosting')) {
-    $output = "
-
-      <footer style=\"font-size: smaller;\">
-      <p>Aegir will always cost you nothing to use, but that doesn't mean it costs us nothing to make.
-      <strong> Aegir needs your continued support to grow and thrive. </strong>
-      If you feel that Aegir has added significant value to your business or endeavour, please consider donating!</p>
-      <p><strong>How much is Aegir worth to you?</strong></p>
-      <strong><a href=\"http://www.aegirproject.org/#support\" target=_blank>Donate Now ... </a>
-      <a href=\"http://www.aegirproject.org/#support\" target=_blank>or get more info.</a></strong>
-      <p><i>This block is only displayed to you, the superuser.</i></p>
-      </footer>
-
-      ";
+    $output = '<div class="hosting-supporting-aegir" style="font-size: smaller;">';
+    $output .= '<p>' . t('Ægir 3 and BOA LTS cost you nothing to use, and LTS stays current alongside PRO. Keeping Ægir 3 alive is real work, and Omega8.cc leads that work today.') . '</p>';
+    $output .= '<p><strong>' . t('Support continued Ægir 3 development with a BOA PRO licence.') . '</strong> ' . t('Every licence funds this work, and it gives you the extended multi-backup system plus a support level for your own servers.') . '</p>';
+    $output .= '<p><strong>' . t('<a href="@url" target="_blank">Get a BOA PRO licence</a>', array('@url' => 'https://omega8.cc/boapro')) . '</strong> ' . t('or <a href="@url" target="_blank">see how Ægir 3 is kept going</a>.', array('@url' => 'https://omega8.cc/aegir')) . '</p>';
+    $output .= '<p>' . t('Already licensed? Thank you: it is what keeps development moving.') . '</p>';
+    $output .= '<p><em>' . t('Shown to administrators only; your clients never see this.') . '</em></p>';
+    $output .= '</div>';
     return $output;
   }
 }
