@@ -2025,7 +2025,7 @@ function _hosting_task_log_table($node, $last_position = 0) {
 
   $result = db_query("SELECT * FROM {hosting_task_log} WHERE vid = :vid AND lid > :lid AND type IN (:types) ORDER BY lid", $query_args);
   if ($result) {
-    $headers = array('data' => 'Log message', 'execution_time' => 'Time');
+    $headers = array('data' => 'Log message', 'execution_time' => 'Time', 'type' => t('Type'));
     $rows = array();
     $last_lid = $last_position;
     $last_timestamp = 0;
@@ -2323,6 +2323,17 @@ function _hosting_task_error_codes() {
 }
 
 /**
+ * The task status as hidden text, for a row that shows it as colour and icon.
+ */
+function _hosting_task_status_label($code) {
+  $codes = _hosting_task_error_codes();
+  if (!isset($code) || !isset($codes[$code])) {
+    return '';
+  }
+  return ' <span class="element-invisible">(' . $codes[$code] . ')</span>';
+}
+
+/**
  * Turn bitmask integer error code into translatable label.
  */
 function _hosting_parse_error_code($code) {
@@ -2404,7 +2415,7 @@ function hosting_task_table($node) {
     }
 
     $row['type'] = array(
-      'data' => $info['title'],
+      'data' => $info['title'] . (isset($info['nid']) ? _hosting_task_status_label($info['task_status']) : ''),
       'class' => array('hosting-status'),
     );
     $actions = array();
@@ -2483,7 +2494,7 @@ function _hosting_task_list($filter_by, $filter_value, $count = 5, $element = 0,
         $data = $node->{$field};
       }
       $row['type'] = array(
-        'data' => $data,
+        'data' => $data . _hosting_task_status_label($node->task_status),
         'class' => array('hosting-status'),
       );
 

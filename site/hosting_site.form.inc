@@ -72,7 +72,7 @@ function _hosting_site_field(&$form, $node, $item, $element, $filter_display = '
 /**
  * pre_render form callback
  *
- * Add the needed .js and .css files to render the form correctly before printing it
+ * Add the form check URL to the page settings before the form is printed.
  */
 function _hosting_site_form_pre_render($elements) {
   static $settings_added = FALSE;
@@ -83,7 +83,6 @@ function _hosting_site_form_pre_render($elements) {
     drupal_add_js($setting, 'setting');
   }
 
-  drupal_add_js(drupal_get_path('module', 'hosting_site') . '/hosting_site.form.js');
   return $elements;
 }
 
