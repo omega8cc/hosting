@@ -51,6 +51,9 @@ function drush_hosting_resume() {
     elseif (preg_match("/hostmaster/i", $platform->title)) {
       $platform->title = 'Aegir Hostmaster';
     }
+    // The files have moved already: the record must follow even when the
+    // name built from the title is held by a live node (reported below).
+    $platform->context_report_only = TRUE;
     node_save($platform);
     $platform_id = $platform->nid;
   }

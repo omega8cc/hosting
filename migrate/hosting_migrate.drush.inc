@@ -112,7 +112,9 @@ function hosting_migrate_post_hosting_migrate_task($task, $data) {
 
     if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
       $site->title = hosting_site_clean_domain($task->task_args['new_uri']);
-      hosting_context_register($site->nid, hosting_site_get_domain($site->title));
+      // The backend has renamed the site already: a live holder of the new
+      // name is reported, and the record still takes the new title.
+      hosting_context_register($site->nid, hosting_site_get_domain($site->title), TRUE);
 
       // Auto-disable Encryption when the site's main machine-name changes.
       // SSL keys/certificates are bound to the machine-name and are invalid for

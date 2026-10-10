@@ -427,7 +427,9 @@ function hosting_grav_post_hosting_grav_rename_task($task, $data) {
 
   if ($new_uri !== '' && hosting_site_get_domain($site->title) != hosting_site_get_domain($new_uri)) {
     $site->title = hosting_site_clean_domain($new_uri);
-    hosting_context_register($site->nid, hosting_site_get_domain($site->title));
+    // The backend has renamed the site already: a live holder of the new
+    // name is reported, and the record still takes the new title.
+    hosting_context_register($site->nid, hosting_site_get_domain($site->title), TRUE);
 
     if (defined('HOSTING_SSL_DISABLED') && !empty($site->ssl_enabled)
       && !(function_exists('hosting_get_hostmaster_nid') && $site->nid == hosting_get_hostmaster_nid())) {
