@@ -1411,6 +1411,52 @@ function hosting_views_api() {
 }
 
 /**
+ * Implements hook_preprocess_views_view_table().
+ *
+ * The site, platform, server, package and task lists show a status only as
+ * a row colour and an icon: an excluded status field in its CSS class mode
+ * names the row class. Each row also gets that status as hidden text in its
+ * first cell, so a screen reader announces it.
+ */
+function hosting_preprocess_views_view_table(&$vars) {
+  $view = $vars['view'];
+  if (empty($view->field) || empty($vars['rows'])) {
+    return;
+  }
+  foreach ($view->field as $handler) {
+    if ($handler instanceof hosting_task_handler_field_status) {
+      $options = &$handler->options['alter'];
+    }
+    elseif ($handler instanceof hosting_field_handler_status) {
+      $options = &$handler->options;
+    }
+    else {
+      continue;
+    }
+    if (empty($handler->options['exclude']) || !isset($options['status_mode']) || $options['status_mode'] != 'class') {
+      unset($options);
+      continue;
+    }
+    foreach (array_keys($vars['rows']) as $num) {
+      if (!isset($view->result[$num]) || empty($vars['rows'][$num]) || !is_array($vars['rows'][$num])) {
+        continue;
+      }
+      $options['status_mode'] = 'text';
+      $text = trim(strip_tags((string) $handler->render($view->result[$num])));
+      $options['status_mode'] = 'class';
+      if ($text === '') {
+        continue;
+      }
+      reset($vars['rows'][$num]);
+      $first = key($vars['rows'][$num]);
+      $vars['rows'][$num][$first] = '<span class="element-invisible">' . check_plain($text) . ': </span>' . $vars['rows'][$num][$first];
+    }
+    unset($options);
+    return;
+  }
+}
+
+/**
  * Return a list of log entry types.
  *
  * 'advisory' is a warning-coloured level that does NOT downgrade the task
