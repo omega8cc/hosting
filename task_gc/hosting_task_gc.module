@@ -429,6 +429,15 @@ function hosting_task_gc_unused_packages_args() {
  */
 function hosting_task_gc_delete_stale_backups($limit) {
   $limit = max(1, (int) $limit);
+  // Records of site nodes that are gone need no file check: they go first,
+  // so they never wait behind kept records.
+  $gone = db_query_range("SELECT b.bid FROM {hosting_site_backups} b LEFT JOIN {node} n ON n.nid = b.site WHERE n.nid IS NULL ORDER BY b.bid", 0, $limit)->fetchCol();
+  if ($gone) {
+    db_delete('hosting_site_backups')->condition('bid', $gone, 'IN')->execute();
+    if (count($gone) >= $limit) {
+      return count($gone);
+    }
+  }
   $bids = array();
   // Records whose file still exists stay and would fill a window of the
   // oldest rows for good, so four windows are read for one window of deletes.
@@ -443,7 +452,7 @@ function hosting_task_gc_delete_stale_backups($limit) {
   if ($bids) {
     db_delete('hosting_site_backups')->condition('bid', $bids, 'IN')->execute();
   }
-  return count($bids);
+  return count($gone) + count($bids);
 }
 
 /**
@@ -460,18 +469,19 @@ function hosting_task_gc_stale_backups_pending() {
 
 /**
  * Whether a record of a gone or deleted site can go: the site node is gone,
- * or the file is gone from a directory this panel can read. A directory it
- * cannot read (a store not mounted right now) says nothing about the file.
+ * or the file is gone from a directory this panel can search. A directory it
+ * cannot search (a store not mounted right now) says nothing about the file.
  */
 function hosting_task_gc_backup_record_is_stale($row) {
   if (!empty($row->gone)) {
     return TRUE;
   }
-  $dir = dirname($row->filename);
-  if (!is_dir($dir) || !is_readable($dir)) {
+  $file = (string) $row->filename;
+  $dir = dirname($file);
+  if ($file === '' || $file[0] !== '/' || !is_dir($dir) || !is_executable($dir)) {
     return FALSE;
   }
-  return !file_exists($row->filename);
+  return !file_exists($file);
 }
 
 /**
