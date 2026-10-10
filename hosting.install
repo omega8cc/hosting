@@ -31,6 +31,26 @@ function hosting_uninstall() {
  * Implements hook_schema().
  */
 function hosting_schema() {
+  $schema['hosting_queue_run'] = array(
+    'description' => 'When each queue, and the dispatcher, last ran. A table, not variables: a variable write clears the bootstrap variable cache, which every dispatch did several times a minute.',
+    'fields' => array(
+      'queue' => array(
+        'description' => 'The queue name, or dispatch.',
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'last_run' => array(
+        'description' => 'Unix timestamp of the last run.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('queue'),
+  );
   $schema['hosting_context'] = array(
     'fields' => array(
       'nid' => array(
@@ -651,5 +671,29 @@ function hosting_update_7305() {
   if (is_array($display) && !empty($display) && !isset($display['advisory'])) {
     $display['advisory'] = 'advisory';
     variable_set('hosting_task_logs_types_display', $display);
+  }
+}
+
+/**
+ * Keep the queues' last-run times in their own table, not in variables.
+ *
+ * Every dispatch wrote three variables, and every variable write clears the
+ * bootstrap variable cache, so each panel request that followed rebuilt it.
+ */
+function hosting_update_7306() {
+  if (!db_table_exists('hosting_queue_run')) {
+    db_create_table('hosting_queue_run', drupal_get_schema_unprocessed('hosting', 'hosting_queue_run'));
+  }
+  $rows = db_query("SELECT name, value FROM {variable} WHERE name LIKE 'hosting\\_queue\\_%\\_last\\_run' OR name = 'hosting_dispatch_last_run'")->fetchAllKeyed();
+  foreach ($rows as $name => $value) {
+    $queue = ($name == 'hosting_dispatch_last_run') ? 'dispatch' : substr($name, strlen('hosting_queue_'), -strlen('_last_run'));
+    $time = (int) @unserialize($value);
+    if ($queue !== '' && $time > 0) {
+      db_merge('hosting_queue_run')
+        ->key(array('queue' => $queue))
+        ->fields(array('last_run' => $time))
+        ->execute();
+    }
+    variable_del($name);
   }
 }

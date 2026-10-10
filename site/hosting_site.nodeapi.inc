@@ -428,8 +428,13 @@ function hosting_site_load($nodes) {
       WHERE s.vid = :vid',
       array(':vid' => $node->vid)
     )->fetch();
-    foreach ($additions as $property => &$value) {
-      $node->$property = is_numeric($value) ? (int) $value : $value;
+    // A site node without its row (a delete past the hooks) loads as a bare
+    // node rather than raising a warning on every load.
+    if ($additions) {
+      foreach ($additions as $property => &$value) {
+        $node->$property = is_numeric($value) ? (int) $value : $value;
+      }
+      unset($value);
     }
     if (!empty($node->web_server)) {
       $server_nids[$node->web_server] = $node->web_server;

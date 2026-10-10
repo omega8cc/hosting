@@ -83,7 +83,7 @@ function hosting_get_queues($refresh = FALSE) {
         'frequency' => variable_get('hosting_queue_' . $key . '_frequency', $queue['frequency']),
         'items' => variable_get('hosting_queue_' . $key . '_items', $queue['items']),
         'enabled' => variable_get('hosting_queue_' . $key . '_enabled', $queue['enabled']),
-        'last_run' => variable_get('hosting_queue_' . $key . '_last_run', FALSE),
+        'last_run' => hosting_queue_last_run($key),
         'interval' => variable_get('hosting_queue_' . $key . '_interval', FALSE),
       );
       $queue = array_merge($queue, $configured);
@@ -123,7 +123,7 @@ function hosting_get_queues($refresh = FALSE) {
         $queue['calc_items'] = $queue['items'];
       }
 
-      $queue['last'] = variable_get('hosting_queue_' . $key . '_last_run', 0);
+      $queue['last'] = (int) hosting_queue_last_run($key);
       $queues[$key] = $queue;
     }
     // Allow altering the processed queue data.
@@ -132,6 +132,63 @@ function hosting_get_queues($refresh = FALSE) {
   }
 
   return $cache;
+}
+
+/**
+ * When a queue (or the dispatcher, as 'dispatch') last ran.
+ *
+ * Read from the hosting_queue_run table on every call, never cached: the
+ * dispatcher re-reads it under its semaphore to see a sibling's stamp.
+ *
+ * @param string $queue
+ *   The queue name.
+ *
+ * @return int|false
+ *   The timestamp, or FALSE when the queue never ran.
+ */
+function hosting_queue_last_run($queue) {
+  if (!hosting_queue_run_table_exists()) {
+    // Before update 7306: the variable, read from its table rather than from
+    // this process's bootstrap copy, so a sibling dispatcher's stamp is seen.
+    $raw = db_query("SELECT value FROM {variable} WHERE name = :name", array(':name' => 'hosting_queue_' . $queue . '_last_run'))->fetchField();
+    return $raw === FALSE ? FALSE : (int) @unserialize($raw);
+  }
+  $value = db_query("SELECT last_run FROM {hosting_queue_run} WHERE queue = :queue", array(':queue' => $queue))->fetchField();
+  return $value === FALSE ? FALSE : (int) $value;
+}
+
+/**
+ * Stamp a queue's (or the dispatcher's) last run.
+ *
+ * A row write, not a variable write: variable_set() clears the bootstrap
+ * variable cache, and the dispatcher stamped three variables a minute.
+ *
+ * @param string $queue
+ *   The queue name, or 'dispatch'.
+ * @param int|null $time
+ *   The timestamp; the request time when NULL.
+ */
+function hosting_queue_set_last_run($queue, $time = NULL) {
+  $time = ($time === NULL) ? REQUEST_TIME : (int) $time;
+  if (!hosting_queue_run_table_exists()) {
+    variable_set('hosting_queue_' . $queue . '_last_run', $time);
+    return;
+  }
+  db_merge('hosting_queue_run')
+    ->key(array('queue' => $queue))
+    ->fields(array('last_run' => $time))
+    ->execute();
+}
+
+/**
+ * Whether the hosting_queue_run table exists yet (update 7306 creates it).
+ */
+function hosting_queue_run_table_exists() {
+  $exists = &drupal_static(__FUNCTION__);
+  if (!isset($exists)) {
+    $exists = db_table_exists('hosting_queue_run');
+  }
+  return $exists;
 }
 
 /**
@@ -146,7 +203,7 @@ function hosting_run_queue() {
   $count = drush_get_option(array('i', 'items'), 5); // process a default of 5 items at a time.
   $semaphore = "hosting_queue_{$queue}_running";
 
-  variable_set('hosting_queue_' . $queue . '_last_run', $t = REQUEST_TIME);
+  hosting_queue_set_last_run($queue);
 
   drush_log(dt('Acquiring lock on @queue queue.', array('@queue' => $queue)));
   $lock_wait = drush_get_option('lock-wait', HOSTING_QUEUE_DEFAULT_LOCK_WAIT);
