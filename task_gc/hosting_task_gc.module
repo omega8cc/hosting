@@ -14,7 +14,7 @@ function hosting_task_gc_hosting_queues() {
   $count = hosting_task_gc_count();
   $queue['task_gc'] = array(
     'name' => t('Task GC'),
-    'description' => t('Collect the tasks of deleted sites and platforms, old task logs, package leftovers and the context names of deleted sites and of nodes that are gone.'),
+    'description' => t('Collect the tasks of deleted sites and platforms, old task logs, package leftovers, the context names of deleted sites and of nodes that are gone, and the queued revisions of finished tasks.'),
     // Run queue sequentially. always with the same parameters.
     'type' => HOSTING_QUEUE_TYPE_BATCH,
     'frequency' => strtotime("1 hour", 0),
@@ -94,6 +94,11 @@ function hosting_task_gc_queue() {
   $released = hosting_task_gc_delete_stale_contexts(variable_get('hosting_task_gc_contexts_per_run', 200));
   if ($released) {
     watchdog('hosting_task_gc', 'Released @num context name(s) of deleted sites or gone nodes.', array('@num' => $released));
+  }
+
+  $pruned = hosting_task_gc_prune_queued_revisions(variable_get('hosting_task_gc_revisions_per_run', 1000));
+  if ($pruned) {
+    watchdog('hosting_task_gc', 'Deleted @num queued revision(s) of finished tasks.', array('@num' => $pruned));
   }
 
   // The next dispatch counts again, so the queue idles once everything is
@@ -276,6 +281,57 @@ function hosting_task_gc_stale_contexts_args() {
 }
 
 /**
+ * Delete the queued revisions of finished tasks, at most $limit of them.
+ *
+ * The runner opens a new revision when it takes a task, so every task that
+ * ran keeps its original queued revision beside the one that holds its
+ * outcome and logs: a second hosting_task row per task, status queued for
+ * good, which every scan of the table had to read. Only revisions whose own
+ * row still says queued go; an older executed revision (a retry's previous
+ * run) keeps its logs.
+ *
+ * @return int
+ *   The number of revisions deleted.
+ */
+function hosting_task_gc_prune_queued_revisions($limit) {
+  $vids = db_query_range(hosting_task_gc_queued_revisions_sql(), 0, max(1, (int) $limit), hosting_task_gc_queued_revisions_args())->fetchCol();
+  foreach ($vids as $vid) {
+    // hook_node_revision_delete() removes the revision's task, argument and
+    // log rows.
+    node_revision_delete($vid);
+  }
+  return count($vids);
+}
+
+/**
+ * Whether any finished task still has a queued revision.
+ */
+function hosting_task_gc_queued_revisions_pending() {
+  return (bool) db_query_range(hosting_task_gc_queued_revisions_sql(), 0, 1, hosting_task_gc_queued_revisions_args())->fetchField();
+}
+
+/**
+ * The queued, non-current revisions of tasks whose current revision is done.
+ */
+function hosting_task_gc_queued_revisions_sql() {
+  return "SELECT r.vid FROM {node_revision} r
+            INNER JOIN {node} n ON n.nid = r.nid AND n.vid <> r.vid
+            INNER JOIN {hosting_task} t ON t.vid = r.vid
+            INNER JOIN {hosting_task} c ON c.vid = n.vid
+          WHERE n.type = 'task'
+            AND t.task_status = :queued
+            AND c.task_status NOT IN (:live)
+          ORDER BY r.vid";
+}
+
+/**
+ * The placeholders of hosting_task_gc_queued_revisions_sql().
+ */
+function hosting_task_gc_queued_revisions_args() {
+  return array(':queued' => HOSTING_TASK_QUEUED, ':live' => array(HOSTING_TASK_QUEUED, HOSTING_TASK_PROCESSING));
+}
+
+/**
  * Whether any task log entry is older than the configured age.
  */
 function hosting_task_gc_old_logs_pending() {
@@ -303,8 +359,9 @@ function hosting_task_gc_list_sites() {
  * Get the number of items with garbage to collect.
  *
  * Deleted sites and platforms that still have tasks, tasks whose node is
- * gone, task rows whose own node is gone, plus one for old task logs, one
- * for package leftovers and one for stale context names when any are pending. The queue only runs while this
+ * gone, task rows whose own node is gone, plus one each for old task logs,
+ * package leftovers, stale context names and queued revisions of finished
+ * tasks when any are pending. The queue only runs while this
  * is above zero.
  *
  * @return int
@@ -336,6 +393,9 @@ function hosting_task_gc_count() {
     $count++;
   }
   if (hosting_task_gc_stale_contexts_pending()) {
+    $count++;
+  }
+  if (hosting_task_gc_queued_revisions_pending()) {
     $count++;
   }
   cache_set('hosting_task_gc_count_sites', $count, 'cache', REQUEST_TIME + 3600);
