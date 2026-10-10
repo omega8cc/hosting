@@ -368,9 +368,17 @@ function hosting_task_gc_delete_unused_packages($limit) {
   }
   $nids = db_query_range(hosting_task_gc_unused_packages_sql(), 0, max(1, (int) $limit), hosting_task_gc_unused_packages_args())->fetchCol();
   if ($nids) {
-    node_delete_multiple($nids);
+    // Read again right before the delete: a task that started meanwhile may
+    // have named one of them.
+    $nids = db_query("SELECT n.nid FROM {node} n
+                        LEFT JOIN {hosting_package_instance} i ON i.package_id = n.nid
+                      WHERE n.nid IN (:nids) AND i.iid IS NULL", array(':nids' => $nids))->fetchCol();
   }
-  return count($nids);
+  if ($nids && !hosting_task_gc_tasks_running()) {
+    node_delete_multiple($nids);
+    return count($nids);
+  }
+  return 0;
 }
 
 /**
