@@ -162,6 +162,7 @@ tr.hosting-error,
 }
 
 tr.hosting-queued,
+tr.hosting-queue,
 tr.hosting-processing,
 #hosting-package-comparison td.hosting-package-same {
   background-color: #e0e8f0 !important;
@@ -184,6 +185,7 @@ tr.hosting-warning .hosting-status,
 tr.hosting-info .hosting-status { background-image: url(images/icon-notice.png); }
 
 tr.hosting-queued .hosting-status,
+tr.hosting-queue .hosting-status,
 td.hosting-package-same {
   background-image: url(images/icon-queue.png);
 }
@@ -211,6 +213,7 @@ tr.hosting-warning td,
 tr.hosting-info td,
 tr.hosting-error td,
 tr.hosting-queued td,
+tr.hosting-queue td,
 tr.hosting-disable td,
 tr.hosting-success td {
   background-color:transparent !important;

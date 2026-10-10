@@ -1,8 +1,10 @@
 (function($) {
 
 Drupal.behaviors.hostingTaskLogAttach = {
-  attach : function() {
-    $('.hosting-summary-expand').click(
+  attach : function(context) {
+    // Once per link: the live log re-attaches behaviours after each append,
+    // and a second handler toggled the summary straight back.
+    $('.hosting-summary-expand', context).once('hosting-summary-expand').click(
       function() {
         $(this).parent().toggle();
         $('.hosting-task-full', $(this).parent().parent()).toggle();

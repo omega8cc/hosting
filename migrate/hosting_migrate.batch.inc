@@ -8,8 +8,6 @@
  * Batch migration of sites between platforms.
  */
 function hosting_migrate_platform($form, $form_state, $node) {
-  drupal_add_js(drupal_get_path('module', 'hosting_migrate') . '/hosting_migrate.js');
-
   $step = isset($form_state['storage']['step']) ? $form_state['storage']['step'] : 1;
 
   // Step 1 - choose target platform
