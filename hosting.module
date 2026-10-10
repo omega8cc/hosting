@@ -1447,8 +1447,18 @@ function hosting_preprocess_views_view_table(&$vars) {
       if ($text === '') {
         continue;
       }
-      reset($vars['rows'][$num]);
-      $first = key($vars['rows'][$num]);
+      // The first cell that is not a bulk operations checkbox, so the status
+      // is read with the row's name.
+      $first = NULL;
+      foreach (array_keys($vars['rows'][$num]) as $field_id) {
+        if ($first === NULL) {
+          $first = $field_id;
+        }
+        if (!isset($view->field[$field_id]) || strpos(get_class($view->field[$field_id]), 'views_bulk_operations') === FALSE) {
+          $first = $field_id;
+          break;
+        }
+      }
       $vars['rows'][$num][$first] = '<span class="element-invisible">' . check_plain($text) . ': </span>' . $vars['rows'][$num][$first];
     }
     unset($options);
