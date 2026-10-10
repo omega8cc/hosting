@@ -549,7 +549,7 @@ function _hosting_node_link($nid, $title = NULL) {
   if (!isset($title)) {
     $title = isset($node->title) ? $node->title : NULL;
     // Override with the redirect target, when available.
-    $title = $node->type == 'site' ? hosting_site_canonical_url($node) : $title;
+    $title = (is_object($node) && $node->type == 'site') ? hosting_site_canonical_url($node) : $title;
     // Override with the human-readable name, when available.
     $title = isset($node->human_name) && strlen($node->human_name) ? $node->human_name : $title;
   }
@@ -1457,7 +1457,10 @@ function hosting_settings($form, &$form_state) {
     }
   }
   natcasesort($profiles);
-  $default_value = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()))->short_name;
+  // No instance of the default profile yet (no site platform) loads as an
+  // empty array, not an object.
+  $default_profile = hosting_package_instance_load(array('p.nid' => hosting_get_default_profile()));
+  $default_value = is_object($default_profile) ? $default_profile->short_name : NULL;
   $form['hosting_default_profile'] = array(
     '#type' => 'select',
     '#title' => t('Default profile'),
