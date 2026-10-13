@@ -358,9 +358,10 @@ function hosting_grav_post_hosting_grav_copy_upgrade_task($task, $data) {
   // Copy carry-over settings from the source node. Deliberately NOT copied:
   // profile (re-resolved on the target below), site_status (the queued import
   // proves ENABLED honestly), cron_interval and ssl_* (forced dark below).
-  // db_server IS carried: a Grav capsule has no database and keeps the
-  // source's no-database server, which the pre-task hook has already pinned
-  // in task_args.
+  // db_server IS carried: the copy keeps the source's database server (the
+  // 'none' one for a site without a database, the same MySQL server for a
+  // shop, where the backend makes the copy a database of its own), which
+  // the pre-task hook has already pinned in task_args.
   foreach (array('type', 'status', 'uid', 'comment', 'promote', 'moderate', 'sticky', 'name', 'format', 'client', 'db_server', 'site_language') as $field) {
     if (isset($task->ref->$field)) {
       $upgrade->$field = $task->ref->$field;
@@ -836,9 +837,9 @@ function hosting_task_grav_copy_upgrade_form($node) {
     );
   }
 
-  // A Grav capsule carries no database, so the copy keeps the source's
-  // no-database server whatever anyone asks for. The element has to stay
-  // PRESENT: the pre-task hook and the post-task handler both read
+  // The copy keeps the source's database server whatever anyone asks for
+  // (a shop's copy gets a database of its own on it). The element has to
+  // stay PRESENT: the pre-task hook and the post-task handler both read
   // task_args['new_db_server'], and dropping it turns every copy upgrade
   // into a notice and a wrong comparison. The shared confirm-form alter pins
   // it again for this task and adds the crafted-post validation belt.
@@ -1201,7 +1202,7 @@ function hosting_grav_form_hosting_task_confirm_form_alter(&$form, &$form_state)
       '#value' => isset($node->db_server) ? $node->db_server : 0,
     );
     if ($task == 'clone') {
-      $help = t('Cloning a Grav site copies the entire site capsule - content, configuration, accounts, themes and plugins - to the new domain name, and gives the copy its own security keys. The copy starts with encryption switched off: enable it for the new domain once the clone has been verified. Nothing is copied from a database, because a Grav capsule keeps everything in files, so the database server stays as it is. Migrate does not apply to Grav sites: use the Rename task to move this site to a new name on its own platform, or Upgrade a copy to place an upgraded copy on another Grav platform.');
+      $help = t('Cloning a Grav site copies the entire site capsule - content, configuration, accounts, themes and plugins - to the new domain name, and gives the copy its own security keys. The copy starts with encryption switched off: enable it for the new domain once the clone has been verified. A site with a database (a KahunaCart shop) gets a copy of its database on the same database server; the copy of a shop starts paused, with a signing key of its own, so its payment provider keys must be entered again before it can take a payment. Migrate does not apply to Grav sites: use the Rename task to move this site to a new name on its own platform, or Upgrade a copy to place an upgraded copy on another Grav platform.');
       // '#markup' is what Drupal 7 renders; the '#value' key is what the
       // generic confirm form carries, kept for anything that reads it.
       $form['help'] = array('#markup' => '<p>' . $help . '</p>', '#value' => $help);
@@ -1264,18 +1265,19 @@ function hosting_grav_task_confirm_form_validate($form, &$form_state) {
     return;
   }
   if ($form_state['values']['parameters']['new_db_server'] != $node->db_server) {
-    form_set_error('parameters][new_db_server', t('Grav sites carry no database: this site keeps the database server it was created with.'));
+    form_set_error('parameters][new_db_server', t('A copy of a Grav site keeps the database server the site was created with.'));
   }
 }
 
 /**
  * Implements hook_node_validate().
  *
- * A Grav capsule has no database, so its site node must point at the
- * no-database server: attached to a real one the backend builds a database
- * the site will never use, and the Grav clone and restore paths refuse the
- * site outright. The site form offers every db server
- * (hosting_get_servers('db')), so the wrong choice is caught here.
+ * A Grav site is created on the no-database server (a plain site, flat
+ * files only) or on a database server (a site with a database: a KahunaCart
+ * shop), and either is valid. What is never valid is a Drupal, Backdrop or
+ * Textpattern site on the no-database server: its null service would
+ * install the site with no database at all. The site form offers every db
+ * server (hosting_get_servers('db')), so that choice is caught here.
  *
  * Only form submissions reach hook_node_validate. Programmatic node_save()
  * -- the clone post-task handler, the import path -- is deliberately
@@ -1297,18 +1299,33 @@ function hosting_grav_node_validate($node, $form, &$form_state) {
   }
   $is_grav = isset($node->platform) && hosting_grav_platform_is_grav($node->platform);
   $on_none = hosting_grav_db_server_is_none($node->db_server);
-  if ($is_grav && !$on_none && hosting_grav_none_db_servers()) {
-    // No 'none' server on this panel means there is nothing to point the
-    // operator at (the backend says so at install time); refusing would
-    // only make Grav sites uncreatable, hence the third condition.
-    form_set_error('db_server', t('Grav sites carry no database yet: attach this site to the "None (flat-file sites)" database server.'));
-  }
-  elseif (!$is_grav && $on_none) {
+  if (!$is_grav && $on_none) {
     // The symmetric half: the no-database server maps to a null service,
     // so a Drupal or Backdrop site attached to it would install with no
     // database at all.
     form_set_error('db_server', t('The "None (flat-file sites)" database server carries no database: only Grav sites may use it.'));
   }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * The database server of a new site: say what the choice means for a Grav
+ * site, which may use either kind. The field is chosen once, on the create
+ * form; the edit form shows it as a fixed value, so only a radio set is
+ * described.
+ */
+function hosting_grav_form_site_node_form_alter(&$form, &$form_state) {
+  if (!isset($form['db_server']['#type']) || $form['db_server']['#type'] != 'radios') {
+    return;
+  }
+  if (!hosting_grav_none_db_servers()) {
+    return;
+  }
+  $note = t('For a Grav site, choose "None (flat-file sites)" for a site that keeps everything in files, or a database server for a site with a database, such as a KahunaCart shop. Other sites need a database server.');
+  $form['db_server']['#description'] = isset($form['db_server']['#description']) && $form['db_server']['#description'] !== ''
+    ? $form['db_server']['#description'] . ' ' . $note
+    : $note;
 }
 
 /**

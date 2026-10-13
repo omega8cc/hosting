@@ -60,9 +60,10 @@ function drush_hosting_grav_pre_hosting_task($task) {
 /**
  * Pin the copy's database server to the source's.
  *
- * A Grav capsule has no database, and the copy a clone (or a migrate, or the
- * copy upgrade) makes keeps the source's "none" database server whatever the
- * task says: the backend pins it and says so, but the FRONT END registers the
+ * The copy a clone (or a migrate, or the copy upgrade) makes keeps the
+ * source's database server whatever the task says (the "none" one for a site
+ * without a database; for a shop the backend makes the copy a database of
+ * its own on the same server): the backend honours it, but the FRONT END registers the
  * copy from the task arguments (hosting_clone_post_hosting_clone_task()
  * copies task_args['new_db_server'] onto the new node when it differs). The
  * confirm dialogs already pin the value for a Grav site; this is the belt for
@@ -71,7 +72,7 @@ function drush_hosting_grav_pre_hosting_task($task) {
  */
 function _hosting_grav_pin_db_server($task) {
   if (isset($task->task_args['new_db_server']) && $task->task_args['new_db_server'] != $task->ref->db_server) {
-    drush_log(dt('The database server @nid requested for the copy is ignored: a Grav capsule has no database and keeps the source\'s server.',
+    drush_log(dt('The database server @nid requested for the copy is ignored: a copy of a Grav site keeps the source\'s database server.',
       array('@nid' => $task->task_args['new_db_server'])), 'ok');
   }
   $task->task_args['new_db_server'] = $task->ref->db_server;
