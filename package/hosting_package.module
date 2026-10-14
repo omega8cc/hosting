@@ -181,6 +181,16 @@ function hosting_get_profile_languages($profile = NULL, $platform = NULL) {
     if ($instance->languages) {
       $languages = array_merge($languages, $instance->languages);
     }
+    // A Drupal 8+ profile ships no .po files: the installer fetches the
+    // translation of any language core knows, so offer all of them.
+    if (_hosting_package_platform_drupal_major($platform) >= 8) {
+      include_once DRUPAL_ROOT . '/includes/iso.inc';
+      foreach (array_keys(_locale_get_predefined_list()) as $code) {
+        if (!isset($languages[$code])) {
+          $languages[$code] = _hosting_language_name($code);
+        }
+      }
+    }
   }
   else {
     $result = db_query("SELECT DISTINCT language FROM {hosting_package_languages}");
@@ -389,6 +399,27 @@ function hosting_package_view($node, $view_mode, $langcode = NULL) {
  */
 function hosting_package_hosting_site_site_list_filters() {
   return array('profile');
+}
+
+/**
+ * The Drupal major version of a platform's core, 0 for any other core.
+ */
+function _hosting_package_platform_drupal_major($platform) {
+  $release = db_query("SELECT p.short_name, i.version
+                       FROM {hosting_package_instance} i
+                       LEFT JOIN {hosting_package} p
+                       ON p.nid = i.package_id
+                       WHERE p.package_type = :package_type
+                       AND i.rid = :rid",
+                       array(
+                         ':package_type' => 'platform',
+                         ':rid' => $platform,
+                       )
+                     )->fetchObject();
+  if (!$release || $release->short_name != 'drupal') {
+    return 0;
+  }
+  return (int) $release->version;
 }
 
 /**
