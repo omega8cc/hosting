@@ -229,12 +229,15 @@ function drush_hosting_task_validate($id, $type = NULL) {
       // restore) are not created through this runner; their fast path is
       // untouched.
       if ($task->task_type == 'backup' && empty($task->task_args['backup_mode'])) {
-        // DB-less foreign-CMS sites get the truthful files-only mode: the
-        // mysqldump-carrying default would register a lying label there (no
-        // dump exists to add), and the grav backend refuses
-        // backup_mysqldump_only outright. Inert while hosting_grav is off.
+        // A Grav site on the 'none' server gets the truthful files-only mode:
+        // the mysqldump-carrying default would register a lying label there
+        // (no dump exists to add), and the grav backend refuses
+        // backup_mysqldump_only outright. A Grav site with a database takes
+        // the restorable default below like every other site. Inert while
+        // hosting_grav is off.
         if (function_exists('hosting_grav_platform_is_grav') && isset($task->ref->platform)
-          && hosting_grav_platform_is_grav($task->ref->platform)) {
+          && hosting_grav_platform_is_grav($task->ref->platform)
+          && (empty($task->ref->db_server) || hosting_grav_db_server_is_none($task->ref->db_server))) {
           $task->task_args['backup_mode'] = 'site_files_without_db_backup';
           drush_log(dt("No backup_mode in the task arguments - defaulting to the Grav files-only mode: site_files_without_db_backup"), 'queue');
         }
