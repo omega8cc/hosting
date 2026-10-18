@@ -380,7 +380,7 @@ function hosting_client_update_7003() {
 }
 
 /**
- * List the platforms open to every Client to that Client's members.
+ * List platforms open to all to Client members; keep server tasks admin-only.
  */
 function hosting_client_update_7004() {
   // Updates run without hook_init, and the node load and access hooks need
@@ -392,4 +392,10 @@ function hosting_client_update_7004() {
       node_access_acquire_grants($node);
     }
   }
+  // What the access records now write for a server task: the admin grant.
+  db_query("DELETE na FROM {node_access} na INNER JOIN {hosting_task} t ON t.nid = na.nid INNER JOIN {node} s ON s.nid = t.rid WHERE s.type = :type AND na.realm = :realm AND na.gid <> :admin", array(
+    ':type' => 'server',
+    ':realm' => 'hosting task',
+    ':admin' => HOSTING_ADMIN_CLIENT,
+  ));
 }

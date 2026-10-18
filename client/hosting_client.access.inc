@@ -281,6 +281,12 @@ function hosting_client_node_access_records($node) {
       // The rest of the node types are configuration, so only admin should see them.
       $base_grant['gid'] = HOSTING_ADMIN_CLIENT;
 
+      // A server task is box maintenance no Client can queue, and a login
+      // that cannot read the server would list it without a name.
+      if ($task) {
+        break;
+      }
+
       // Lookup platforms on this server.
       $platforms = _hosting_get_platforms($node->nid);
 
