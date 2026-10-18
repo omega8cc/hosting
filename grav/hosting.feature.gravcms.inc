@@ -17,7 +17,7 @@ function hosting_grav_hosting_feature() {
   // through the Drupal paths (as the old 'backdrop' key once did).
   $features['gravcms'] = array(
     'title' => t('Grav CMS platforms'),
-    'description' => t('Treat Grav 2 codebases as a first-class platform type: partition Grav and Drupal platforms at site creation, install Grav site capsules through the Grav path, and provide the no-database server type flat-file sites attach to.'),
+    'description' => t('Treat Grav 2 codebases as a first-class platform type: partition Grav and Drupal platforms at site creation, install Grav site capsules through the Grav path, and provide the no-database server type that Grav sites without a MySQL database attach to.'),
     // Ships disabled: enabled only where BOA opts in via _GRAV_SUPPORT.
     'status' => HOSTING_FEATURE_DISABLED,
     'module' => 'hosting_grav',

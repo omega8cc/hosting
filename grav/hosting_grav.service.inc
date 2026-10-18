@@ -10,13 +10,15 @@
  * "no database" server selectable; its context writes the literal
  * db_service_type = 'NONE', which Provision_Context_server::spawn_service()
  * maps to Provision_Service_null — every backend db call becomes a silent
- * no-op. Phase 2 (KahunaCart on MySQL) is then
- * "repoint db_server at a real MySQL node".
+ * no-op. A Grav site on it keeps everything in files, or a KahunaCart store
+ * in its own SQLite file; a shop with a MySQL database is created on a MySQL
+ * server instead. The type's name is what the Servers list shows in the
+ * Database column, so it says what a site on this server gets.
  */
 
 class hostingService_db_none extends hostingService_db {
   public $type = 'none';
-  public $name = 'None (flat-file sites)';
+  public $name = 'Flat-file or SQLite';
   public $has_port = FALSE;
   public $has_restart_cmd = FALSE;
 
@@ -24,8 +26,8 @@ class hostingService_db_none extends hostingService_db {
     parent::form($form);
     $form['note'] = array(
       '#type' => 'item',
-      '#title' => t('No database'),
-      '#markup' => t('This server provides no database service. Attach only flat-file sites (Grav capsules) to it; the backend maps it to a null service and every database operation becomes a no-op.'),
+      '#title' => t('No MySQL database'),
+      '#markup' => t('This server gives a site no MySQL database. Attach only Grav sites to it: a site that keeps everything in files, or a KahunaCart store kept in its own SQLite file (Verify warns about it, BOA does not run its worker, and Clone refuses the site). A shop belongs on a MySQL server. The backend maps this server to a null service and every database operation becomes a no-op.'),
     );
   }
 
