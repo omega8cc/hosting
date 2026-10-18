@@ -11,9 +11,9 @@
  * Grav path via context_options, (c) offer the supported upgrade procedures —
  * the mirror-fed core+bundle Upgrade in place, the Upgrade a copy migration
  * shape, and the Rename and Cutover primitives that finish it — and (d)
- * provide the 'none' db service type flat-file sites attach to
- * (a real, selectable db_server node whose context maps to
- * Provision_Service_null).
+ * provide the 'none' db service type that Grav sites without a MySQL
+ * database attach to (a real, selectable db_server node whose context maps
+ * to Provision_Service_null).
  *
  * PHP 5.6 floor: this file is loaded under the Drush-8 backend and must stay
  * 5.6-parseable (the D7 hostmaster floor, independent of the grav-layer
@@ -28,6 +28,16 @@
  * no schema change to the shared hosting_platform table.
  */
 define('HOSTING_GRAV_PLATFORM_VAR', 'hosting_grav_platform_version_');
+
+/**
+ * The name the no-database server is created with.
+ *
+ * A Grav site on it keeps everything in files, or a KahunaCart store in its
+ * own SQLite file; a shop with a MySQL database is created on a MySQL server.
+ * hosting_grav_update_7003() gives it to servers that still carry the old
+ * default name.
+ */
+define('HOSTING_GRAV_NONE_SERVER_NAME', 'Grav (no MySQL)');
 
 /**
  * Variable-name prefix for the per-site Grav capsule version marker.
@@ -135,6 +145,60 @@ function hosting_grav_db_server_is_none($nid) {
 }
 
 /**
+ * The display names of the no-database servers, keyed by nid.
+ *
+ * A server node's title is its hostname (a made-up "none.<panel>" here); the
+ * name the Servers list and the site page show is its human_name. A server
+ * without one falls back to the default name.
+ *
+ * @return array
+ *   nid => display name; empty when the panel has no 'none' server.
+ */
+function hosting_grav_none_db_server_names() {
+  $none = hosting_grav_none_db_servers();
+  if (empty($none)) {
+    return array();
+  }
+  $names = array();
+  $result = db_query('SELECT n.nid, h.human_name FROM {node} n INNER JOIN {hosting_server} h ON h.vid = n.vid WHERE n.nid IN (:nids)', array(':nids' => array_keys($none)));
+  foreach ($result as $row) {
+    $names[$row->nid] = $row->human_name;
+  }
+  foreach ($none as $nid => $title) {
+    if (!isset($names[$nid]) || !is_string($names[$nid]) || trim($names[$nid]) === '') {
+      $names[$nid] = HOSTING_GRAV_NONE_SERVER_NAME;
+    }
+  }
+  return $names;
+}
+
+/**
+ * Implements hook_hosting_servers_titles_alter().
+ *
+ * The database server radios (site form, clone and migrate dialogs) list
+ * servers by hostname, and the no-database server's hostname says nothing
+ * about what a site gets there: list it under its display name.
+ */
+function hosting_grav_hosting_servers_titles_alter(&$servers, $service) {
+  if ($service != 'db' || empty($servers)) {
+    return;
+  }
+  foreach (hosting_grav_none_db_server_names() as $nid => $name) {
+    if (isset($servers[$nid])) {
+      $servers[$nid] = $name;
+    }
+  }
+}
+
+/**
+ * One display name for the no-database server in a message.
+ */
+function _hosting_grav_none_db_server_label() {
+  $names = hosting_grav_none_db_server_names();
+  return $names ? reset($names) : HOSTING_GRAV_NONE_SERVER_NAME;
+}
+
+/**
  * Create the no-database server node, once, if the panel has none.
  *
  * Flat-file capsules need a REAL db_server node to point at (db_server = 0
@@ -185,7 +249,7 @@ function hosting_grav_ensure_none_db_server() {
   }
   $title = 'none.' . drupal_strtolower(trim($host));
   if (!_hosting_valid_fqdn_ip($title)) {
-    drupal_set_message(t('Hosting Grav could not derive a valid hostname for the "None (flat-file sites)" database server (tried @title). Add the server by hand, with its database service set to the "None" type, before creating Grav sites.', array('@title' => $title)), 'warning');
+    drupal_set_message(t('Hosting Grav could not derive a valid hostname for the "@name" database server (tried @title). Add the server by hand, with its database service set to the "Flat-file or SQLite" type, before creating Grav sites.', array('@name' => HOSTING_GRAV_NONE_SERVER_NAME, '@title' => $title)), 'warning');
     return FALSE;
   }
 
@@ -195,7 +259,7 @@ function hosting_grav_ensure_none_db_server() {
   $node->uid = 1;
   $node->status = 1;
   $node->title = $title;
-  $node->human_name = 'None (flat-file sites)';
+  $node->human_name = HOSTING_GRAV_NONE_SERVER_NAME;
   // hosting_services_add(), never a bare hosting_services_new_object(): only
   // this path sets available, and a service with available = 0 makes the
   // server invisible to hosting_get_servers('db') -- that is, unselectable
@@ -204,7 +268,7 @@ function hosting_grav_ensure_none_db_server() {
   node_save($node);
   hosting_grav_none_db_servers(TRUE);
 
-  drupal_set_message(t('Hosting Grav created the "None (flat-file sites)" database server @title for flat-file site capsules.', array('@title' => $node->title)));
+  drupal_set_message(t('Hosting Grav created the "@name" database server @title for Grav sites without a MySQL database.', array('@name' => $node->human_name, '@title' => $node->title)));
 
   return $node;
 }
@@ -1303,7 +1367,7 @@ function hosting_grav_node_validate($node, $form, &$form_state) {
     // The symmetric half: the no-database server maps to a null service,
     // so a Drupal or Backdrop site attached to it would install with no
     // database at all.
-    form_set_error('db_server', t('The "None (flat-file sites)" database server carries no database: only Grav sites may use it.'));
+    form_set_error('db_server', t('The "@name" database server gives a site no MySQL database: only Grav sites may use it.', array('@name' => _hosting_grav_none_db_server_label())));
   }
 }
 
@@ -1322,7 +1386,7 @@ function hosting_grav_form_site_node_form_alter(&$form, &$form_state) {
   if (!hosting_grav_none_db_servers()) {
     return;
   }
-  $note = t('For a Grav site, choose "None (flat-file sites)" for a site that keeps everything in files, or a database server for a site with a database, such as a KahunaCart shop. Other sites need a database server.');
+  $note = t('For a Grav site, choose "@name" for a site that keeps everything in files, or a MySQL server for a KahunaCart shop. Other sites need a MySQL server.', array('@name' => _hosting_grav_none_db_server_label()));
   $form['db_server']['#description'] = isset($form['db_server']['#description']) && $form['db_server']['#description'] !== ''
     ? $form['db_server']['#description'] . ' ' . $note
     : $note;

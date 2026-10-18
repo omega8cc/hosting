@@ -153,7 +153,7 @@ function hosting_grav_requirements($phase) {
 }
 
 /**
- * Create the "None (flat-file sites)" database server.
+ * Create the no-database server.
  *
  * hook_enable only fires on enablement, so a panel that enabled hosting_grav
  * before this code shipped would never get the server: the Grav site form
@@ -171,7 +171,7 @@ function hosting_grav_update_7001() {
     return t('A no-database server already exists; nothing to do.');
   }
   variable_set('hosting_grav_none_server_wanted', 1);
-  return t('The "None (flat-file sites)" database server will be created on the next page request.');
+  return t('The "Grav (no MySQL)" database server will be created on the next page request.');
 }
 
 /**
@@ -187,4 +187,29 @@ function hosting_grav_update_7001() {
 function hosting_grav_update_7002() {
   _hosting_grav_grant_task_permissions();
   return t('Granted the Grav upgrade, copy-upgrade, rename and cutover task permissions to the administrative roles.');
+}
+
+/**
+ * Rename the no-database server from "None (flat-file sites)".
+ *
+ * The old name sat beside a ticked Database column and read as "Grav sites
+ * have no database", while a Grav site on that server may keep a KahunaCart
+ * store in SQLite, and a shop is created on a MySQL server. Only a server
+ * still carrying the old default name is renamed; a name an operator chose
+ * stays. Plain queries: update.php runs without the hosting constants.
+ */
+function hosting_grav_update_7003() {
+  $nids = db_query("SELECT DISTINCT n.nid FROM {node} n INNER JOIN {hosting_service} s ON s.vid = n.vid WHERE n.type = 'server' AND s.service = 'db' AND s.type = 'none'")->fetchCol();
+  if (empty($nids)) {
+    return t('No no-database server on this panel; nothing to rename.');
+  }
+  $renamed = db_update('hosting_server')
+    ->fields(array('human_name' => 'Grav (no MySQL)'))
+    ->condition('nid', $nids, 'IN')
+    ->condition('human_name', 'None (flat-file sites)')
+    ->execute();
+  if (!$renamed) {
+    return t('The no-database server already has a name of its own; nothing to rename.');
+  }
+  return t('Renamed the no-database server to "Grav (no MySQL)".');
 }
