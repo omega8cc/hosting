@@ -378,3 +378,18 @@ function hosting_client_update_7002() {
 function hosting_client_update_7003() {
   hosting_get_default_client();
 }
+
+/**
+ * List the platforms open to every Client to that Client's members.
+ */
+function hosting_client_update_7004() {
+  // Updates run without hook_init, and the node load and access hooks need
+  // the constants it defines.
+  hosting_init();
+  $nids = db_query("SELECT nid FROM {node} WHERE type = :type", array(':type' => 'platform'))->fetchCol();
+  foreach ($nids as $nid) {
+    if ($node = node_load($nid, NULL, TRUE)) {
+      node_access_acquire_grants($node);
+    }
+  }
+}
