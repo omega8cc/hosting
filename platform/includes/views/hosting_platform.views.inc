@@ -5,6 +5,18 @@
  */
 
 /**
+ * Implements hook_views_pre_build().
+ */
+function hosting_platform_views_pre_build(&$view) {
+  // The Server column reads the server node, which a login that may not view
+  // servers never gets: leave the column out rather than show it empty.
+  if ($view->name == 'hosting_platform_list' && !user_access('bypass node access') && !user_access('administer servers') && !user_access('view server')) {
+    unset($view->field['title_1']);
+    unset($view->display_handler->handlers['field']['title_1']);
+  }
+}
+
+/**
  * Implements hook_views_data().
  */
 function hosting_platform_views_data() {

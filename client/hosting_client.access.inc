@@ -5,6 +5,13 @@
  */
 
 /**
+ * Grant id of a platform with no client list, which every Client may use.
+ *
+ * No client node has nid 0, so it never meets a client grant.
+ */
+define('HOSTING_CLIENT_OPEN_PLATFORM', 0);
+
+/**
  * Implements hook_user_load().
  */
 function hosting_client_user_load($users) {
@@ -215,6 +222,11 @@ function hosting_client_node_grants($account, $op) {
       elseif (user_access($op . ' ' . $type, $account)) {
         // TODO: restrict access to certain op-type based on the user relationship to this client - see content of $client_relations
         $grants[$cache_id]['hosting ' . $type] = array_keys($account->client_id);
+        // The site form offers an open platform to every Client, so a
+        // member of any Client who may view platforms sees it listed.
+        if ($type == 'platform' && $op == 'view' && !empty($account->client_id)) {
+          $grants[$cache_id]['hosting ' . $type][] = HOSTING_CLIENT_OPEN_PLATFORM;
+        }
       }
       elseif ($op == 'update' && user_access('edit ' . $type, $account)) {
         $grants[$cache_id]['hosting ' . $type] = array_keys($account->client_id);
@@ -241,7 +253,8 @@ function hosting_client_node_access_records($node) {
   );
 
   // Tasks inherit from their parent.
-  if ($node->type == 'task') {
+  $task = ($node->type == 'task');
+  if ($task) {
     $node = node_load($node->rid);
     $base_grant['grant_update'] = 0;
   }
@@ -267,6 +280,12 @@ function hosting_client_node_access_records($node) {
     case 'server':
       // The rest of the node types are configuration, so only admin should see them.
       $base_grant['gid'] = HOSTING_ADMIN_CLIENT;
+
+      // A server task is box maintenance no Client can queue, and a login
+      // that cannot read the server would list it without a name.
+      if ($task) {
+        break;
+      }
 
       // Lookup platforms on this server.
       $platforms = _hosting_get_platforms($node->nid);
@@ -310,6 +329,11 @@ function hosting_client_node_access_records($node) {
             $grants[] = array_merge($base_grant, array('gid' => $cid, 'grant_update' => 0));
           }
         }
+      }
+      // An open platform (no client list) is viewable by the members of any
+      // Client; its tasks stay with the admin client.
+      if (empty($node->clients) && !$task) {
+        $grants[] = array_merge($base_grant, array('gid' => HOSTING_CLIENT_OPEN_PLATFORM, 'grant_update' => 0));
       }
       break;
 
