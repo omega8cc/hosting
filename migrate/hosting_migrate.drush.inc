@@ -117,22 +117,44 @@ function hosting_migrate_post_hosting_migrate_task($task, $data) {
  * A migrate whose post phase failed after the source was retired finishes
  * forward in the backend: the site stays on its target platform
  * (provision_migrate_failure_outcome()), and its result says so in
- * migrate_kept_on_target. The node follows it there the way a completed
- * migrate's does, so a Verify cannot pull the record back onto a platform
- * where the site is gone; the task stays failed. Nothing changes without that
- * flag naming this task's own target platform.
+ * migrate_kept_on_target. A backend that died there instead (a PHP fatal
+ * runs no rollback; its result says DRUSH_NOT_COMPLETED) leaves the site's
+ * alias and vhost on the target as well, and its result still carries
+ * migrate_source_retiring and migrate_target_deployed. Either way the node
+ * follows the site the way a completed migrate's does, so a Verify cannot
+ * pull the record back onto a platform where the site is gone; the task
+ * stays failed. Nothing changes otherwise: a backend that failed normally
+ * and reports no kept flag rolled the site back itself, and a kept flag that
+ * names another platform is reported and left.
  */
 function hosting_migrate_hosting_migrate_task_rollback($task, $data) {
   if ($task->ref->type != 'site' || !is_array($data)
-    || empty($data['context']['migrate_kept_on_target'])) {
+    || !isset($data['context']) || !is_array($data['context'])) {
     return;
   }
+  $context = $data['context'];
   $target = hosting_context_name($task->task_args['target_platform']);
-  if ($data['context']['migrate_kept_on_target'] !== $target) {
-    drush_log(dt('The backend kept the site on @kept, not on this task\'s target @target: the site record is left as it is.', array('@kept' => $data['context']['migrate_kept_on_target'], '@target' => (string) $target)), 'warning');
+  if (!empty($context['migrate_kept_on_target'])) {
+    if ($context['migrate_kept_on_target'] !== $target) {
+      drush_log(dt('The backend kept the site on @kept, not on this task\'s target @target: the site record is left as it is.', array('@kept' => $context['migrate_kept_on_target'], '@target' => (string) $target)), 'warning');
+      return;
+    }
+    drush_log(dt('The migrate failed after the source was retired: the site stays on @target, and its record follows it.', array('@target' => $target)), 'warning');
+  }
+  elseif ($target && !empty($context['migrate_source_retiring']) && !empty($context['migrate_target_deployed'])
+    && isset($data['error_log']['DRUSH_NOT_COMPLETED'])) {
+    drush_log(dt('The migrate stopped after it began to retire the source, before its own rollback: the site stays on @target, and its record follows it. What is left of the source is not cleaned up.', array('@target' => $target)), 'warning');
+    // A backend that died before it reloaded the site from the copy still
+    // reports the source's database: record the one the deploy reported. The
+    // Verify queued below reads the rest from the site itself.
+    if (isset($context['migrate_target_copy']['db_name']) && is_string($context['migrate_target_copy']['db_name'])
+      && preg_match('/^[A-Za-z0-9_]+$/', $context['migrate_target_copy']['db_name'])) {
+      $data['context']['db_name'] = $context['migrate_target_copy']['db_name'];
+    }
+  }
+  else {
     return;
   }
-  drush_log(dt('The migrate failed after the source was retired: the site stays on @target, and its record follows it.', array('@target' => $target)), 'warning');
   _hosting_migrate_record_on_target($task, $data);
 }
 
