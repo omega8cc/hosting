@@ -283,6 +283,23 @@ function hosting_site_post_hosting_restore_task($task, $data) {
 }
 
 /**
+ * Implements hook_hosting_TASK_TYPE_task_rollback() for restore.
+ *
+ * A Restore whose deploy failed after the restored copy had replaced the
+ * site keeps that copy, and the backend says so (restore_kept_replaced): the
+ * safety copy taken before the Restore is listed and the copy's database
+ * recorded, as after a successful Restore. The task stays failed.
+ */
+function hosting_site_hosting_restore_task_rollback($task, $data) {
+  if ($task->ref->type != 'site' || !is_array($data) || !isset($data['context'])
+    || !is_array($data['context']) || empty($data['context']['restore_kept_replaced'])) {
+    return;
+  }
+  drush_log(dt('The restored copy replaced the site before the Restore failed: its safety copy is listed and its database recorded.'), 'warning');
+  hosting_site_post_hosting_restore_task($task, $data);
+}
+
+/**
  * Implements hook_hosting_post_enable().
  */
 function hosting_site_post_hosting_enable_task($task, $data) {
