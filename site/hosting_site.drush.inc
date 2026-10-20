@@ -291,8 +291,12 @@ function hosting_site_post_hosting_restore_task($task, $data) {
  * recorded, as after a successful Restore. The task stays failed.
  */
 function hosting_site_hosting_restore_task_rollback($task, $data) {
-  if ($task->ref->type != 'site' || !is_array($data) || !isset($data['context'])
-    || !is_array($data['context']) || empty($data['context']['restore_kept_replaced'])) {
+  // A backend Restore that succeeded carries the flag too; its post task
+  // recorded it already, and a later failure of the front end must not
+  // record it twice.
+  if ($task->ref->type != 'site' || !is_array($data) || empty($data['error_status'])
+    || !isset($data['context']) || !is_array($data['context'])
+    || empty($data['context']['restore_kept_replaced'])) {
     return;
   }
   drush_log(dt('The restored copy replaced the site before the Restore failed: its safety copy is listed and its database recorded.'), 'warning');
