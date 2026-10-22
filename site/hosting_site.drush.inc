@@ -280,6 +280,29 @@ function hosting_site_post_hosting_restore_task($task, $data) {
     $task->ref->no_verify = TRUE;
     node_save($task->ref);
   }
+  drush_set_context('HOSTING_SITE_RESTORE_RECORDED', TRUE);
+}
+
+/**
+ * Implements hook_hosting_TASK_TYPE_task_rollback() for restore.
+ *
+ * A Restore whose deploy failed after the restored copy had replaced the
+ * site keeps that copy, and the backend says so (restore_kept_replaced): the
+ * safety copy taken before the Restore is listed and the copy's database
+ * recorded, as after a successful Restore. The task stays failed.
+ */
+function hosting_site_hosting_restore_task_rollback($task, $data) {
+  // A backend Restore that succeeded carries the flag too: when the post
+  // task above recorded it before a later step of the front end failed, it
+  // is not recorded twice; when the front end failed before its post phase,
+  // it is recorded here.
+  if ($task->ref->type != 'site' || !is_array($data) || !isset($data['context'])
+    || !is_array($data['context']) || empty($data['context']['restore_kept_replaced'])
+    || drush_get_context('HOSTING_SITE_RESTORE_RECORDED', FALSE)) {
+    return;
+  }
+  drush_log(dt('The restored copy replaced the site before the Restore failed: its safety copy is listed and its database recorded.'), 'warning');
+  hosting_site_post_hosting_restore_task($task, $data);
 }
 
 /**
