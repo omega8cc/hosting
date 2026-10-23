@@ -1313,7 +1313,7 @@ function hosting_task_runner_lock_acquire($wait, $nid = 0) {
   }
   catch (Exception $e) {
     watchdog('hosting_task', 'Could not pin the task runner session (wait_timeout): @error', array('@error' => $e->getMessage()), WATCHDOG_WARNING);
-    drush_log(dt("Could not pin the runner's session: @error", array('@error' => $e->getMessage())), 'warning');
+    drush_log(dt("Could not pin the runner's session: !error", array('!error' => $e->getMessage())), 'warning');
   }
   try {
     $conn = (int) db_query("SELECT CONNECTION_ID()")->fetchField();
@@ -1321,7 +1321,7 @@ function hosting_task_runner_lock_acquire($wait, $nid = 0) {
   }
   catch (Exception $e) {
     watchdog('hosting_task', 'Could not record the task runner lock holder (the hold ceiling cannot see this runner): @error', array('@error' => $e->getMessage()), WATCHDOG_WARNING);
-    drush_log(dt("Could not record the lock holder: @error", array('@error' => $e->getMessage())), 'warning');
+    drush_log(dt("Could not record the lock holder: !error", array('!error' => $e->getMessage())), 'warning');
   }
   return TRUE;
 }
