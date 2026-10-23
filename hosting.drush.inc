@@ -232,7 +232,7 @@ function drush_hosting_runner_lock() {
     db_query("KILL " . (int) $holder);
   }
   catch (Exception $e) {
-    return drush_set_error('HOSTING_RUNNER_LOCK', dt('Could not kill server connection @conn: @error', array('@conn' => $holder, '@error' => $e->getMessage())));
+    return drush_set_error('HOSTING_RUNNER_LOCK', dt('Could not kill server connection @conn: !error', array('@conn' => $holder, '!error' => $e->getMessage())));
   }
   // The record is not cleared: it is inert once its connection is gone, and
   // a parked runner that takes the freed lock writes its own at once (a

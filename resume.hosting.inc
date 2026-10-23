@@ -119,10 +119,13 @@ function drush_hosting_resume() {
   provision_backend_invoke(d()->name, 'hosting-setup');
 
   if (!$platform_id) {
-    drush_set_error('HOSTING_RESUME_PLATFORM', dt('No platform record was made for @path, where the panel @site runs now; @record.', array(
+    // A reason made by dt() or taken from an exception goes in with "!":
+    // "@" would pass it through check_plain() a second time, and the command
+    // line would show its quote marks as HTML entities.
+    drush_set_error('HOSTING_RESUME_PLATFORM', dt('No platform record was made for @path, where the panel @site runs now; !record.', array(
       '@path' => $platform_root,
       '@site' => d()->name,
-      '@record' => $node ? dt('its site record (node @nid) still names the old platform', array('@nid' => $node->nid)) : dt('it has no site record either'),
+      '!record' => $node ? dt('its site record (node @nid) still names the old platform', array('@nid' => $node->nid)) : dt('it has no site record either'),
     )));
   }
   if (!$node) {
@@ -130,23 +133,23 @@ function drush_hosting_resume() {
       '@site' => d()->name,
       '@name' => ltrim(d()->name, '@'),
       '@uri' => d()->uri,
-      '@why' => $why_site ? $why_site : $why_make,
+      '!why' => $why_site ? $why_site : $why_make,
       '@path' => $platform_root,
     );
     if ($why_site) {
-      $message = dt('The panel @site has no site record it may use: @why. None is made while that stands.', $args);
+      $message = dt('The panel @site has no site record it may use: !why. None is made while that stands.', $args);
     }
     else {
-      $message = dt('The panel @site has no site record: no live site node holds the context name @name or the domain @uri, and none was made: @why.', $args);
+      $message = dt('The panel @site has no site record: no live site node holds the context name @name or the domain @uri, and none was made: !why.', $args);
     }
     drush_set_error('HOSTING_RESUME_SITE_RECORD', $message . ' ' . dt('The panel runs from @path but its record does not follow it; the queue and command line keep working until a Verify of the panel is needed.', $args));
   }
   if (!$named) {
-    drush_set_error('HOSTING_RESUME_PLATFORM_NAME', dt('The new platform @path (node @nid) could not take the context name @name: @why. The site @site runs on node @nid under the name the panel gave it; release or rename the holder, then verify the platform.', array(
+    drush_set_error('HOSTING_RESUME_PLATFORM_NAME', dt('The new platform @path (node @nid) could not take the context name @name: !why. The site @site runs on node @nid under the name the panel gave it; release or rename the holder, then verify the platform.', array(
       '@path' => $platform_root,
       '@nid' => $platform_id,
       '@name' => ltrim($new_platform, '@'),
-      '@why' => $why,
+      '!why' => $why,
       '@site' => d()->name,
     )));
   }
@@ -272,6 +275,13 @@ function _hosting_resume_own_site_values(&$why) {
 function _hosting_resume_platform_template($site, $old_platform_id) {
   foreach (array($site ? $site->platform : 0, $old_platform_id) as $nid) {
     if ($nid && ($platform = node_load($nid)) && $platform->type == 'platform') {
+      // A copy: node_load() hands out the cached node itself, which the
+      // caller would otherwise turn into the new record. The new record gets
+      // its own creation time, and hosting_git takes its own root for the
+      // repository path shown on it.
+      $platform = clone $platform;
+      unset($platform->created);
+      unset($platform->git['repo_path']);
       return $platform;
     }
   }
