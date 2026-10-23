@@ -17,7 +17,13 @@ function drush_hosting_resume() {
   $old_platform = drush_get_option('old_platform_name');
   $new_platform = drush_get_option('new_platform_name');
 
-  $node = _hosting_resume_own_site();
+  // The panel's own site record. Without one, what a new one needs is read
+  // before any platform record is made: a platform Verify imports every site
+  // it finds with no live record, so a new panel platform verified while the
+  // panel has none would bring the panel in as an ordinary site.
+  $why_site = '';
+  $node = _hosting_resume_own_site($why_site);
+  $values = (!$node && !$why_site) ? _hosting_resume_own_site_values($why_site) : FALSE;
 
   // Fix the old platform first.
   $old_platform_id = $platform_id = db_query('SELECT nid FROM {hosting_platform} WHERE publish_path = :publish_path AND status = :status', array(
@@ -35,9 +41,12 @@ function drush_hosting_resume() {
 
   // If the new platform doesn't exist, create it.
   $platform_root = d()->root;
+  $platform = FALSE;
   if (!($platform_id = db_query('SELECT nid FROM {hosting_platform} WHERE publish_path = :publish_path', array(':publish_path' => $platform_root))->fetchField())) {
     drush_log(dt('Platform not found for path %path, adding platform node', array('%path' => $platform_root)));
-    $platform = _hosting_resume_platform_template($node, $old_platform_id);
+    if ($node || $values) {
+      $platform = _hosting_resume_platform_template($node, $old_platform_id);
+    }
     if ($platform) {
       $platform->type = 'platform';
       unset($platform->nid);
@@ -50,6 +59,14 @@ function drush_hosting_resume() {
       }
       elseif (preg_match("/hostmaster/i", $platform->title)) {
         $platform->title = 'Aegir Hostmaster';
+      }
+      // The panel runs from it, whatever status a parked template carries.
+      if (isset($platform->platform_status) && $platform->platform_status == HOSTING_PLATFORM_DELETED) {
+        $platform->platform_status = HOSTING_PLATFORM_ENABLED;
+      }
+      // Its Verify waits for the panel's record (above).
+      if (!$node) {
+        $platform->no_verify = TRUE;
       }
       // The files have moved already: the record must follow even when the
       // name built from the title is held by a live node (reported below).
@@ -70,7 +87,6 @@ function drush_hosting_resume() {
   // drushrc.php is left.
   $named = TRUE;
   $why = '';
-  $why_site = '';
   if ($platform_id) {
     try {
       $named = hosting_context_register($platform_id, ltrim($new_platform, '@'), TRUE);
@@ -89,17 +105,27 @@ function drush_hosting_resume() {
       $node->platform = $platform_id;
       node_save($node);
     }
-    else {
-      $node = _hosting_resume_create_own_site($platform_id, $why_site);
+    elseif ($values) {
+      $node = _hosting_resume_create_own_site($values, $platform_id, $why_site);
+      if ($node && !empty($platform->no_verify)) {
+        hosting_add_task($platform_id, 'verify');
+      }
     }
   }
-  else {
-    $why_site = dt('no platform record could be made for @path', array('@path' => $platform_root));
+  elseif (!$node && !$why_site) {
+    $why_site = dt('there is no platform record to put it on');
   }
   provision_backend_invoke(d()->name, 'hosting-setup');
 
+  if (!$platform_id) {
+    drush_set_error('HOSTING_RESUME_PLATFORM', dt('No platform record could be made for @path, where the panel @site runs now; @record.', array(
+      '@path' => $platform_root,
+      '@site' => d()->name,
+      '@record' => $node ? dt('its site record (node @nid) still names the old platform', array('@nid' => $node->nid)) : dt('it has no site record either'),
+    )));
+  }
   if (!$node) {
-    drush_set_error('HOSTING_RESUME_SITE_RECORD', dt('The panel @site has no site record: no live site node holds the context name @name or the domain @uri, and none could be made (@why). The panel runs from @path but its record does not follow it; the queue and command line keep working until a Verify of the panel is needed.', array(
+    drush_set_error('HOSTING_RESUME_SITE_RECORD', dt('The panel @site has no site record: no live site node holds the context name @name or the domain @uri, and none was made (@why). The panel runs from @path but its record does not follow it; the queue and command line keep working until a Verify of the panel is needed.', array(
       '@site' => d()->name,
       '@name' => ltrim(d()->name, '@'),
       '@uri' => d()->uri,
@@ -116,7 +142,7 @@ function drush_hosting_resume() {
       '@site' => d()->name,
     )));
   }
-  if (!$node || !$named) {
+  if (!$platform_id || !$node || !$named) {
     return FALSE;
   }
 }
@@ -130,10 +156,13 @@ function drush_hosting_resume() {
  * name back. A record under any other domain is never taken: its next
  * Verify would write that domain into the panel's alias.
  *
+ * @param string $why
+ *   Set when a record exists that cannot be taken, so none may be made.
+ *
  * @return object|bool
- *   The site node, or FALSE when the panel has no live record of itself.
+ *   The site node, or FALSE.
  */
-function _hosting_resume_own_site() {
+function _hosting_resume_own_site(&$why) {
   $name = ltrim(d()->name, '@');
   $node = hosting_context_load($name);
   if ($node && $node->type == 'site' && isset($node->site_status) && $node->site_status != HOSTING_SITE_DELETED) {
@@ -145,7 +174,7 @@ function _hosting_resume_own_site() {
     ':deleted' => HOSTING_SITE_DELETED,
   ))->fetchCol();
   if (count($nids) > 1) {
-    drush_log(dt('Live site nodes @nids all carry the domain @uri; none is taken as the panel record.', array('@nids' => implode(', ', $nids), '@uri' => $uri)), 'warning');
+    $why = dt('live site nodes @nids all carry the domain @uri', array('@nids' => implode(', ', $nids), '@uri' => $uri));
     return FALSE;
   }
   if (!$nids) {
@@ -154,11 +183,48 @@ function _hosting_resume_own_site() {
   }
   $nid = reset($nids);
   if (!hosting_context_register($nid, $name, TRUE)) {
+    $why = dt('site node @nid carries the domain @uri but cannot take the context name @name', array('@nid' => $nid, '@uri' => $uri, '@name' => $name));
     return FALSE;
   }
   variable_set('aegir_hostmaster_site_nid', $nid);
   drush_log(dt('The site node @nid of @uri had lost the context name @name; it holds it again.', array('@nid' => $nid, '@uri' => $uri, '@name' => $name)), 'warning');
   return node_load($nid, NULL, TRUE);
+}
+
+/**
+ * What a new record of the panel needs, read from records that exist.
+ *
+ * @param string $why
+ *   Set to the reason when something is missing.
+ *
+ * @return array|bool
+ *   The database server and client nids, or FALSE.
+ */
+function _hosting_resume_own_site_values(&$why) {
+  $name = ltrim(d()->name, '@');
+  $holder = (int) db_query("SELECT nid FROM {hosting_context} WHERE name = :name", array(':name' => $name))->fetchField();
+  if ($holder && !hosting_context_holder_is_stale($holder)) {
+    $why = dt('the context name @name is held by node @holder, which is not the panel', array('@name' => $name, '@holder' => $holder));
+    return FALSE;
+  }
+  $db_server = hosting_context_load(d()->db_server->name);
+  if (!$db_server || $db_server->type != 'server') {
+    $why = dt('the database server @name has no record', array('@name' => d()->db_server->name));
+    return FALSE;
+  }
+  // The client the alias names; else the one the install gave the panel.
+  $client = d()->client_name ? hosting_get_client_by_uname(d()->client_name) : FALSE;
+  if (!$client) {
+    $client = node_load(variable_get('hosting_admin_client', 1));
+  }
+  if (!$client || $client->type != 'client') {
+    $client = node_load(hosting_get_default_client());
+  }
+  if (!$client || $client->type != 'client') {
+    $why = dt('the client @name has no record', array('@name' => d()->client_name));
+    return FALSE;
+  }
+  return array('db_server' => $db_server->nid, 'client' => $client->nid);
 }
 
 /**
@@ -205,6 +271,8 @@ function _hosting_resume_platform_template($site, $old_platform_id) {
  * Every value is the one the panel's alias holds now, so the Verify queued
  * here (as for a record that moved) writes the alias back as it is.
  *
+ * @param array $values
+ *   The database server and client nids (_hosting_resume_own_site_values()).
  * @param int $platform_id
  *   The panel's new platform node.
  * @param string $why
@@ -213,25 +281,30 @@ function _hosting_resume_platform_template($site, $old_platform_id) {
  * @return object|bool
  *   The new site node, or FALSE.
  */
-function _hosting_resume_create_own_site($platform_id, &$why) {
-  $db_server = hosting_context_load(d()->db_server->name);
-  if (!$db_server || $db_server->type != 'server') {
-    $why = dt('the database server @name has no record', array('@name' => d()->db_server->name));
-    return FALSE;
+function _hosting_resume_create_own_site($values, $platform_id, &$why) {
+  // A panel with no site record loses its profile's package to the
+  // collector once no instance names it: it is made again as the install
+  // makes it, and the record that names it keeps it from then on. The next
+  // platform Verify finds it by name and fills in its details.
+  $profile = d()->profile ? hosting_get_package(d()->profile, 'profile') : FALSE;
+  if (!$profile && d()->profile) {
+    $profile = new stdClass();
+    $profile->uid = 1;
+    $profile->type = 'package';
+    $profile->title = d()->profile;
+    $profile->package_type = 'profile';
+    $profile->short_name = d()->profile;
+    $profile->old_short_name = d()->profile;
+    $profile->description = '';
+    $profile->status = 1;
+    try {
+      node_save($profile);
+    }
+    catch (Exception $e) {
+      $why = $e->getMessage();
+      return FALSE;
+    }
   }
-  // The client the alias names; else the one the install gave the panel.
-  $client = d()->client_name ? hosting_get_client_by_uname(d()->client_name) : FALSE;
-  if (!$client) {
-    $client = node_load(variable_get('hosting_admin_client', 1));
-  }
-  if (!$client || $client->type != 'client') {
-    $client = node_load(hosting_get_default_client());
-  }
-  if (!$client || $client->type != 'client') {
-    $why = dt('the client @name has no record', array('@name' => d()->client_name));
-    return FALSE;
-  }
-  $profile = db_query("SELECT p.nid FROM {hosting_package} p INNER JOIN {node} n ON n.vid = p.vid WHERE p.short_name = :name AND p.package_type = 'profile'", array(':name' => d()->profile))->fetchField();
 
   $node = new stdClass();
   $node->uid = 1;
@@ -239,11 +312,14 @@ function _hosting_resume_create_own_site($platform_id, &$why) {
   $node->title = hosting_site_get_domain(d()->uri);
   $node->hosting_name = ltrim(d()->name, '@');
   $node->platform = $platform_id;
-  $node->client = $client->nid;
-  $node->db_server = $db_server->nid;
+  $node->client = $values['client'];
+  $node->db_server = $values['db_server'];
   $node->db_name = '';
-  $node->profile = $profile ? $profile : 0;
+  $node->profile = $profile ? $profile->nid : 0;
   $node->site_language = d()->language ? d()->language : 'en';
+  // As the alias import takes them (hosting_alias_drush_context_import()).
+  $node->aliases = d()->aliases;
+  $node->redirection = d()->redirection;
   $node->site_status = HOSTING_SITE_ENABLED;
   $node->verified = 0;
   $node->status = 1;
