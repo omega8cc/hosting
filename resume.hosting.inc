@@ -152,9 +152,9 @@ function drush_hosting_resume() {
  *
  * It is the node registered under the panel's context name. A panel whose
  * database lost that row (a move between servers, a repair by hand) may
- * still hold its live site node under its own domain: that node takes the
- * name back. A record under any other domain is never taken: its next
- * Verify would write that domain into the panel's alias.
+ * still hold its live site node under its own domain, profile and database
+ * server: that node takes the name back. Any other record is never taken:
+ * its next Verify would write its own values into the panel's alias.
  *
  * @param string $why
  *   Set when a record exists that cannot be taken, so none may be made.
@@ -181,7 +181,23 @@ function _hosting_resume_own_site(&$why) {
     drush_log(dt('No live site node holds the context name @name or the domain @uri.', array('@name' => $name, '@uri' => $uri)), 'warning');
     return FALSE;
   }
+  // A panel without its record does not hold its domain: anyone who may add
+  // sites could have taken it. Only a record on the panel's profile and
+  // database server is the panel's own.
   $nid = reset($nids);
+  $site = node_load($nid);
+  $profile = empty($site->profile) ? FALSE : node_load($site->profile);
+  $db_server = hosting_context_load(d()->db_server->name);
+  if (!$profile || !isset($profile->short_name) || $profile->short_name !== d()->profile
+    || !$db_server || $site->db_server != $db_server->nid) {
+    $why = dt('site node @nid carries the domain @uri but not the panel\'s profile @profile and database server @server', array(
+      '@nid' => $nid,
+      '@uri' => $uri,
+      '@profile' => d()->profile,
+      '@server' => d()->db_server->name,
+    ));
+    return FALSE;
+  }
   if (!hosting_context_register($nid, $name, TRUE)) {
     $why = dt('site node @nid carries the domain @uri but cannot take the context name @name', array('@nid' => $nid, '@uri' => $uri, '@name' => $name));
     return FALSE;
@@ -317,9 +333,15 @@ function _hosting_resume_create_own_site($values, $platform_id, &$why) {
   $node->db_name = '';
   $node->profile = $profile ? $profile->nid : 0;
   $node->site_language = d()->language ? d()->language : 'en';
-  // As the alias import takes them (hosting_alias_drush_context_import()).
-  $node->aliases = d()->aliases;
-  $node->redirection = d()->redirection;
+  // What other modules keep in the alias (aliases, basic auth and the like)
+  // comes in through their import hooks, as hosting-import takes it. The
+  // site hook is left out: it would look up or make the records set above.
+  foreach (drush_command_implements('drush_context_import') as $module) {
+    if ($module != 'hosting_site') {
+      $func = $module . '_drush_context_import';
+      $func(d(), $node);
+    }
+  }
   $node->site_status = HOSTING_SITE_ENABLED;
   $node->verified = 0;
   $node->status = 1;
