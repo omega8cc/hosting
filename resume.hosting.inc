@@ -272,6 +272,13 @@ function _hosting_resume_own_site_values(&$why) {
 function _hosting_resume_platform_template($site, $old_platform_id) {
   foreach (array($site ? $site->platform : 0, $old_platform_id) as $nid) {
     if ($nid && ($platform = node_load($nid)) && $platform->type == 'platform') {
+      // A copy: node_load() hands out the cached node itself, which the
+      // caller would otherwise turn into the new record. The new record gets
+      // its own creation time, and hosting_git takes its own root for the
+      // repository path shown on it.
+      $platform = clone $platform;
+      unset($platform->created);
+      unset($platform->git['repo_path']);
       return $platform;
     }
   }
