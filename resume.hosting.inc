@@ -198,7 +198,7 @@ function _hosting_resume_own_site(&$why) {
   $db_server = hosting_context_load(d()->db_server->name);
   $short_name = ($profile && isset($profile->short_name)) ? $profile->short_name : '';
   if ($short_name !== d()->profile || !$db_server || $site->db_server != $db_server->nid) {
-    $why = dt('site node @nid carries the domain @uri with the profile "@has" on database server node @hasdb, where the panel runs the profile "@profile" on @server', array(
+    $why = dt('site node @nid carries the domain @uri with the profile @has on database server node @hasdb, where the panel runs the profile @profile on @server', array(
       '@nid' => $nid,
       '@uri' => $uri,
       '@has' => $short_name,
