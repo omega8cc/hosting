@@ -22,8 +22,9 @@ function drush_hosting_resume() {
   // it finds with no live record, so a new panel platform verified while the
   // panel has none would bring the panel in as an ordinary site.
   $why_site = '';
+  $why_make = '';
   $node = _hosting_resume_own_site($why_site);
-  $values = (!$node && !$why_site) ? _hosting_resume_own_site_values($why_site) : FALSE;
+  $values = (!$node && !$why_site) ? _hosting_resume_own_site_values($why_make) : FALSE;
 
   // Fix the old platform first.
   $old_platform_id = $platform_id = db_query('SELECT nid FROM {hosting_platform} WHERE publish_path = :publish_path AND status = :status', array(
@@ -106,32 +107,39 @@ function drush_hosting_resume() {
       node_save($node);
     }
     elseif ($values) {
-      $node = _hosting_resume_create_own_site($values, $platform_id, $why_site);
+      $node = _hosting_resume_create_own_site($values, $platform_id, $why_make);
       if ($node && !empty($platform->no_verify)) {
         hosting_add_task($platform_id, 'verify');
       }
     }
   }
-  elseif (!$node && !$why_site) {
-    $why_site = dt('there is no platform record to put it on');
+  elseif ($values) {
+    $why_make = dt('there is no platform record to put it on');
   }
   provision_backend_invoke(d()->name, 'hosting-setup');
 
   if (!$platform_id) {
-    drush_set_error('HOSTING_RESUME_PLATFORM', dt('No platform record could be made for @path, where the panel @site runs now; @record.', array(
+    drush_set_error('HOSTING_RESUME_PLATFORM', dt('No platform record was made for @path, where the panel @site runs now; @record.', array(
       '@path' => $platform_root,
       '@site' => d()->name,
       '@record' => $node ? dt('its site record (node @nid) still names the old platform', array('@nid' => $node->nid)) : dt('it has no site record either'),
     )));
   }
   if (!$node) {
-    drush_set_error('HOSTING_RESUME_SITE_RECORD', dt('The panel @site has no site record: no live site node holds the context name @name or the domain @uri, and none was made (@why). The panel runs from @path but its record does not follow it; the queue and command line keep working until a Verify of the panel is needed.', array(
+    $args = array(
       '@site' => d()->name,
       '@name' => ltrim(d()->name, '@'),
       '@uri' => d()->uri,
-      '@why' => $why_site,
+      '@why' => $why_site ? $why_site : $why_make,
       '@path' => $platform_root,
-    )));
+    );
+    if ($why_site) {
+      $message = dt('The panel @site has no site record it may use: @why. None is made while that stands.', $args);
+    }
+    else {
+      $message = dt('The panel @site has no site record: no live site node holds the context name @name or the domain @uri, and none was made: @why.', $args);
+    }
+    drush_set_error('HOSTING_RESUME_SITE_RECORD', $message . ' ' . dt('The panel runs from @path but its record does not follow it; the queue and command line keep working until a Verify of the panel is needed.', $args));
   }
   if (!$named) {
     drush_set_error('HOSTING_RESUME_PLATFORM_NAME', dt('The new platform @path (node @nid) could not take the context name @name: @why. The site @site runs on node @nid under the name the panel gave it; release or rename the holder, then verify the platform.', array(
@@ -188,11 +196,13 @@ function _hosting_resume_own_site(&$why) {
   $site = node_load($nid);
   $profile = empty($site->profile) ? FALSE : node_load($site->profile);
   $db_server = hosting_context_load(d()->db_server->name);
-  if (!$profile || !isset($profile->short_name) || $profile->short_name !== d()->profile
-    || !$db_server || $site->db_server != $db_server->nid) {
-    $why = dt('site node @nid carries the domain @uri but not the panel\'s profile @profile and database server @server', array(
+  $short_name = ($profile && isset($profile->short_name)) ? $profile->short_name : '';
+  if ($short_name !== d()->profile || !$db_server || $site->db_server != $db_server->nid) {
+    $why = dt('site node @nid carries the domain @uri with the profile "@has" on database server node @hasdb, where the panel runs the profile "@profile" on @server', array(
       '@nid' => $nid,
       '@uri' => $uri,
+      '@has' => $short_name,
+      '@hasdb' => $site->db_server,
       '@profile' => d()->profile,
       '@server' => d()->db_server->name,
     ));
