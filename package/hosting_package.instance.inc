@@ -123,6 +123,25 @@ function hosting_package_instance_sync($rid, $type) {
     }
     hosting_package_instances_delete($stale);
   }
+
+  // A site's rows recorded on a platform it has since left: its own sync
+  // stays within the current platform and never sees them again, and every
+  // later Migrate comparison would count them beside the current ones. Rows
+  // on the platform of a profile instance whose iid equals this site's nid
+  // are that profile's packages and stay.
+  if ($type == 'site' && $platform > 0) {
+    $left = db_query("SELECT i.iid
+                      FROM {hosting_package_instance} i
+                      WHERE i.rid = :rid AND i.platform > 0 AND i.platform <> :platform
+                      AND i.platform NOT IN (SELECT pi.rid
+                                             FROM {hosting_package_instance} pi
+                                             INNER JOIN {hosting_package} pp ON pp.nid = pi.package_id
+                                             WHERE pi.iid = :iid AND pp.package_type = 'profile')",
+                      array(':rid' => $rid, ':platform' => $platform, ':iid' => $rid))->fetchCol();
+    if (!empty($left)) {
+      hosting_package_instances_delete($left);
+    }
+  }
 }
 
 /**
