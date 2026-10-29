@@ -748,6 +748,14 @@ function hosting_add_task($nid, $type, $args = NULL, $status = HOSTING_TASK_QUEU
     return FALSE;
   }
 
+  // While an upgrade moves the panel to its new platform, a task saved here
+  // goes into the database the move is about to drop and is lost without a
+  // trace: refuse it, so the caller knows to queue it again.
+  if (function_exists('hosting_panel_is_moving') && hosting_panel_is_moving()) {
+    drupal_set_message(t('The control panel is moving to its new version: the @type task was not queued. Queue it again in a few minutes.', array('@type' => $type)), 'error');
+    return FALSE;
+  }
+
   // One queued task of a kind per node: every platform or site re-save queues
   // a verify, and with the queue draining one task a minute a busy box piled
   // up eighteen identical queued verifies per platform (measured). A task
