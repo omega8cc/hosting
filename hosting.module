@@ -497,6 +497,8 @@ function hosting_panel_is_moving() {
   if ($mtime === FALSE || (time() - $mtime) >= 3600) {
     return FALSE;
   }
+  // panel-move-reads-database: BOA writes the marker into the platform the
+  // panel moves to only when this release's code carries this line.
   $fields = preg_split('/\s+/', trim((string) @file_get_contents($marker)));
   if (empty($fields[1])) {
     return TRUE;
