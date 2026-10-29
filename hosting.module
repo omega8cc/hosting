@@ -475,13 +475,18 @@ function hosting_get_default_client(array $exclude = array()) {
  *
  * An upgrade's hostmaster-migrate dumps the panel's database, deploys the
  * dump into a new database on the new platform and drops the old one, so
- * whatever this copy saves after the dump is lost. BOA writes
- * sites/.panel-move.info in the platform the panel runs on just before the
- * migrate and removes it once the migrate returns; the new platform never
- * carries it. A marker older than an hour is a leftover and does not count.
+ * whatever is saved into the old database after the dump is lost. BOA writes
+ * sites/.panel-move.info in the platform the panel runs on and in the one it
+ * moves to just before the migrate, and removes both once the migrate
+ * returns. The marker holds the time and the old database's name: a copy
+ * that already reads the new database is not moving, so the migrate's own
+ * last steps on the new platform still queue their tasks, while a copy on
+ * the new platform that still reads the old one (its settings not yet
+ * rewritten by the deploy) is held like the old platform. A marker without
+ * a name holds whatever reads it; one older than an hour does not count.
  *
  * @return bool
- *   TRUE while the marker is fresh.
+ *   TRUE while the marker is fresh and names this copy's database or none.
  */
 function hosting_panel_is_moving() {
   $marker = DRUPAL_ROOT . '/sites/.panel-move.info';
@@ -489,7 +494,16 @@ function hosting_panel_is_moving() {
     return FALSE;
   }
   $mtime = @filemtime($marker);
-  return $mtime !== FALSE && (time() - $mtime) < 3600;
+  if ($mtime === FALSE || (time() - $mtime) >= 3600) {
+    return FALSE;
+  }
+  $fields = preg_split('/\s+/', trim((string) @file_get_contents($marker)));
+  if (empty($fields[1])) {
+    return TRUE;
+  }
+  $info = Database::getConnectionInfo('default');
+  $current = isset($info['default']['database']) ? $info['default']['database'] : '';
+  return $current === $fields[1];
 }
 
 /**
