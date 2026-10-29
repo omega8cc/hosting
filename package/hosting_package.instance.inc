@@ -518,11 +518,25 @@ function hosting_package_instance_version_code($version) {
 
   $regex = array(
     'core' => '/^(?P<platform_major>\d?)\.(?P<platform_minor>[x\d]*)?(-(?P<package_version_type>dev|unstable|alpha|beta|rc)?(?P<package_patch_level>\d)*)?$/',
+    // Three numbers, as Drupal 8+ core (11.4.11), Backdrop core (1.35.2) and
+    // semantic contrib releases (6.19.3, 2.1.0-beta1) are numbered: the
+    // contrib pattern below, unanchored, read 11.4.11 as 1.4 and 6.19.3 as
+    // 6.19, so 9.5 sorted above 11.4 and a patch release equal to the last.
+    'semver' => '/^(?P<platform_major>\d+)\.(?P<platform_minor>\d+)\.(?P<package_major>\d+)(-(?P<package_version_type>alpha|unstable|beta|rc|dev)(?P<package_patch_level>\d*))?$/',
+    // A core-prefixed release with three numbers (Backdrop's 1.x-6.19.3): the
+    // third goes where a pre-release number would.
+    'prefixed' => '/^(?P<platform_major>\d+)\.x-(?P<package_major>\d+)\.(?P<package_minor>\d+)\.(?P<package_patch_level>\d+)$/',
     'contrib' => "/(?P<platform_major>\d?)\.(?P<platform_minor>[x\d]*)?(-(?P<package_major>\d*)?\.(?P<package_minor>[x\d]*)?(-(?P<package_version_type>alpha|unstable|beta|rc|dev)?(?P<package_patch_level>[\d]*)?)?)?/",
   );
 
   $matches = array();
   if (preg_match($regex['core'], $version, $matches)) {
+    $matches = array_merge($defaults, $matches);
+  }
+  elseif (preg_match($regex['semver'], $version, $matches)) {
+    $matches = array_merge($defaults, array_filter($matches, 'strlen'));
+  }
+  elseif (preg_match($regex['prefixed'], $version, $matches)) {
     $matches = array_merge($defaults, $matches);
   }
   elseif (preg_match($regex['contrib'], $version, $matches)) {

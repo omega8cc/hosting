@@ -647,3 +647,40 @@ function hosting_package_update_7303(&$sandbox) {
     return format_plural($sandbox['done'], 'Merged 1 duplicate package node.', 'Merged @count duplicate package nodes.');
   }
 }
+
+/**
+ * Implements hook_update_N().
+ *
+ * Recompute every package instance's version code with the parser that reads
+ * three-number releases (11.4.11, 6.19.3, 1.x-6.19.3) whole: the stored codes
+ * of such releases were read as 1.4 or 6.19, and the Migrate comparison then
+ * sorted Drupal 9.5 above 11.4 and took a patch release for the same one.
+ * Codes of the older release formats come out as they were.
+ */
+function hosting_package_update_7304(&$sandbox) {
+  include_once drupal_get_path('module', 'hosting_package') . '/hosting_package.instance.inc';
+  if (!isset($sandbox['last'])) {
+    $sandbox['last'] = 0;
+    $sandbox['done'] = 0;
+    $sandbox['changed'] = 0;
+    $sandbox['total'] = (int) db_query("SELECT COUNT(iid) FROM {hosting_package_instance}")->fetchField();
+  }
+  $rows = db_query_range("SELECT iid, version, version_code FROM {hosting_package_instance} WHERE iid > :last ORDER BY iid", 0, 500,
+    array(':last' => $sandbox['last']))->fetchAll();
+  foreach ($rows as $row) {
+    $code = hosting_package_instance_version_code($row->version);
+    if ((float) $row->version_code != $code) {
+      db_update('hosting_package_instance')
+        ->fields(array('version_code' => $code))
+        ->condition('iid', $row->iid)
+        ->execute();
+      $sandbox['changed']++;
+    }
+    $sandbox['last'] = $row->iid;
+    $sandbox['done']++;
+  }
+  $sandbox['#finished'] = (empty($rows) || empty($sandbox['total'])) ? 1 : min(1, $sandbox['done'] / $sandbox['total']);
+  if ($sandbox['#finished'] >= 1) {
+    return format_plural($sandbox['changed'], 'Recomputed 1 package version code.', 'Recomputed @count package version codes.');
+  }
+}
