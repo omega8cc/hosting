@@ -684,3 +684,16 @@ function hosting_package_update_7304(&$sandbox) {
     return format_plural($sandbox['changed'], 'Recomputed 1 package version code.', 'Recomputed @count package version codes.');
   }
 }
+
+/**
+ * Implements hook_update_N().
+ *
+ * Recompute every package instance's version code once more, with the parser
+ * that reads a Drupal 8+ contrib release 8.x-A.B as the semantic A.B.0 it
+ * stands for, Backdrop's contrib releases with their pre-releases in order,
+ * and no build metadata: a project's move from 8.x-3.10 to 4.0.0 was counted
+ * as a downgrade. The same batched pass as 7304.
+ */
+function hosting_package_update_7305(&$sandbox) {
+  return hosting_package_update_7304($sandbox);
+}
