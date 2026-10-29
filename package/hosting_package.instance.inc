@@ -523,17 +523,37 @@ function hosting_package_instance_version_code($version) {
     // contrib pattern below, unanchored, read 11.4.11 as 1.4 and 6.19.3 as
     // 6.19, so 9.5 sorted above 11.4 and a patch release equal to the last.
     'semver' => '/^(?P<platform_major>\d+)\.(?P<platform_minor>\d+)\.(?P<package_major>\d+)(-(?P<package_version_type>alpha|unstable|beta|rc|dev)(?P<package_patch_level>\d*))?$/',
-    // A core-prefixed release with three numbers (Backdrop's 1.x-6.19.3): the
+    // A Drupal 8+ contrib release numbered 8.x-A.B is the semantic A.B.0
+    // Drupal.org's own versioning maps it to: read it there, so a project's
+    // move from one scheme to the other (8.x-3.10 to 3.11.0 or 4.0.0) reads
+    // as the upgrade it is. A Drupal 7 release then compares above it, which
+    // no Migrate between a Drupal 7 and a Drupal 8+ platform could act on.
+    'drupal8' => '/^8\.x-(?P<platform_major>\d+)\.(?P<platform_minor>\d+|x)(-(?P<package_version_type>alpha|unstable|beta|rc|dev)(?P<package_patch_level>\d*))?$/',
+    // A Backdrop contrib release (1.x-6.19.3, 1.x-1.5, 1.x-6.20.0-beta1, 1.x-2.x-dev):
+    // its two or three numbers in order, then a pre-release, which the
+    // prefixed pattern below has no room for.
+    'backdrop' => '/^(?P<platform_major>1)\.x-(?P<platform_minor>\d+)\.(?P<package_major>\d+|x)(\.(?P<package_minor>\d+))?(-(?P<package_version_type>alpha|unstable|beta|rc|dev)(?P<package_patch_level>\d*))?$/',
+    // A core-prefixed release with three numbers for any other core: the
     // third goes where a pre-release number would.
     'prefixed' => '/^(?P<platform_major>\d+)\.x-(?P<package_major>\d+)\.(?P<package_minor>\d+)\.(?P<package_patch_level>\d+)$/',
     'contrib' => "/(?P<platform_major>\d?)\.(?P<platform_minor>[x\d]*)?(-(?P<package_major>\d*)?\.(?P<package_minor>[x\d]*)?(-(?P<package_version_type>alpha|unstable|beta|rc|dev)?(?P<package_patch_level>[\d]*)?)?)?/",
   );
+
+  // Build metadata after a plus sign carries no order (semantic versioning;
+  // Drupal's own dev snapshots, 8.x-1.0+5-dev, read as their tag as before).
+  $version = preg_replace('/\+.*$/', '', (string) $version);
 
   $matches = array();
   if (preg_match($regex['core'], $version, $matches)) {
     $matches = array_merge($defaults, $matches);
   }
   elseif (preg_match($regex['semver'], $version, $matches)) {
+    $matches = array_merge($defaults, array_filter($matches, 'strlen'));
+  }
+  elseif (preg_match($regex['drupal8'], $version, $matches)) {
+    $matches = array_merge($defaults, array_filter($matches, 'strlen'));
+  }
+  elseif (preg_match($regex['backdrop'], $version, $matches)) {
     $matches = array_merge($defaults, array_filter($matches, 'strlen'));
   }
   elseif (preg_match($regex['prefixed'], $version, $matches)) {
