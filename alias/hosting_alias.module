@@ -167,8 +167,7 @@ function hosting_alias_form_data(&$form, &$form_state) {
   $default = isset($form['#node']->redirection) ? $form['#node']->redirection : '';
   // Show the target the vhost serves (hosting_alias_effective_redirection()),
   // so the form says what the vhost does and a save stores it: the site's
-  // own name for a target the site was renamed away from, the www companion
-  // even while its automatic alias is missing.
+  // own name for a target that is neither the site's name nor an alias.
   if ($default && isset($form['#node']->title)) {
     $default = hosting_alias_effective_redirection($form['#node']->title, $default, array_merge((array) $aliases, (array) $automatic_aliases));
     if (!isset($options[$default])) {
@@ -206,12 +205,13 @@ function hosting_alias_add_alias_callback($form, $form_state) {
  *
  * The stored target counts as the panel stores aliases
  * (hosting_site_clean_domain()) and is kept, in the spelling of the name it
- * matches, when it is the site's own name, its www companion or one of its
- * aliases. Any other target (a name the site was renamed away from) has no
- * site directory behind it, and provision serves the site's own name
- * instead (Provision_Config_Http_Site::process()); the www companion stays
- * because Drupal finds the site's directory for it by host suffix, also
- * when its automatic alias is missing for a save whose DNS lookup failed.
+ * matches, when it is the site's own name or one of its aliases. Any other
+ * target is served as the site's own name, as provision does
+ * (Provision_Config_Http_Site::process()): a name the site was renamed away
+ * from has no site directory behind it, and settings.php trusts only the
+ * site's own name and its aliases, so its www companion without an alias
+ * row is refused too. Tasks leave the stored target as it is, so a www
+ * companion is served again once its automatic alias is made.
  *
  * @param string $title
  *   The site's name.
@@ -231,9 +231,6 @@ function hosting_alias_effective_redirection($title, $redirection, $aliases) {
   $own = hosting_site_clean_domain($title);
   if ($target == $own) {
     return $title;
-  }
-  if (strpos($own, 'www.') !== 0 && $target == 'www.' . $own) {
-    return 'www.' . $own;
   }
   foreach ((array) $aliases as $alias) {
     if ($target == hosting_site_clean_domain($alias)) {
