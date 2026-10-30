@@ -172,10 +172,19 @@ function _hosting_migrate_record_on_target($task, $data) {
     $site = $task->ref;
 
     if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
+      $old_title = $site->title;
       $site->title = hosting_site_clean_domain($task->task_args['new_uri']);
       // The backend has renamed the site already: a live holder of the new
       // name is reported, and the record still takes the new title.
       hosting_context_register($site->nid, hosting_site_get_domain($site->title), TRUE);
+
+      // Aliases redirected to the site's own name follow it to the new
+      // name. Kept on the old name, the redirection would point at a name
+      // that is neither the site's nor one of its aliases: the vhost would
+      // serve the old name and nothing would serve the new one.
+      if (!empty($site->redirection) && $site->redirection == $old_title) {
+        $site->redirection = $site->title;
+      }
 
       // Auto-disable Encryption when the site's main machine-name changes.
       // SSL keys/certificates are bound to the machine-name and are invalid for
