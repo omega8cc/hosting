@@ -185,16 +185,16 @@ function _hosting_migrate_record_on_target($task, $data) {
       // on the old name, the redirection would name neither the site nor one
       // of its aliases, a target no site directory answers.
       if (!empty($site->redirection)) {
-        $target = hosting_site_clean_domain($site->redirection);
+        $redir = hosting_site_clean_domain($site->redirection);
         $raw_old = preg_replace('/^www\./', '', $old_title);
         $raw_new = preg_replace('/^www\./', '', $site->title);
-        if ($target == $old_title) {
+        if ($redir == $old_title) {
           $site->redirection = $site->title;
         }
-        elseif ($target == 'www.' . $raw_old) {
+        elseif ($redir == 'www.' . $raw_old) {
           $site->redirection = 'www.' . $raw_new;
         }
-        elseif ($target == $raw_old) {
+        elseif ($redir == $raw_old) {
           $site->redirection = $raw_new;
         }
       }
