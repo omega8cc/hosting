@@ -165,6 +165,15 @@ function hosting_alias_form_data(&$form, &$form_state) {
   }
 
   $default = isset($form['#node']->redirection) ? $form['#node']->redirection : '';
+  // Show the target the vhost serves (hosting_alias_effective_redirection()),
+  // so the form says what the vhost does and a save stores it: the site's
+  // own name for a target that is neither the site's name nor an alias.
+  if ($default && isset($form['#node']->title)) {
+    $default = hosting_alias_effective_redirection($form['#node']->title, $default, array_merge((array) $aliases, (array) $automatic_aliases));
+    if (!isset($options[$default])) {
+      $options[$default] = $default;
+    }
+  }
 
   $form['aliases_wrapper']['redirection'] = array(
     '#type' => 'select',
@@ -190,6 +199,46 @@ function hosting_alias_add_alias_callback($form, $form_state) {
   return $form['aliases_wrapper'];
 }
 
+
+/**
+ * The redirection target a site's vhost serves.
+ *
+ * The stored target counts as the panel stores aliases
+ * (hosting_site_clean_domain()) and is kept, in the spelling of the name it
+ * matches, when it is the site's own name or one of its aliases. Any other
+ * target is served as the site's own name, as provision does
+ * (Provision_Config_Http_Site::process()): a name the site was renamed away
+ * from has no site directory behind it, and settings.php trusts only the
+ * site's own name and its aliases, so its www companion without an alias
+ * row is refused too. Tasks leave the stored target as it is, so a www
+ * companion is served again once its automatic alias is made.
+ *
+ * @param string $title
+ *   The site's name.
+ * @param string $redirection
+ *   The stored target; 0 or an empty string is no redirection.
+ * @param array $aliases
+ *   The site's aliases, custom and automatic.
+ *
+ * @return string
+ *   The target, or $redirection itself when no redirection is set.
+ */
+function hosting_alias_effective_redirection($title, $redirection, $aliases) {
+  if (empty($redirection)) {
+    return $redirection;
+  }
+  $target = hosting_site_clean_domain($redirection);
+  $own = hosting_site_clean_domain($title);
+  if ($target == $own) {
+    return $title;
+  }
+  foreach ((array) $aliases as $alias) {
+    if ($target == hosting_site_clean_domain($alias)) {
+      return $alias;
+    }
+  }
+  return $title;
+}
 
 /**
  * Retrieve a list of aliases for a site.
