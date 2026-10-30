@@ -284,6 +284,25 @@ function hosting_site_canonical_url($node) {
   # Default to the site title, otherwise.
   $url = isset($node->redirection) && $node->redirection ? $node->redirection : $node->title;
 
+  // The target the vhost serves: one that is neither the site's own name nor
+  // an alias (a name the site was renamed away from) is served as the site's
+  // own name, so the panel must not link to it.
+  if ($url != $node->title && function_exists('hosting_alias_effective_redirection')) {
+    $aliases = array();
+    if (isset($node->aliases) || isset($node->aliases_automatic)) {
+      foreach (array('aliases', 'aliases_automatic') as $key) {
+        if (!empty($node->$key)) {
+          $list = is_array($node->$key) ? $node->$key : explode("\n", str_replace(',', "\n", $node->$key));
+          $aliases = array_merge($aliases, $list);
+        }
+      }
+    }
+    elseif (!empty($node->vid)) {
+      $aliases = hosting_alias_get_aliases($node);
+    }
+    $url = hosting_alias_effective_redirection($node->title, $url, $aliases);
+  }
+
   return hosting_site_clean_domain($url);
 }
 
