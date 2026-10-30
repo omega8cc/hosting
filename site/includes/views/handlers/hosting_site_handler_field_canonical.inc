@@ -10,11 +10,17 @@ class hosting_site_field_handler_canonical extends views_handler_field {
    */
   var $redirections = array();
 
+  /**
+   * Aliases of the listed sites, keyed by site revision id.
+   */
+  var $site_aliases = array();
+
   function construct() {
     parent::construct();
     // Everything the canonical URL needs comes with the row: the site's
     // revision id, its title, and (fetched for all rows at once in
-    // pre_render) its redirection target. Loading the node per row ran every
+    // pre_render) its redirection target and aliases, which judge that
+    // target as the vhost serves it. Loading the node per row ran every
     // module's load hooks for every listed site.
     $this->additional_fields['vid'] = 'vid';
     $this->additional_fields['title'] = array('table' => 'node', 'field' => 'title');
@@ -22,6 +28,7 @@ class hosting_site_field_handler_canonical extends views_handler_field {
 
   function pre_render(&$values) {
     $this->redirections = array();
+    $this->site_aliases = array();
     if (!module_exists('hosting_alias') || empty($this->aliases['vid'])) {
       return;
     }
@@ -34,11 +41,12 @@ class hosting_site_field_handler_canonical extends views_handler_field {
     if (empty($vids)) {
       return;
     }
-    $result = db_query("SELECT vid, redirection FROM {hosting_site_alias} WHERE vid IN (:vids)", array(':vids' => array_unique($vids)));
+    $result = db_query("SELECT vid, alias, redirection FROM {hosting_site_alias} WHERE vid IN (:vids)", array(':vids' => array_unique($vids)));
     foreach ($result as $row) {
       if (!isset($this->redirections[$row->vid]) && !empty($row->redirection)) {
         $this->redirections[$row->vid] = $row->redirection;
       }
+      $this->site_aliases[$row->vid][] = $row->alias;
     }
   }
 
@@ -50,6 +58,7 @@ class hosting_site_field_handler_canonical extends views_handler_field {
       $site = new stdClass();
       $site->title = !empty($this->aliases['title']) && isset($values->{$this->aliases['title']}) ? $values->{$this->aliases['title']} : '';
       $site->redirection = ($vid && isset($this->redirections[$vid])) ? $this->redirections[$vid] : '';
+      $site->aliases = ($vid && isset($this->site_aliases[$vid])) ? $this->site_aliases[$vid] : array();
       return hosting_site_canonical_url($site);
     }
     // Fall back to the task node title.
