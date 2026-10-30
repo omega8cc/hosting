@@ -79,10 +79,11 @@ function _hosting_cron_gate_refuses_name($name) {
  * requests that cannot run. They are skipped, not switched off: the stored
  * interval applies again as soon as the name or the method changes, so a
  * temporary site renamed to its live name keeps its cron. The request lands
- * on the redirection target when that is one of the site's aliases (curl
- * follows the redirect), else on the site's own name: provision serves the
- * site's own name for a target that is not an alias. The Drush method runs
- * no web request, and the hostmaster profile always runs through Drush.
+ * on the target the vhost serves (curl follows the redirect), as
+ * hosting_alias_effective_redirection() names it: the stored target when it
+ * is one of the site's aliases, compared as the panel stores them, else the
+ * site's own name. The Drush method runs no web request, and the hostmaster
+ * profile always runs through Drush.
  *
  * @return array
  *   The name the gate sees, keyed by site nid.
@@ -97,13 +98,20 @@ function _hosting_cron_web_refused_sites() {
     return $sites;
   }
   $all_off = file_exists('/data/conf/sites-cron-off.ctrl');
-  $redirection = "'' AS redirection, 0 AS target_alias";
-  if (db_table_exists('hosting_site_alias')) {
-    $redirection = '(SELECT MAX(a.redirection) FROM {hosting_site_alias} a WHERE a.vid = n.vid) AS redirection,
-      (SELECT COUNT(*) FROM {hosting_site_alias} b WHERE b.vid = n.vid
-        AND b.alias = (SELECT MAX(c.redirection) FROM {hosting_site_alias} c WHERE c.vid = n.vid)) AS target_alias';
+  $use_aliases = db_table_exists('hosting_site_alias') && function_exists('hosting_alias_effective_redirection');
+  $redirection = "'' AS redirection";
+  $aliases = array();
+  if ($use_aliases) {
+    $redirection = '(SELECT MAX(a.redirection) FROM {hosting_site_alias} a WHERE a.vid = n.vid) AS redirection';
+    $result = db_query("SELECT a.vid, a.alias FROM {hosting_site_alias} a
+      INNER JOIN {node} n ON n.vid = a.vid
+      INNER JOIN {hosting_site} hs ON n.nid = hs.nid
+      WHERE n.type = :site AND hs.status = :status", array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
+    foreach ($result as $row) {
+      $aliases[$row->vid][] = $row->alias;
+    }
   }
-  $result = db_query("SELECT n.nid, n.title, " . $redirection . ", p.short_name
+  $result = db_query("SELECT n.nid, n.vid, n.title, " . $redirection . ", p.short_name
     FROM {node} n
     INNER JOIN {hosting_site} hs ON n.nid = hs.nid
     LEFT JOIN {hosting_package} p ON p.nid = hs.profile
@@ -113,7 +121,10 @@ function _hosting_cron_web_refused_sites() {
       continue;
     }
     // No redirection is stored as 0.
-    $name = (!empty($row->redirection) && $row->target_alias > 0) ? $row->redirection : $row->title;
+    $name = $row->title;
+    if ($use_aliases && !empty($row->redirection)) {
+      $name = hosting_alias_effective_redirection($row->title, $row->redirection, isset($aliases[$row->vid]) ? $aliases[$row->vid] : array());
+    }
     if ($all_off ? strpos($name, '/') === FALSE : _hosting_cron_gate_refuses_name($name)) {
       $sites[$row->nid] = $name;
     }
