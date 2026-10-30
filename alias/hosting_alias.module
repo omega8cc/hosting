@@ -166,10 +166,11 @@ function hosting_alias_form_data(&$form, &$form_state) {
 
   $default = isset($form['#node']->redirection) ? $form['#node']->redirection : '';
   // A stored target that is no longer the site's name or one of its aliases
-  // (a rename used to leave one behind) is still what the vhost serves: list
-  // it, or the form shows the first option and a save drops the redirection.
-  if ($default && !isset($options[$default])) {
-    $options[$default] = $default;
+  // (a rename used to leave one behind) is not served: provision redirects
+  // the aliases to the site's own name instead. Show that, so the form says
+  // what the vhost does and a save stores it.
+  if ($default && !isset($options[$default]) && isset($form['#node']->title)) {
+    $default = $form['#node']->title;
   }
 
   $form['aliases_wrapper']['redirection'] = array(

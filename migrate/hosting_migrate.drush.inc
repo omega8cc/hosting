@@ -179,9 +179,8 @@ function _hosting_migrate_record_on_target($task, $data) {
       hosting_context_register($site->nid, hosting_site_get_domain($site->title), TRUE);
 
       // Aliases redirected to the site's own name follow it to the new
-      // name. Kept on the old name, the redirection would point at a name
-      // that is neither the site's nor one of its aliases: the vhost would
-      // serve the old name and nothing would serve the new one.
+      // name. Kept on the old name, the redirection would name neither the
+      // site nor one of its aliases, a target no site directory answers.
       if (!empty($site->redirection) && $site->redirection == $old_title) {
         $site->redirection = $site->title;
       }
