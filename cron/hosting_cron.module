@@ -57,6 +57,67 @@ function _hosting_cron_foreign_cms_platforms() {
 }
 
 /**
+ * Does BOA's cron gate refuse web cron on this name?
+ *
+ * BOA's global-main.inc answers every web cron route with an empty 404 on a
+ * dev or temporary name, the names global-mode.inc lists. A subdirectory
+ * site's cron arrives under its parent's name as /<subdir>/cron..., which
+ * the gate does not match.
+ */
+function _hosting_cron_gate_refuses_name($name) {
+  if (strpos($name, '/') !== FALSE) {
+    return FALSE;
+  }
+  return (bool) preg_match('/(?:^|\.)(?:dev|devel|tmp|temp|temporary|test|testing)\./i', $name);
+}
+
+/**
+ * Sites whose scheduled web cron BOA's cron gate refuses.
+ *
+ * The gate refuses a dev or temporary name, and every site while
+ * /data/conf/sites-cron-off.ctrl exists, so the queue would only send
+ * requests that cannot run. They are skipped, not switched off: the stored
+ * interval applies again as soon as the name or the method changes, so a
+ * temporary site renamed to its live name keeps its cron. The request lands
+ * on the redirection target when the site has one (curl follows the
+ * redirect), else on the site's own name. The Drush method runs no web
+ * request, and the hostmaster profile always runs through Drush.
+ *
+ * @return array
+ *   The name the gate sees, keyed by site nid.
+ */
+function _hosting_cron_web_refused_sites() {
+  $sites = &drupal_static(__FUNCTION__);
+  if (isset($sites)) {
+    return $sites;
+  }
+  $sites = array();
+  if (variable_get('hosting_cron_use_backend', TRUE)) {
+    return $sites;
+  }
+  $all_off = file_exists('/data/conf/sites-cron-off.ctrl');
+  $redirection = db_table_exists('hosting_site_alias')
+    ? '(SELECT MAX(a.redirection) FROM {hosting_site_alias} a WHERE a.vid = n.vid)'
+    : "''";
+  $result = db_query("SELECT n.nid, n.title, " . $redirection . " AS redirection, p.short_name
+    FROM {node} n
+    INNER JOIN {hosting_site} hs ON n.nid = hs.nid
+    LEFT JOIN {hosting_package} p ON p.nid = hs.profile
+    WHERE n.type = :site AND hs.status = :status", array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
+  foreach ($result as $row) {
+    if ($row->short_name == 'hostmaster') {
+      continue;
+    }
+    // No redirection is stored as 0.
+    $name = !empty($row->redirection) ? $row->redirection : $row->title;
+    if ($all_off ? strpos($name, '/') === FALSE : _hosting_cron_gate_refuses_name($name)) {
+      $sites[$row->nid] = $name;
+    }
+  }
+  return $sites;
+}
+
+/**
  * Implements hook_hosting_queues().
  *
  * @todo: In Hosting 4.x change the type to HOSTING_QUEUE_TYPE_SPREAD.
@@ -95,6 +156,11 @@ function hosting_cron_hosting_site_count() {
   if (!empty($foreign_platforms)) {
     $sql .= " AND hs.platform NOT IN (:platforms)";
     $args[':platforms'] = $foreign_platforms;
+  }
+  $refused = _hosting_cron_web_refused_sites();
+  if (!empty($refused)) {
+    $sql .= " AND n.nid NOT IN (:refused)";
+    $args[':refused'] = array_keys($refused);
   }
   $result = db_query($sql, $args)->fetchField();
   return $result;
@@ -291,6 +357,12 @@ function hosting_cron_node_view($node, $view_mode, $langcode) {
         $node->cron_interval = (int) $this_cron_interval;
       }
       $cron_text = $this_cron_interval == ADV_CRON_TURNED_OFF ? t('Disabled') : t('Every !interval', array('!interval' => format_interval($this_cron_interval)));
+      $refused = _hosting_cron_web_refused_sites();
+      if ($this_cron_interval != ADV_CRON_TURNED_OFF && isset($refused[$node->nid])) {
+        $cron_text = _hosting_cron_gate_refuses_name($refused[$node->nid])
+          ? t('Not run: @name is a dev or temporary name, which gets no web cron', array('@name' => $refused[$node->nid]))
+          : t('Not run: web cron is off on this server');
+      }
       $cron_text .= '<br />' . t('(Last run: !interval)', array('!interval' => hosting_format_interval(isset($node->last_cron) ? $node->last_cron : 0)));
       $node->content['info']['last_cron'] = array(
         '#type' => 'item',
@@ -449,6 +521,7 @@ function hosting_cron_get_sites($count) {
   // No site due returns an empty list, not an undefined variable.
   $sites = array();
   $result = db_query('SELECT n.nid, hs.last_cron, hs.platform, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
+  $refused = _hosting_cron_web_refused_sites();
   $counter = 0;
   foreach ($result as $site) {
     // Skip foreign flat-file CMS sites HERE, not just at dispatch: the queue
@@ -458,6 +531,10 @@ function hosting_cron_get_sites($count) {
     // occupy one of the few slots below on every single run -- starving the
     // real sites behind it once enough of them exist.
     if (_hosting_cron_platform_is_foreign_cms($site->platform)) {
+      continue;
+    }
+    // The same for a site whose web cron BOA's gate refuses.
+    if (isset($refused[$site->nid])) {
       continue;
     }
     if ($counter <= $count && $counter <= ADV_CRON_MAX_PLL) {
