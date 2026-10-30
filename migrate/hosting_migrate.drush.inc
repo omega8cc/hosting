@@ -179,10 +179,24 @@ function _hosting_migrate_record_on_target($task, $data) {
       hosting_context_register($site->nid, hosting_site_get_domain($site->title), TRUE);
 
       // Aliases redirected to the site's own name follow it to the new
-      // name. Kept on the old name, the redirection would name neither the
-      // site nor one of its aliases, a target no site directory answers.
-      if (!empty($site->redirection) && $site->redirection == $old_title) {
-        $site->redirection = $site->title;
+      // name, and those redirected to its www or bare companion follow it to
+      // the new name's matching one, as the backend moves that alias
+      // (platform/migrate.provision.inc), so a canonical www stays www. Kept
+      // on the old name, the redirection would name neither the site nor one
+      // of its aliases, a target no site directory answers.
+      if (!empty($site->redirection)) {
+        $target = hosting_site_clean_domain($site->redirection);
+        $raw_old = preg_replace('/^www\./', '', $old_title);
+        $raw_new = preg_replace('/^www\./', '', $site->title);
+        if ($target == $old_title) {
+          $site->redirection = $site->title;
+        }
+        elseif ($target == 'www.' . $raw_old) {
+          $site->redirection = 'www.' . $raw_new;
+        }
+        elseif ($target == $raw_old) {
+          $site->redirection = $raw_new;
+        }
       }
 
       // Auto-disable Encryption when the site's main machine-name changes.

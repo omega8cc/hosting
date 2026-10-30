@@ -165,12 +165,15 @@ function hosting_alias_form_data(&$form, &$form_state) {
   }
 
   $default = isset($form['#node']->redirection) ? $form['#node']->redirection : '';
-  // A stored target that is no longer the site's name or one of its aliases
-  // (a rename used to leave one behind) is not served: provision redirects
-  // the aliases to the site's own name instead. Show that, so the form says
-  // what the vhost does and a save stores it.
-  if ($default && !isset($options[$default]) && isset($form['#node']->title)) {
-    $default = $form['#node']->title;
+  // Show the target the vhost serves (hosting_alias_effective_redirection()),
+  // so the form says what the vhost does and a save stores it: the site's
+  // own name for a target the site was renamed away from, the www companion
+  // even while its automatic alias is missing.
+  if ($default && isset($form['#node']->title)) {
+    $default = hosting_alias_effective_redirection($form['#node']->title, $default, array_merge((array) $aliases, (array) $automatic_aliases));
+    if (!isset($options[$default])) {
+      $options[$default] = $default;
+    }
   }
 
   $form['aliases_wrapper']['redirection'] = array(
@@ -197,6 +200,48 @@ function hosting_alias_add_alias_callback($form, $form_state) {
   return $form['aliases_wrapper'];
 }
 
+
+/**
+ * The redirection target a site's vhost serves.
+ *
+ * The stored target counts as the panel stores aliases
+ * (hosting_site_clean_domain()) and is kept, in the spelling of the name it
+ * matches, when it is the site's own name, its www companion or one of its
+ * aliases. Any other target (a name the site was renamed away from) has no
+ * site directory behind it, and provision serves the site's own name
+ * instead (Provision_Config_Http_Site::process()); the www companion stays
+ * because Drupal finds the site's directory for it by host suffix, also
+ * when its automatic alias is missing for a save whose DNS lookup failed.
+ *
+ * @param string $title
+ *   The site's name.
+ * @param string $redirection
+ *   The stored target; 0 or an empty string is no redirection.
+ * @param array $aliases
+ *   The site's aliases, custom and automatic.
+ *
+ * @return string
+ *   The target, or $redirection itself when no redirection is set.
+ */
+function hosting_alias_effective_redirection($title, $redirection, $aliases) {
+  if (empty($redirection)) {
+    return $redirection;
+  }
+  $target = hosting_site_clean_domain($redirection);
+  $own = hosting_site_clean_domain($title);
+  if ($target == $own) {
+    return $title;
+  }
+  if (strpos($own, 'www.') !== 0 && $target == 'www.' . $own) {
+    return 'www.' . $own;
+  }
+  foreach ((array) $aliases as $alias) {
+    if ($target == hosting_site_clean_domain($alias)) {
+      return $alias;
+    }
+  }
+  return $title;
+}
 
 /**
  * Retrieve a list of aliases for a site.
