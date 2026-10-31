@@ -184,10 +184,10 @@ function _hosting_migrate_record_on_target($task, $data) {
       // (platform/migrate.provision.inc), so a canonical www stays www. Kept
       // on the old name, the redirection would name neither the site nor one
       // of its aliases, a target no site directory answers.
+      $raw_old = preg_replace('/^www\./', '', $old_title);
+      $raw_new = preg_replace('/^www\./', '', $site->title);
       if (!empty($site->redirection)) {
         $redir = hosting_site_clean_domain($site->redirection);
-        $raw_old = preg_replace('/^www\./', '', $old_title);
-        $raw_new = preg_replace('/^www\./', '', $site->title);
         if ($redir == $old_title) {
           $site->redirection = $site->title;
         }
@@ -197,6 +197,22 @@ function _hosting_migrate_record_on_target($task, $data) {
         elseif ($redir == $raw_old) {
           $site->redirection = $raw_new;
         }
+      }
+
+      // A custom alias that is the old name's www or bare companion moves to
+      // the new name's, as the backend moves it: kept on the old name, the
+      // Verify queued below would give the vhost the old companion back and
+      // drop the new one, and a redirection moved to it above would name no
+      // alias.
+      if (!empty($site->aliases) && is_array($site->aliases)) {
+        $old_companion = preg_match('/^www\./', $old_title) ? $raw_old : 'www.' . $raw_old;
+        $new_companion = preg_match('/^www\./', $site->title) ? $raw_new : 'www.' . $raw_new;
+        foreach ($site->aliases as $key => $alias) {
+          if (hosting_site_clean_domain($alias) == $old_companion) {
+            $site->aliases[$key] = $new_companion;
+          }
+        }
+        $site->aliases = array_values(array_unique($site->aliases));
       }
 
       // Auto-disable Encryption when the site's main machine-name changes.
