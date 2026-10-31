@@ -79,6 +79,13 @@ function hosting_subdirs_validate_alias($site, $alias, $key) {
     // the site's own subdirectory, a redirect to itself). An alias the site
     // already has is left to stand.
     $existing = isset($site->aliases) ? (array) $site->aliases : array();
+    // The domain this site's own subdirectory address lives in: on a new
+    // site no saved row says it carries subdirectory sites yet.
+    $parents = hosting_subdirs_own_parents(isset($site->title) ? $site->title : '', $existing);
+    if (isset($parents[$alias])) {
+      form_set_error("aliases][$key", t('@alias is the domain this site lives in as a subdirectory: its own vhost serves the subdirectory, so it cannot be the site\'s alias.', array('@alias' => $alias)));
+      return;
+    }
     if (!in_array($alias, $existing) && hosting_subdirs_carries_subdirs($alias)) {
       form_set_error("aliases][$key", t('@alias carries subdirectory sites: create it as a site of its own rather than an alias.', array('@alias' => $alias)));
       return;
@@ -213,6 +220,45 @@ function hosting_subdirs_node_presave($node) {
     $node->aliases = $node->subdir_aliases;
     $node->redirection = $node->subdir_redirection;
   }
+  // The domain a subdirectory address lives in is never the site's alias.
+  if ($node->type == 'site' && !empty($node->aliases) && is_array($node->aliases)) {
+    $parents = hosting_subdirs_own_parents($node->title, $node->aliases);
+    foreach ($node->aliases as $key => $alias) {
+      if (isset($parents[hosting_site_clean_domain($alias)])) {
+        unset($node->aliases[$key]);
+      }
+    }
+  }
+}
+
+/**
+ * The domains a site's subdirectory addresses live in.
+ *
+ * Each is served by its own vhost, which includes the subdirectory. As the
+ * site's alias it would be claimed by the site's own vhost instead, which
+ * redirects it to the subdirectory address: that address then redirects
+ * into itself, and the domain's vhost is gone.
+ *
+ * @param string $title
+ *   The site's title, a subdirectory address on a new site.
+ * @param array $aliases
+ *   The site's aliases, its subdirectory address among them once saved.
+ *
+ * @return array
+ *   The domains, keyed by themselves.
+ */
+function hosting_subdirs_own_parents($title, $aliases) {
+  $parents = array();
+  $names = is_array($aliases) ? $aliases : array();
+  $names[] = (string) $title;
+  foreach ($names as $name) {
+    $name = hosting_site_clean_domain($name);
+    if (hosting_subdirs_is_a_subdir($name)) {
+      $parts = explode('/', $name, 2);
+      $parents[$parts[0]] = $parts[0];
+    }
+  }
+  return $parents;
 }
 
 /**
