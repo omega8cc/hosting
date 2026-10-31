@@ -44,7 +44,45 @@ function hosting_alias_schema() {
     ),
   );
 
+  $schema['hosting_site_redirection'] = hosting_alias_redirection_schema();
+
   return $schema;
+}
+
+/**
+ * The site's stored redirection, apart from its alias rows.
+ *
+ * The alias rows carry it too, but a save that writes no alias row (the
+ * automatic www alias the only one, and its name not resolving then) would
+ * lose it there.
+ */
+function hosting_alias_redirection_schema() {
+  return array(
+    'fields' => array(
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'redirection' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('vid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+  );
 }
 
 /**
@@ -112,4 +150,16 @@ function hosting_alias_update_6205() {
   if (!db_index_exists('hosting_site_alias', 'nid')) {
     db_add_index('hosting_site_alias', 'nid', array('nid'));
   }
+}
+
+/**
+ * Keep each site's redirection apart from its alias rows, filled from them.
+ */
+function hosting_alias_update_6206() {
+  if (!db_table_exists('hosting_site_redirection')) {
+    db_create_table('hosting_site_redirection', hosting_alias_redirection_schema());
+  }
+  db_query("INSERT IGNORE INTO {hosting_site_redirection} (vid, nid, redirection)
+    SELECT vid, MAX(nid), MAX(redirection) FROM {hosting_site_alias}
+    WHERE redirection <> '' AND redirection <> '0' GROUP BY vid");
 }
