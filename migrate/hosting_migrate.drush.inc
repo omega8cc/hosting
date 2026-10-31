@@ -203,16 +203,22 @@ function _hosting_migrate_record_on_target($task, $data) {
       // the new name's, as the backend moves it: kept on the old name, the
       // Verify queued below would give the vhost the old companion back and
       // drop the new one, and a redirection moved to it above would name no
-      // alias.
+      // alias. The new name is the one the backend renamed to (a
+      // subdirectory address's internal name), and a companion another site
+      // holds stays where it was.
       if (!empty($site->aliases) && is_array($site->aliases)) {
+        $new_domain = hosting_site_get_domain($site->title);
+        $raw_dom = preg_replace('/^www\./', '', $new_domain);
         $old_companion = preg_match('/^www\./', $old_title) ? $raw_old : 'www.' . $raw_old;
-        $new_companion = preg_match('/^www\./', $site->title) ? $raw_new : 'www.' . $raw_new;
-        foreach ($site->aliases as $key => $alias) {
-          if (hosting_site_clean_domain($alias) == $old_companion) {
-            $site->aliases[$key] = $new_companion;
+        $new_companion = preg_match('/^www\./', $new_domain) ? $raw_dom : 'www.' . $raw_dom;
+        if (hosting_domain_allowed($new_companion, array('nid' => $site->nid))) {
+          foreach ($site->aliases as $key => $alias) {
+            if (hosting_site_clean_domain($alias) == $old_companion) {
+              $site->aliases[$key] = $new_companion;
+            }
           }
+          $site->aliases = array_values(array_unique($site->aliases));
         }
-        $site->aliases = array_values(array_unique($site->aliases));
       }
 
       // Auto-disable Encryption when the site's main machine-name changes.
