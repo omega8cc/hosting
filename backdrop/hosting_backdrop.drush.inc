@@ -137,4 +137,11 @@ function _hosting_backdrop_pre_cutover_task($task) {
   $task->args[2] = $domain;
   $task->options['cutover_platform_nid'] = $site->platform;
   $task->options['cutover_db_server_nid'] = $site->db_server;
+  // A subdirectory address is renamed to its internal name; the rename the
+  // backend queues takes the address itself, so the site's save makes the
+  // subdirectory alias and redirection again (hosting_subdirs_node_presave()).
+  $typed = hosting_site_clean_domain($task->task_args['target_domain']);
+  if ($typed != $domain && strpos($typed, '/') !== FALSE) {
+    $task->options['cutover_new_uri'] = $typed;
+  }
 }

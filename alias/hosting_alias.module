@@ -346,6 +346,11 @@ function hosting_alias_insert($node) {
       // Only insert valid FQDNs.
       if (!_hosting_valid_fqdn_wildcard($alias)) continue;
 
+      // A name another site holds, as its name or an alias, is not taken:
+      // both vhosts would claim it. A rename onto a name whose companion is
+      // another site's gets here, as does a new site beside one.
+      if (!hosting_domain_allowed($alias, array('nid' => $node->nid))) continue;
+
       $id = db_insert('hosting_site_alias')
         ->fields(array(
           'vid' => $node->vid,
