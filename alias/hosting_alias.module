@@ -71,9 +71,24 @@ function hosting_alias_form_site_node_form_alter(&$form, &$form_state) {
  */
 function hosting_alias_site_form_validate($form, &$form_state) {
   $aliases = $form_state['values']['aliases'] = array_filter($form_state['values']['aliases']);
+  $site = hosting_alias_form_site($form_state);
   foreach ($aliases as $key => $alias) {
-    hosting_alias_validate_alias($form_state['node'], $alias, $key);
+    hosting_alias_validate_alias($site, $alias, $key);
   }
+}
+
+/**
+ * The site a site form's aliases are checked against.
+ *
+ * A new site's node has no title yet: the submitted one stands in, so an
+ * alias equal to the site's own name is refused there too.
+ */
+function hosting_alias_form_site($form_state) {
+  $site = clone $form_state['node'];
+  if (empty($site->title) && !empty($form_state['values']['title'])) {
+    $site->title = hosting_site_clean_domain($form_state['values']['title']);
+  }
+  return $site;
 }
 
 /**
@@ -294,15 +309,23 @@ function hosting_alias_insert($node) {
   $aliases = (is_array($node->aliases)) ? $node->aliases : explode("\n", str_replace(",", "\n", $node->aliases));
   $automatic = hosting_alias_automatic_aliases(hosting_site_clean_domain($node->title));
 
+  hosting_alias_redirection_save($node);
+
   if (empty($aliases) && empty($automatic)) return;
 
   if (count($aliases)) {
     $aliases = array_unique($aliases);
+    $own = hosting_site_clean_domain($node->title);
     foreach ($aliases as $alias) {
       $alias = hosting_site_clean_domain($alias);
 
       // Only flag custom aliases that aren't automatically generated
       if (in_array($alias, $automatic)) continue;
+
+      // The site's own name is never its alias: with a redirection set, the
+      // vhost would redirect that name to itself. A rename onto one of the
+      // site's aliases leaves it in the list.
+      if ($alias === '' || $alias == $own) continue;
 
       $id = db_insert('hosting_site_alias')
         ->fields(array(
@@ -361,6 +384,11 @@ function hosting_alias_delete($node) {
   db_delete('hosting_site_alias')
     ->condition('nid', $node->nid)
     ->execute();
+  if (hosting_alias_redirection_table()) {
+    db_delete('hosting_site_redirection')
+      ->condition('nid', $node->nid)
+      ->execute();
+  }
 }
 
 /**
@@ -373,6 +401,50 @@ function hosting_alias_delete_revision($node) {
   db_delete('hosting_site_alias')
     ->condition('nid', $node->nid)
     ->condition('vid', $node->vid)
+    ->execute();
+  if (hosting_alias_redirection_table()) {
+    db_delete('hosting_site_redirection')
+      ->condition('vid', $node->vid)
+      ->execute();
+  }
+}
+
+/**
+ * Whether the redirection table exists (its update may not have run yet).
+ */
+function hosting_alias_redirection_table() {
+  $exists = &drupal_static(__FUNCTION__);
+  if (!isset($exists)) {
+    $exists = db_table_exists('hosting_site_redirection');
+  }
+  return $exists;
+}
+
+/**
+ * Keep the site's redirection apart from its alias rows.
+ *
+ * A save that writes no alias row would lose it there; the site's load
+ * reads it back from here, and the next save that writes the target's alias
+ * row gives it back to that row. A target that is not an alias meanwhile is
+ * set aside as any such target is (hosting_alias_effective_redirection()).
+ */
+function hosting_alias_redirection_save($node) {
+  if (!hosting_alias_redirection_table() || empty($node->vid)) {
+    return;
+  }
+  $redirection = isset($node->redirection) ? trim((string) $node->redirection) : '';
+  if ($redirection === '' || $redirection === '0') {
+    db_delete('hosting_site_redirection')
+      ->condition('vid', $node->vid)
+      ->execute();
+    return;
+  }
+  db_merge('hosting_site_redirection')
+    ->key(array('vid' => $node->vid))
+    ->fields(array(
+      'nid' => $node->nid,
+      'redirection' => $redirection,
+    ))
     ->execute();
 }
 
@@ -427,7 +499,8 @@ function hosting_alias_validate_alias($site, $alias, $key) {
   $params = isset($site->nid) ? array('nid' => $site->nid) : array();
   $length = strlen($alias);
 
-  if (!hosting_domain_allowed($alias, $params) || $alias == $site->title) {
+  $own = isset($site->title) ? hosting_site_clean_domain($site->title) : '';
+  if (!hosting_domain_allowed($alias, $params) || $alias == $own) {
     form_set_error("aliases][$key", t('The domain name @alias is already in use', array('@alias' => $alias)));
   }
   if (!_hosting_valid_fqdn_wildcard($alias)) {
@@ -450,6 +523,10 @@ function hosting_alias_node_load($nodes, $types) {
       // but we should return an associative alias => redirection
       // array instead.
       $nodes[$nid]->redirection = db_query("SELECT redirection FROM {hosting_site_alias} WHERE vid = :vid", array(':vid' => $node->vid))->fetchField();
+      // No alias row: the redirection a save without one kept apart.
+      if ($nodes[$nid]->redirection === FALSE && hosting_alias_redirection_table()) {
+        $nodes[$nid]->redirection = db_query("SELECT redirection FROM {hosting_site_redirection} WHERE vid = :vid", array(':vid' => $node->vid))->fetchField();
+      }
       // Only retrieves custom aliases, as they are all that can be modified.
       $nodes[$nid]->aliases = hosting_alias_get_aliases($node, HOSTING_ALIAS_CUSTOM);
       $nodes[$nid]->aliases_automatic = hosting_alias_get_aliases($node, HOSTING_ALIAS_AUTOMATIC);

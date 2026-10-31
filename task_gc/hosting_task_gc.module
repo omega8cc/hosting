@@ -520,6 +520,9 @@ function hosting_task_gc_delete_site_rows($limit) {
   if ($nids) {
     db_delete('hosting_cron')->condition('nid', $nids, 'IN')->execute();
     db_delete('hosting_site_alias')->condition('nid', $nids, 'IN')->execute();
+    if (db_table_exists('hosting_site_redirection')) {
+      db_delete('hosting_site_redirection')->condition('nid', $nids, 'IN')->execute();
+    }
   }
   return count($nids);
 }
@@ -535,7 +538,8 @@ function hosting_task_gc_site_rows_pending() {
  * The sites with cron or alias rows that are deleted or gone, lowest nid first.
  */
 function hosting_task_gc_site_rows_sql() {
-  return "SELECT DISTINCT x.nid FROM (SELECT nid FROM {hosting_cron} UNION SELECT nid FROM {hosting_site_alias}) x
+  $redirection = db_table_exists('hosting_site_redirection') ? " UNION SELECT nid FROM {hosting_site_redirection}" : '';
+  return "SELECT DISTINCT x.nid FROM (SELECT nid FROM {hosting_cron} UNION SELECT nid FROM {hosting_site_alias}" . $redirection . ") x
             LEFT JOIN {node} n ON n.nid = x.nid
             LEFT JOIN {hosting_site} s ON s.nid = x.nid AND s.vid = n.vid
           WHERE n.nid IS NULL

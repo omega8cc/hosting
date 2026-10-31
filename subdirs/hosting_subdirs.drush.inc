@@ -14,6 +14,12 @@ function drush_hosting_subdirs_pre_hosting_task($task) {
 
     if (!_hosting_subdirs_is_a_subdir_site($site)) return;
 
+    // A Migrate that keeps the site's name (another platform or database
+    // server) keeps its subdirectory alias and redirection: only a rename's
+    // new title makes them again, at its save.
+    $new_uri = isset($task->task_args['new_uri']) ? $task->task_args['new_uri'] : $site->title;
+    if (hosting_site_get_domain($new_uri) == hosting_site_get_domain($site->title)) return;
+
     // Clean up the automatic subdir alias and redirection, as they'll be
     // re-generated with the new domain.
     $subdir_alias = array_search($site->redirection, $site->aliases);
