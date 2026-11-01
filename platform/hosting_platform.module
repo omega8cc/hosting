@@ -851,7 +851,20 @@ function hosting_platform_validate($node, &$form) {
     // a platform that is in use by another server. The platform's own record
     // is left out, so an edit that keeps its path passes.
     if (!empty($node->publish_path)) {
-      $exists = hosting_platform_path_exists($node->publish_path, isset($node->nid) ? $node->nid : NULL);
+      // hosting_git's submit keeps the typed path as the repository folder and
+      // stores the docroot below it as the platform's path: neither may be
+      // another platform's.
+      $paths = array($node->publish_path);
+      if (!empty($node->git['repo_docroot'])) {
+        $paths[] = $node->publish_path . '/' . $node->git['repo_docroot'];
+      }
+      $exists = FALSE;
+      foreach ($paths as $path) {
+        $exists = hosting_platform_path_exists($path, isset($node->nid) ? $node->nid : NULL);
+        if (!empty($exists)) {
+          break;
+        }
+      }
       if (!empty($exists)) {
         $other = node_load($exists->nid);
         if ($other && node_access('view', $other)) {
@@ -877,6 +890,9 @@ function hosting_platform_validate($node, &$form) {
  * platform.
  *
  * A locked platform still holds its tree and its sites, so it holds its path.
+ * Paths are compared byte for byte as the backend serves them, spaces
+ * trimmed: the panel's tables compare text without regard to letter case,
+ * and /shop and /Shop are two directories.
  *
  * @param string $path
  *   The path to check.
@@ -889,20 +905,26 @@ function hosting_platform_validate($node, &$form) {
  *   The nid and name of the platform that uses the path, or FALSE.
  */
 function hosting_platform_path_exists($path, $exclude_nid = NULL) {
-  $sql = "SELECT n.nid, n.title AS name
+  $path = hosting_path_normalize(trim($path, ' '));
+  $sql = "SELECT n.nid, n.title AS name, h.publish_path
     FROM {hosting_platform} AS h
       INNER JOIN {node} AS n ON n.nid = h.nid
     WHERE h.publish_path = :publish_path
       AND h.status >= :status";
   $args = array(
-    ':publish_path' => hosting_path_normalize($path),
+    ':publish_path' => $path,
     ':status' => HOSTING_PLATFORM_LOCKED,
   );
   if (is_numeric($exclude_nid)) {
     $sql .= " AND h.nid <> :nid";
     $args[':nid'] = $exclude_nid;
   }
-  return db_query($sql, $args)->fetch();
+  foreach (db_query($sql, $args) as $row) {
+    if (hosting_path_normalize(trim($row->publish_path, ' ')) === $path) {
+      return $row;
+    }
+  }
+  return FALSE;
 }
 
 /**
