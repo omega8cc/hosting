@@ -550,6 +550,15 @@ function hosting_platform_form(&$node) {
         $default_path = $node->publish_path;
         $field_prefix = '';
       }
+      // hosting_git's submit appends the repository docroot to the typed path
+      // on every save: offer back the repository folder that was typed, in
+      // full, so a re-save stores the same paths and the docroot found below
+      // a short name is not added twice.
+      if (!empty($node->git['repo_docroot']) && !empty($node->git['repo_path'])
+        && hosting_path_normalize($node->git['repo_path'] . '/' . $node->git['repo_docroot']) === hosting_path_normalize($node->publish_path)) {
+        $default_path = $node->git['repo_path'];
+        $field_prefix = '';
+      }
     }
 
     $form['publish_path'] = array(
@@ -831,9 +840,11 @@ function hosting_platform_validate($node, &$form) {
         INNER JOIN {node} n ON n.nid = h.nid
              WHERE n.title = :title
                AND h.status >= :status";
+    // A locked platform keeps its context name: hosting_context_register()
+    // would refuse the new platform only once the node is being saved.
     $args = array(
       ':title' => $node->title,
-      ':status' => HOSTING_PLATFORM_QUEUED,
+      ':status' => HOSTING_PLATFORM_LOCKED,
     );
     if (!is_null($node->nid)) {
       $sql .= " AND n.nid <> :nid";
@@ -846,6 +857,19 @@ function hosting_platform_validate($node, &$form) {
         array('%name' => $result->name))
       );
     }
+    // A new platform is known to the backend by its title with everything but
+    // word characters, dots and dashes left out, so two titles can make one
+    // name: a live holder of it refuses the node only when it is saved.
+    elseif (empty($node->nid) && !empty($node->title)) {
+      $context = 'platform_' . _hosting_platform_context_name($node->title);
+      $holder = db_query('SELECT nid FROM {hosting_context} WHERE name = :name', array(':name' => $context))->fetchField();
+      if ($holder && !hosting_context_holder_is_stale($holder)) {
+        form_set_error('title',
+          t('Platform name %name makes the name %context, which another platform already holds. Platform names must be unique across all servers.',
+          array('%name' => $node->title, '%context' => $context))
+        );
+      }
+    }
 
     // Make sure the path is unique. Remote servers can't have the same path to
     // a platform that is in use by another server. The platform's own record
@@ -854,16 +878,45 @@ function hosting_platform_validate($node, &$form) {
       // hosting_git's submit keeps the typed path as the repository folder and
       // stores the docroot below it as the platform's path: neither may be
       // another platform's.
-      $paths = array($node->publish_path);
+      $typed = array($node->publish_path);
       if (!empty($node->git['repo_docroot'])) {
-        $paths[] = $node->publish_path . '/' . $node->git['repo_docroot'];
+        $typed[] = $node->publish_path . '/' . $node->git['repo_docroot'];
+      }
+      // hosting_deploy's Composer submits store <project folder>/<docroot>,
+      // the project folder of a new platform being the typed path. They act
+      // on their fields, never on the strategy chosen: mirror them.
+      $lang = isset($node->language) ? $node->language : LANGUAGE_NONE;
+      foreach (array(
+        array('field_composer_project_package', 'field_composer_project_path', 'field_composer_project_docroot'),
+        array('field_composer_git_project_url', 'field_composer_git_path', 'field_composer_git_docroot'),
+      ) as $field) {
+        if (empty($node->{$field[2]}[$lang][0]['value'])) {
+          continue;
+        }
+        $project = isset($node->{$field[1]}[$lang][0]['value']) ? $node->{$field[1]}[$lang][0]['value'] : '';
+        if (empty($node->nid) && !empty($node->{$field[0]}[$lang][0]['value'])) {
+          $project = $node->publish_path;
+        }
+        if ($project !== '') {
+          $typed[] = $project . '/' . $node->{$field[2]}[$lang][0]['value'];
+        }
+      }
+      // A project folder and the docroot it serves are one tree.
+      $paths = array();
+      foreach ($typed as $path) {
+        $paths = array_merge($paths, _hosting_platform_served_paths($path));
       }
       $exists = FALSE;
-      foreach ($paths as $path) {
+      foreach (array_unique($paths) as $path) {
         $exists = hosting_platform_path_exists($path, isset($node->nid) ? $node->nid : NULL);
         if (!empty($exists)) {
           break;
         }
+      }
+      // A held path stored under another spelling (a link, a dot segment):
+      // compare the trees on disk.
+      if (empty($exists)) {
+        $exists = _hosting_platform_tree_holder($paths, isset($node->nid) ? $node->nid : NULL);
       }
       if (!empty($exists)) {
         $other = node_load($exists->nid);
@@ -883,6 +936,88 @@ function hosting_platform_validate($node, &$form) {
       form_set_error('web_server', t('Platform needs to be associated with a webserver. Make sure you have a verified webserver on this Ægir install!'));
     }
   }
+}
+
+/**
+ * The paths naming the tree $path serves on this server.
+ *
+ * The backend serves a folder without index.php from its docroot/, html/
+ * or web/ (provision_auto_fix_platform_root()), so a project folder and that
+ * docroot are one tree. A path not on disk yet stands for itself alone.
+ */
+function _hosting_platform_served_paths($path) {
+  $path = hosting_path_normalize(trim($path, ' '));
+  $paths = array($path);
+  // Another spelling of a folder on disk (a dot segment, a link) names the
+  // folder it resolves to.
+  $real = @realpath($path);
+  if ($real !== FALSE && $real !== $path) {
+    $paths[] = $real;
+  }
+  foreach ($paths as $one) {
+    $docroot = _hosting_platform_docroot($one);
+    if ($docroot !== $one) {
+      $paths[] = $docroot;
+    }
+    $parent = dirname($one);
+    if ($parent !== $one && _hosting_platform_docroot($parent) === $one) {
+      $paths[] = $parent;
+    }
+  }
+  return array_unique($paths);
+}
+
+/**
+ * The docroot the backend serves for $path, in its own order.
+ */
+function _hosting_platform_docroot($path) {
+  if (!@is_file($path . '/index.php')) {
+    foreach (array('docroot', 'html', 'web') as $sub) {
+      if (@is_file($path . '/' . $sub . '/index.php')) {
+        return $path . '/' . $sub;
+      }
+    }
+  }
+  return $path;
+}
+
+/**
+ * The live platform serving, on disk, the docroot one of $paths serves.
+ *
+ * Both sides are resolved, so a tree stored under one spelling is found
+ * under any other. A path the panel cannot resolve (not on disk yet, or
+ * beyond its reach) is left to the exact check.
+ *
+ * @return object|false
+ *   The nid and name of that platform, or FALSE.
+ */
+function _hosting_platform_tree_holder($paths, $exclude_nid = NULL) {
+  $mine = array();
+  foreach ($paths as $path) {
+    $real = @realpath(_hosting_platform_docroot(hosting_path_normalize(trim($path, ' '))));
+    if ($real !== FALSE) {
+      $mine[$real] = TRUE;
+    }
+  }
+  if (empty($mine)) {
+    return FALSE;
+  }
+  $sql = "SELECT n.nid, n.title AS name, h.publish_path
+    FROM {hosting_platform} AS h
+      INNER JOIN {node} AS n ON n.nid = h.nid
+    WHERE h.status >= :status";
+  $args = array(':status' => HOSTING_PLATFORM_LOCKED);
+  if (is_numeric($exclude_nid)) {
+    $sql .= " AND h.nid <> :nid";
+    $args[':nid'] = $exclude_nid;
+  }
+  foreach (db_query($sql, $args) as $row) {
+    $real = @realpath(_hosting_platform_docroot(hosting_path_normalize(trim($row->publish_path, ' '))));
+    if ($real !== FALSE && isset($mine[$real])) {
+      return $row;
+    }
+  }
+  return FALSE;
 }
 
 /**
