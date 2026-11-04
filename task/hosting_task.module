@@ -822,7 +822,9 @@ function hosting_task_confirm_form($form, $form_state, $node, $task) {
     drupal_goto('node/' . $node->nid);
   }
 
-  $form['help'] = array('#value' => $tasks[$task]['description']);
+  if (!empty($tasks[$task]['description'])) {
+    $form['help'] = array('#markup' => '<p>' . $tasks[$task]['description'] . '</p>');
+  }
   $form['nid'] = array(
     '#type' => 'value',
     '#value' => $node->nid,
@@ -846,7 +848,7 @@ function hosting_task_confirm_form($form, $form_state, $node, $task) {
     $form['#func_param_1'] = $node;
     $form['#func_param_2'] = $task;
   }
-  $question = t("Are you sure you want to @task @object?", array('@task' => $task, '@object' => $node->title));
+  $question = t('Are you sure you want to run "@task" on @object?', array('@task' => $tasks[$task]['title'], '@object' => $node->title));
   $path = !empty($_REQUEST['destination']) ? $_REQUEST['destination'] : 'node/' . $node->nid;
   $form = confirm_form($form, $question, $path, '', $tasks[$task]['title']);
 

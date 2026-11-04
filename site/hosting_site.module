@@ -338,7 +338,7 @@ function hosting_site_hosting_tasks() {
   );
   $tasks['site']['enable'] = array(
     'title' => t('Enable'),
-    'description' => t('Enabling this site will allow it to be accesible again.
+    'description' => t('Enabling this site will allow it to be accessible again.
          It may be disabled again if needed.'),
   );
   $tasks['site']['delete'] = array(
