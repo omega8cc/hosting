@@ -79,6 +79,13 @@ function drush_hosting_dispatch() {
           if ($count <= 0) {
             drush_log(dt("Maximum number of tasks (@count) already running.", array('@count' => $info['running_items'])));
           }
+          elseif (!drush_get_option('force', FALSE) && !lock_may_be_available("hosting_queue_{$queue}_running")) {
+            // The previous runner of this queue still holds its lock (a site
+            // cron can take minutes): a new one would wait for the lock and
+            // then die. Not stamped, so the next dispatch starts it once the
+            // lock is free.
+            drush_log(dt("The @queue queue is still being processed; not starting another runner.", array('@queue' => $queue)));
+          }
           else {
             // Stamp the run now, before forking, so a dispatch serialized behind
             // this semaphore is gated out instead of launching a second batch.
