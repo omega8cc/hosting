@@ -207,16 +207,24 @@ function hosting_run_queue() {
 
   drush_log(dt('Acquiring lock on @queue queue.', array('@queue' => $queue)));
   $lock_wait = drush_get_option('lock-wait', HOSTING_QUEUE_DEFAULT_LOCK_WAIT);
-  if (!lock_wait($semaphore, $lock_wait) || drush_get_option('force', FALSE)) {
-    if (lock_acquire($semaphore, HOSTING_QUEUE_LOCK_TIMEOUT)) {
-      drush_log(dt('Acquired lock on @queue queue.', array('@queue' => $queue)));
-    }
+  $force = drush_get_option('force', FALSE);
+  $free = !lock_wait($semaphore, $lock_wait);
+  if (($free || $force) && lock_acquire($semaphore, HOSTING_QUEUE_LOCK_TIMEOUT)) {
+    drush_log(dt('Acquired lock on @queue queue.', array('@queue' => $queue)));
   }
-  elseif (drush_get_option('force', FALSE)) {
+  elseif ($force) {
     drush_log(dt('Bypassing lock on @queue queue.', array('@queue' => $queue)), 'warning');
   }
+  elseif ($free) {
+    // Another runner took the lock between the wait and the take: the queue
+    // is being worked, so this one stands down instead of running unlocked.
+    drush_log(dt('Another runner took the @queue queue first; leaving it to that runner.', array('@queue' => $queue)));
+    return;
+  }
   else {
-    drush_die(dt('Cannot acquire lock on @queue queue.', array('@queue' => $queue)));
+    // An error, not drush_die(): under --quiet a die keeps only "Drush
+    // command terminated abnormally" and drops the reason.
+    return drush_set_error('HOSTING_QUEUE_LOCKED', dt('Cannot acquire lock on @queue queue after waiting @wait seconds: an earlier runner of it is still at work.', array('@queue' => $queue, '@wait' => $lock_wait)));
   }
 
   $func = "hosting_" . $queue . "_queue";
