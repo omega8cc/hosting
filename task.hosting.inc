@@ -161,6 +161,9 @@ function drush_hosting_task_validate($id, $type = NULL) {
         );
         if ($loaded_status == HOSTING_TASK_QUEUED) {
           watchdog('hosting_task', 'Task node/@nid left queued: another task\'s runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, the next pass runs this one.', $args, WATCHDOG_WARNING);
+          if (function_exists('hosting_task_note_waiting')) {
+            hosting_task_note_waiting($task, t('Not started yet: another task runner held this instance (@holder@task) for @wait seconds, and one task runs at a time; the next pass starts this one.', $args));
+          }
           return drush_set_error('HOSTING_TASK_RUNNER_BUSY', dt("Task @nid left queued: another task's runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, the next pass runs this one.", $args));
         }
         watchdog('hosting_task', 'Task node/@nid not run: another task\'s runner holds this instance (@holder@task) after @wait seconds; one task runs at a time, re-issue the forced run once it is free.', $args, WATCHDOG_WARNING);
@@ -306,6 +309,17 @@ function drush_hosting_task_validate($id, $type = NULL) {
       drush_set_context('HOSTING_TASK', $task);
       drush_set_context('DRUSH_LOG_CALLBACK', '_hosting_task_log');
       drush_log(dt("Task starts processing") . ': ' . $task->title, 'queue');
+      // The stale holder's notice above went to watchdog and to output that
+      // a forked runner throws away: say it here too, in the task's own log,
+      // at a level that does not downgrade the task.
+      if ($got === 'stale' && is_array($stale)) {
+        drush_log(dt('This task runs beside a task runner that has held this instance past the ceiling (task node/@nid, pid @pid, server connection @conn, since @since). Kill that runner if it is hung; drush @hostmaster hosting-runner-lock --release frees its connection.', array(
+          '@nid' => (int) $stale['nid'],
+          '@pid' => (int) $stale['pid'],
+          '@conn' => (int) $stale['conn'],
+          '@since' => format_date((int) $stale['since'], 'short'),
+        )), 'advisory');
+      }
 
       if (!empty($task->task_args['backup_mode'])) {
 

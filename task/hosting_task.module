@@ -1011,6 +1011,12 @@ function hosting_tasks_queue($count = 20) {
           '@waited' => $wait ? dt(' after @wait seconds', array('@wait' => $wait)) : '',
           '@count' => count($tasks),
         )), 'warning');
+        $note = $running
+          ? t('Not started yet: task node/@nid is running on this instance, and one task runs at a time; this one starts when it ends.', array('@nid' => $running->nid))
+          : t('Not started yet: another task runner holds this instance (server connection @conn), and one task runs at a time; this one starts when it ends.', array('@conn' => $holder));
+        foreach ($tasks as $waiting) {
+          hosting_task_note_waiting($waiting, $note);
+        }
         return;
       }
     }
@@ -1495,6 +1501,36 @@ function hosting_task_running_now() {
     }
   }
   return FALSE;
+}
+
+/**
+ * Say on a queued task's own log why it has not started.
+ *
+ * The runner's watchdog rows go nowhere where the panel keeps dblog and
+ * syslog off, and a forked runner's output is thrown away, so a task held
+ * back by another task's runner showed nothing at all. One row goes on the
+ * queued revision, which the task page shows until the task runs (its run
+ * starts a revision of its own), and again only when the reason changes, so
+ * a dispatcher that runs every few seconds adds nothing.
+ *
+ * @param object $task
+ *   The queued task node.
+ * @param string $message
+ *   The reason, translated.
+ */
+function hosting_task_note_waiting($task, $message) {
+  if (empty($task->vid)) {
+    return;
+  }
+  try {
+    $last = db_query_range('SELECT message FROM {hosting_task_log} WHERE vid = :vid ORDER BY lid DESC', 0, 1, array(':vid' => $task->vid))->fetchField();
+    if ($last !== $message) {
+      hosting_task_log($task->vid, 'notice', $message);
+    }
+  }
+  catch (Exception $e) {
+    // A note that cannot be written must not stop the queue.
+  }
 }
 
 /**
