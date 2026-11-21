@@ -617,7 +617,7 @@ function hosting_package_comparison($current, $target) {
                       FROM $current_table c
                       LEFT JOIN $target_table t
                       ON c.nid=t.nid
-                      WHERE (c.version_code < t.version_code) OR (c.schema_version < t.schema_version)
+                      WHERE ((c.version_code < t.version_code) OR (c.schema_version < t.schema_version))
                       AND c.status = :c_status",
                       array(
                         ':c_status' => 1,
