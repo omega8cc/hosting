@@ -13,6 +13,9 @@ function drush_hosting_migrate_pre_hosting_task($task) {
     $site = $task->ref;
 
     if (hosting_site_get_domain($site->title) != hosting_site_get_domain($task->task_args['new_uri'])) {
+      if (hosting_task_refuse_taken_name($task, hosting_site_get_domain($task->task_args['new_uri']), $site->nid)) {
+        return;
+      }
       $task->args[3] = '@' . hosting_site_get_domain($task->task_args['new_uri']);
     }
 

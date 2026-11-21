@@ -1327,6 +1327,37 @@ function hosting_context_register($nid, $name, $report_only = FALSE) {
 }
 
 /**
+ * Refuse a task whose backend would take a site name another live node holds.
+ *
+ * A Clone, a renaming Migrate and the copying and renaming tasks of Backdrop,
+ * Grav and Textpattern hand the backend a new site alias by name. Their forms
+ * refuse a taken name, but a task queued without its form (hosting_add_task,
+ * a nested task) reached the backend: it wrote the live holder's alias over
+ * with the new site's platform, and only the new node's registration, after
+ * the backend, refused the name. A holder recorded as deleted is no holder.
+ *
+ * @param object $task
+ *   The task being run.
+ * @param string $name
+ *   The new context name, without the leading @.
+ * @param int $nid
+ *   A node allowed to hold the name (the site itself for a rename), 0 for
+ *   none.
+ *
+ * @return bool
+ *   TRUE when the task is refused: an error is set, so the task stops before
+ *   its backend is called.
+ */
+function hosting_task_refuse_taken_name($task, $name, $nid = 0) {
+  $holder = (int) db_query("SELECT nid FROM {hosting_context} WHERE name = :name AND nid <> :nid", array(':name' => $name, ':nid' => (int) $nid))->fetchField();
+  if (!$holder || hosting_context_holder_is_stale($holder)) {
+    return FALSE;
+  }
+  drush_set_error('HOSTING_CONTEXT_NAME_TAKEN', dt('The name @name is held by node @holder, which is live, so this @type task stops before anything is copied or moved, and that site is left as it is. Choose a free name.', array('@name' => $name, '@holder' => $holder, '@type' => $task->task_type)));
+  return TRUE;
+}
+
+/**
  * Whether the node holding a context name is gone or recorded as deleted.
  *
  * A site, a platform or a server can be deleted and still exist as a node;
