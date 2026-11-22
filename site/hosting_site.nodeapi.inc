@@ -221,9 +221,21 @@ function hosting_site_delete($node) {
   db_delete('hosting_site')
     ->condition('nid', $node->nid)
     ->execute();
-  db_delete('hosting_package_instance')
-    ->condition('rid', $node->nid)
-    ->execute();
+  // The site's own rows. A profile instance's iid can equal the site's nid:
+  // its packages are recorded under that number on its own platform, and stay
+  // (that platform's next Verify sweeps any of the site's left among them).
+  $keep = db_query("SELECT i.rid FROM {hosting_package_instance} i
+                    INNER JOIN {hosting_package} p ON p.nid = i.package_id
+                    WHERE i.iid = :nid AND p.package_type = 'profile'", array(':nid' => $node->nid))->fetchCol();
+  $delete = db_delete('hosting_package_instance')
+    ->condition('rid', $node->nid);
+  if ($keep) {
+    // Rows from before the platform column carry 0 and may be the
+    // profile's too: its next sync rewrites them or sweeps them.
+    $keep[] = 0;
+    $delete->condition('platform', $keep, 'NOT IN');
+  }
+  $delete->execute();
   hosting_context_delete($node->nid);
   hosting_task_delete_related_tasks($node->nid);
 }

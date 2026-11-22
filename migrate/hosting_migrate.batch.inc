@@ -80,7 +80,8 @@ function hosting_migrate_platform($form, $form_state, $node) {
               'class' => array('hosting-status'),
             ), $status['upgrade'], $status['missing'], $status['error']);
           if (isset($form_state['storage']['instance'][$site_id])) {
-            $link = l(t('Compare'), 'hosting/migrate/compare/' . $node->nid . '/' . $form_state['storage']['instance'][$site_id], $options);
+            // The compare page reads a site against a profile instance.
+            $link = l(t('Compare'), 'hosting/migrate/compare/' . $site_id . '/' . $form_state['storage']['instance'][$site_id], $options);
           }
           else {
             $link = t('Profile not found');
@@ -263,6 +264,7 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
     'i.rid' => $target_platform,
     'r.type' => 'platform',
     'n.nid' => $site->profile,
+    'platform_own' => TRUE,
   ));
   if (!$profile_instance) {
     // Check if there is a possibly renamed profile available
@@ -271,10 +273,11 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
       'i.rid' => $target_platform,
       'r.type' => 'platform',
       'p.old_short_name' => $profile->short_name,
+      'platform_own' => TRUE,
     ));
   }
   if ($profile_instance) {
-    $status = hosting_package_comparison($site->nid, $profile_instance->iid);
+    $status = hosting_package_comparison($site->nid, $profile_instance->iid, 'site', 'profile');
     $batch['form_state']['storage']['status'][$site->nid] = $status;
     $batch['form_state']['storage']['instance'][$site->nid] = $profile_instance->iid;
     // If there were no errors, this site passes and can be migrated

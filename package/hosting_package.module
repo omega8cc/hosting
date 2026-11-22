@@ -405,12 +405,15 @@ function hosting_package_hosting_site_site_list_filters() {
  * The Drupal major version of a platform's core, 0 for any other core.
  */
 function _hosting_package_platform_drupal_major($platform) {
+  // The platform's own row: a profile instance's iid can equal its nid, and a
+  // profile's rows name the platform that holds it.
   $release = db_query("SELECT p.short_name, i.version
                        FROM {hosting_package_instance} i
                        LEFT JOIN {hosting_package} p
                        ON p.nid = i.package_id
                        WHERE p.package_type = :package_type
-                       AND i.rid = :rid",
+                       AND i.rid = :rid
+                       AND i.platform IN (0, :rid)",
                        array(
                          ':package_type' => 'platform',
                          ':rid' => $platform,

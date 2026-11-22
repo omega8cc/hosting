@@ -182,13 +182,13 @@ function hosting_task_migrate_form($node) {
   $site_profile = node_load($node->profile);
 
   $profile_platform_instances = hosting_package_instances_load(
-    array('r.type' => 'platform', 'n.nid' => $node->profile, 'h.status' => HOSTING_PLATFORM_ENABLED));
+    array('r.type' => 'platform', 'n.nid' => $node->profile, 'h.status' => HOSTING_PLATFORM_ENABLED, 'platform_own' => TRUE));
 
   // In the list of possible targets, we also include install profiles on platforms that
   // USED to be named the same as our current install profile. Such as the d6 -> d7 rename
   // of the default profile to standard.
   $profile_platform_instances = array_merge($profile_platform_instances, hosting_package_instances_load(
-    array('r.type' => 'platform', 'p.old_short_name' => $site_profile->short_name)));
+    array('r.type' => 'platform', 'p.old_short_name' => $site_profile->short_name, 'platform_own' => TRUE)));
 
   $site_platform = node_load($node->platform);
   $has_platform_available = FALSE;
@@ -207,7 +207,7 @@ function hosting_task_migrate_form($node) {
   }
   foreach ($profile_platform_instances as $profile_instance) {
     if (($profile_instance->rid != $node->platform) && (in_array($profile_instance->rid, $valid_options['platform']))) {
-      $status = hosting_package_comparison($node->nid, $profile_instance->iid);
+      $status = hosting_package_comparison($node->nid, $profile_instance->iid, 'site', 'profile');
 
       $description = t("Upgrades: !upgrades, Warnings: !missing, Errors: !errors | <a href='!url' class='hosting-package-comparison-link'>Compare platforms</a>",
         array(
@@ -217,6 +217,9 @@ function hosting_task_migrate_form($node) {
         '!url' => url('hosting/migrate/compare/' . $node->nid . '/' . $profile_instance->iid),
       )
         );
+      if (!empty($status['ambiguous'])) {
+        $description .= ' ' . t('Not comparable: @why, so these counts may mix the two.', array('@why' => isset($status['ambiguous_why']) ? $status['ambiguous_why'] : t('two package records share one number')));
+      }
       $platform = node_load($profile_instance->rid);
 
       $form[$platform->nid]['target_platform'] = array(
@@ -244,8 +247,9 @@ function hosting_task_migrate_form($node) {
  */
 function hosting_migrate_comparison($current, $target) {
 
-  $current_tbl = _hosting_package_temporary_table($current);
-  $target_tbl = _hosting_package_temporary_table($target);
+  // A site against a platform's profile instance, as the form links them.
+  $current_tbl = _hosting_package_temporary_table($current, 'site');
+  $target_tbl = _hosting_package_temporary_table($target, 'profile');
 
   $packages = array();
 
