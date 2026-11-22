@@ -104,6 +104,9 @@ function _hosting_grav_pre_copy_upgrade_task($task) {
     return;
   }
 
+  if (hosting_task_refuse_taken_name($task, hosting_site_get_domain($new_uri))) {
+    return;
+  }
   $task->args[2] = '@' . hosting_site_get_domain($new_uri);
   $task->args[3] = hosting_context_name($platform->nid);
 
@@ -128,6 +131,9 @@ function _hosting_grav_pre_rename_task($task) {
   if ($domain === hosting_site_get_domain($task->ref->title)) {
     drush_set_error('HOSTING_GRAV_RENAME_NOOP',
       dt('This site already answers at @domain; nothing to rename.', array('@domain' => $domain)));
+    return;
+  }
+  if (hosting_task_refuse_taken_name($task, $domain, $task->ref->nid)) {
     return;
   }
   $task->args[2] = '@' . $domain;

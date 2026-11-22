@@ -79,8 +79,11 @@ function hosting_platform_post_hosting_verify_task($task, $data) {
     if (!empty($context['profiles']) && is_array($context['profiles'])) {
       foreach ($context['profiles'] as $profile) {
         hosting_package_sync($packages['profiles'][$profile]);
+        // The platform's own instance row: a profile of another platform whose
+        // instance iid equals this platform's nid records its packages, its
+        // own profile among them, under this number too.
         $instance = hosting_package_instance_load(
-          array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile'));
+          array('p.short_name' => $profile, 'i.rid' => $node->nid, 'p.package_type' => 'profile', 'i.platform' => array(0, $node->nid)));
         hosting_package_instance_sync($instance->iid, $instance->package_type, $packages['base'], $packages['profiles'][$profile], $packages['sites-all']);
         // @todo : package instances of modules to profiles. <-- huh?
       }

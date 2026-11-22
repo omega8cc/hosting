@@ -5,6 +5,54 @@
  */
 
 /**
+ * Merge the package lists of one kind that a sync is given.
+ *
+ * The later list wins a name found in more than one. From Drupal 8 on the
+ * backend tags each copy it found with its origin, Drupal's own order of
+ * precedence (core 0, an install profile 1, sites/all 2, the root directory
+ * 3): when every copy carries one, a name keeps the copy of the highest
+ * origin, the one Drupal runs, so a profile's or a sites/all copy no longer
+ * beats the root directory's. Lists without the tag (Drupal 7, whose order
+ * the plain merge already follows, or an older backend) merge as before.
+ *
+ * @param array $args
+ *   The package lists the sync was given, each keyed by kind.
+ * @param string $plural
+ *   The kind: modules, themes, profiles, platforms.
+ *
+ * @return array
+ *   The merged packages, keyed by name.
+ */
+function _hosting_package_merge_lists($args, $plural) {
+  $lists = array();
+  $tagged = TRUE;
+  foreach ($args as $arg) {
+    if (is_array($arg) && array_key_exists($plural, $arg) && is_array($arg[$plural])) {
+      $lists[] = $arg[$plural];
+      foreach ($arg[$plural] as $package) {
+        if (!is_array($package) || !isset($package['origin']) || !is_numeric($package['origin'])) {
+          $tagged = FALSE;
+        }
+      }
+    }
+  }
+  $merged = array();
+  foreach ($lists as $list) {
+    if (!$tagged) {
+      $merged = array_merge($merged, $list);
+      continue;
+    }
+    foreach ($list as $name => $package) {
+      if (isset($merged[$name]) && (int) $merged[$name]['origin'] > (int) $package['origin']) {
+        continue;
+      }
+      $merged[$name] = $package;
+    }
+  }
+  return $merged;
+}
+
+/**
  * Generate instances to reference nodes to releases.
  *
  * This function uses extensible parameters, so you
@@ -72,12 +120,7 @@ function hosting_package_instance_sync($rid, $type) {
   $mark->execute();
 
   foreach ($map as $plural => $key) {
-    $merged = array();
-    foreach ($args as $index => $arg) {
-      if (is_array($args[$index]) && array_key_exists($plural, $args[$index])) {
-        $merged = array_merge($merged, $args[$index][$plural]);
-      }
-    }
+    $merged = _hosting_package_merge_lists($args, $plural);
 
     foreach ($merged as $name => $package) {
       $conditions = array(
@@ -414,6 +457,14 @@ function _hosting_package_instances_load($param, $multiple = FALSE) {
     $query->condition('i.iid', $param);
   }
   elseif (is_array($param)) {
+    // 'platform_own': only rows of a platform's own, the instance rows of a
+    // load over platforms. A profile's packages are recorded under its
+    // instance's iid, which can equal another platform's nid, on the platform
+    // that holds the profile: such a row has a platform of another number.
+    if (!empty($param['platform_own'])) {
+      $query->where('(i.platform = 0 OR i.platform = i.rid)');
+    }
+    unset($param['platform_own']);
     // Turn the conditions into a query.
     foreach ($param as $key => $value) {
       $query->condition($key, $value);
@@ -575,15 +626,35 @@ function hosting_package_instance_version_code($version) {
 }
 
 /**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
+ * Compares the packages of two entities: what moving one onto the other means.
+ *
+ * Each side is a site or platform nid, or a profile instance iid. A profile
+ * instance's iid can equal a site's or a platform's nid, and its packages are
+ * recorded under that iid: give each side's kind so that only its own rows are
+ * read. Called without the kinds, the rows are read by number alone, as before.
+ *
+ * @param int $current
+ *   The entity moved, usually a site nid.
+ * @param int $target
+ *   The entity it would move onto, usually a profile instance iid.
+ * @param string $current_type
+ *   'site', 'platform' or 'profile', or NULL.
+ * @param string $target_type
+ *   'site', 'platform' or 'profile', or NULL.
+ *
+ * @return array
+ *   The counts 'error', 'missing', 'upgrade' and 'downgrade'. 'ambiguous' is 1
+ *   when a side's rows cannot be told from another entity's, with
+ *   'ambiguous_why' saying which (see hosting_package_ref_ambiguous()): the
+ *   counts may then mix the two, and a caller that must not act on a guess
+ *   refuses.
  */
-function hosting_package_comparison($current, $target) {
+function hosting_package_comparison($current, $target, $current_type = NULL, $target_type = NULL) {
 
-  $current_table = _hosting_package_temporary_table($current);
-  $target_table = _hosting_package_temporary_table($target);
+  $current_table = _hosting_package_temporary_table($current, $current_type);
+  $target_table = _hosting_package_temporary_table($target, $target_type);
 
-  $status = array();
+  $status = array('ambiguous' => 0);
   $result = db_query("SELECT count(c.nid) AS error
                       FROM $current_table c
                       LEFT JOIN $target_table t
@@ -617,7 +688,7 @@ function hosting_package_comparison($current, $target) {
                       FROM $current_table c
                       LEFT JOIN $target_table t
                       ON c.nid=t.nid
-                      WHERE (c.version_code < t.version_code) OR (c.schema_version < t.schema_version)
+                      WHERE ((c.version_code < t.version_code) OR (c.schema_version < t.schema_version))
                       AND c.status = :c_status",
                       array(
                         ':c_status' => 1,
@@ -638,32 +709,173 @@ function hosting_package_comparison($current, $target) {
     $status['downgrade'] = $obj->downgrade;
   }
 
+  foreach (array(array($current, $current_type), array($target, $target_type)) as $side) {
+    $why = ($side[1] === NULL) ? '' : hosting_package_ref_ambiguous($side[0], $side[1]);
+    if ($why !== '' && empty($status['ambiguous'])) {
+      $status['ambiguous'] = 1;
+      $status['ambiguous_why'] = $why;
+    }
+  }
+
   return $status;
 }
 
+/**
+ * The platform whose rows a sync of this entity writes, or 0 when unknown.
+ *
+ * A platform's and a profile's rows name the platform, a site's rows name the
+ * site's platform (and -1 for site-specific packages), as
+ * hosting_package_instance_sync() writes them.
+ *
+ * @param int $ref
+ *   A site or platform nid, or a profile instance iid.
+ * @param string $type
+ *   'site', 'platform' or 'profile'.
+ */
+function hosting_package_ref_platform($ref, $type) {
+  $ref = (int) $ref;
+  if ($ref <= 0) {
+    return 0;
+  }
+  if ($type == 'platform') {
+    return $ref;
+  }
+  if ($type == 'site') {
+    return (int) db_query("SELECT s.platform FROM {hosting_site} s INNER JOIN {node} n ON n.vid = s.vid WHERE n.nid = :nid AND n.type = 'site'", array(':nid' => $ref))->fetchField();
+  }
+  if ($type == 'profile') {
+    return (int) db_query("SELECT rid FROM {hosting_package_instance} WHERE iid = :iid", array(':iid' => $ref))->fetchField();
+  }
+  return 0;
+}
 
-function _hosting_package_temporary_table($ref) {
+/**
+ * Whether an entity's package rows cannot be told from another entity's.
+ *
+ * A profile's packages are recorded under its instance's iid, on the platform
+ * that holds the instance; a site's or a platform's under its nid, on its own
+ * platform. When the number and the platform are both the same, the two syncs
+ * write the same rows and no read can separate them: a site on a platform one
+ * of whose profile instances has the site's nid, a platform whose own profile
+ * instance has the platform's nid.
+ *
+ * @param int $ref
+ *   A site or platform nid, or a profile instance iid.
+ * @param string $type
+ *   'site', 'platform' or 'profile'.
+ *
+ * @return string
+ *   Which records share this one's rows, as a clause, or '' when none do.
+ */
+function hosting_package_ref_ambiguous($ref, $type) {
+  $ambiguous = &drupal_static(__FUNCTION__, array());
+  $ref = (int) $ref;
+  $key = $type . ':' . $ref;
+  if (isset($ambiguous[$key])) {
+    return $ambiguous[$key];
+  }
+  $platform = hosting_package_ref_platform($ref, $type);
+  $other = '';
+  // Rows recorded before the platform column carry 0 and are read by every
+  // kind: under a number that is both a node's and a profile instance's, they
+  // belong to either.
+  $node = (int) db_query("SELECT nid FROM {node} WHERE nid = :nid AND type IN ('site', 'platform')", array(':nid' => $ref))->fetchField();
+  $profile = (int) db_query("SELECT i.iid FROM {hosting_package_instance} i INNER JOIN {hosting_package} p ON p.nid = i.package_id WHERE i.iid = :iid AND p.package_type = 'profile'", array(':iid' => $ref))->fetchField();
+  if ($node && $profile && db_query_range("SELECT 1 FROM {hosting_package_instance} WHERE rid = :rid AND platform = 0", 0, 1, array(':rid' => $ref))->fetchField()) {
+    $other = $type . ' ' . $ref . ' and a profile instance share that number, and some of its rows were recorded before the panel noted their platform';
+  }
+  elseif ($platform > 0 && ($type == 'site' || $type == 'platform')) {
+    $found = db_query("SELECT i.iid FROM {hosting_package_instance} i
+                       INNER JOIN {hosting_package} p ON p.nid = i.package_id
+                       WHERE i.iid = :iid AND i.rid = :platform AND p.package_type = 'profile'",
+                       array(':iid' => $ref, ':platform' => $platform))->fetchField();
+    if ($found) {
+      $other = $type . ' ' . $ref . ' and the profile instance ' . $ref . ' of platform ' . $platform . ' share their number and platform';
+    }
+  }
+  elseif ($platform > 0 && $type == 'profile') {
+    if ($ref == $platform) {
+      $other = 'the profile instance ' . $ref . ' and platform ' . $platform . ', which holds it, share their number';
+    }
+    else {
+      $site = db_query("SELECT n.nid FROM {node} n INNER JOIN {hosting_site} s ON s.vid = n.vid
+                        WHERE n.nid = :nid AND n.type = 'site' AND s.platform = :platform",
+                        array(':nid' => $ref, ':platform' => $platform))->fetchField();
+      if ($site) {
+        $other = 'the profile instance ' . $ref . ' and site ' . $ref . ' share their number and platform ' . $platform;
+      }
+      // A profile's rows are never switched on: one that is comes from a site
+      // of the same number, such as one that left this platform and whose
+      // rows here were kept as possibly the profile's.
+      elseif (db_query_range("SELECT 1 FROM {hosting_package_instance} WHERE rid = :rid AND platform = :platform AND status = 1", 0, 1, array(':rid' => $ref, ':platform' => $platform))->fetchField()) {
+        $other = 'the profile instance ' . $ref . ' of platform ' . $platform . ' holds rows of a site of the same number';
+      }
+    }
+  }
+  if ($other !== '') {
+    watchdog('hosting_package', 'Package records that cannot be compared: @other.', array('@other' => $other), WATCHDOG_WARNING);
+  }
+  $ambiguous[$key] = $other;
+  return $ambiguous[$key];
+}
+
+/**
+ * A temporary table of an entity's package rows, for the comparisons.
+ *
+ * @param int $ref
+ *   A site or platform nid, or a profile instance iid.
+ * @param string $type
+ *   'site', 'platform' or 'profile': only the rows a sync of that kind writes
+ *   are read, those of its own platform or of none (rows from before the
+ *   platform column). NULL reads every row of the number, as before.
+ *
+ * @return string
+ *   The table's name.
+ */
+function _hosting_package_temporary_table($ref, $type = NULL) {
   static $names = array();
 
-  if (!isset($names[$ref])) {
+  $key = ($type === NULL ? '' : $type) . ':' . $ref;
+  if (!isset($names[$key])) {
+    $scope = NULL;
+    if ($type !== NULL) {
+      // An unknown platform (a site or instance gone) reads no rows rather
+      // than another entity's.
+      $scope = array(0, hosting_package_ref_platform($ref, $type));
+    }
     // Generate a unique table name for this $ref.
-    $names[$ref] = db_query_temporary("SELECT p.nid, p.short_name, p.old_short_name, i.version_code, i.schema_version, i.version, i.status
-              FROM {hosting_package} p
-              LEFT JOIN {hosting_package_instance} i
-              ON p.nid = i.package_id
-              WHERE i.rid = :rid and i.platform != :platform",
-              array( ':rid' => $ref, ':platform' => HOSTING_PACKAGE_INSTANCE_EXCLUDE));
+    if ($scope === NULL) {
+      $names[$key] = db_query_temporary("SELECT p.nid, p.short_name, p.old_short_name, i.version_code, i.schema_version, i.version, i.status
+                FROM {hosting_package} p
+                LEFT JOIN {hosting_package_instance} i
+                ON p.nid = i.package_id
+                WHERE i.rid = :rid and i.platform != :platform",
+                array( ':rid' => $ref, ':platform' => HOSTING_PACKAGE_INSTANCE_EXCLUDE));
+    }
+    else {
+      $names[$key] = db_query_temporary("SELECT p.nid, p.short_name, p.old_short_name, i.version_code, i.schema_version, i.version, i.status
+                FROM {hosting_package} p
+                LEFT JOIN {hosting_package_instance} i
+                ON p.nid = i.package_id
+                WHERE i.rid = :rid AND i.platform IN (:scope) AND i.platform != :platform",
+                array(':rid' => $ref, ':scope' => $scope, ':platform' => HOSTING_PACKAGE_INSTANCE_EXCLUDE));
+    }
 
   }
 
-  return $names[$ref];
+  return $names[$key];
 }
 
 /**
  * Helper to determine if a particular site has a module installed.
  */
 function _hosting_package_site_has_module($node, $module) {
-  $package = hosting_package_instance_load(array('rid' => $node->nid, 'p.short_name' => $module));
+  // The site's own rows: a profile instance can carry the site's nid.
+  $scope = array(0, HOSTING_PACKAGE_INSTANCE_EXCLUDE);
+  if (!empty($node->platform)) {
+    $scope[] = (int) $node->platform;
+  }
+  $package = hosting_package_instance_load(array('rid' => $node->nid, 'p.short_name' => $module, 'i.platform' => $scope));
   if (!is_object($package)) {
     return FALSE;
   }

@@ -932,10 +932,68 @@ function hosting_platform_validate($node, &$form) {
       }
     }
 
+    // The build fields of the Add platform form, wherever they can still be
+    // changed: on a platform being added, and on one that is still queued
+    // (what a failed build leaves, to be corrected and verified again).
+    if (empty($node->nid) || (isset($node->platform_status) && $node->platform_status !== '' && (int) $node->platform_status === HOSTING_PLATFORM_QUEUED)) {
+      foreach (_hosting_platform_build_field_errors($node) as $field => $message) {
+        form_set_error($field, $message);
+      }
+    }
+
     if (is_null($node->web_server)) {
       form_set_error('web_server', t('Platform needs to be associated with a webserver. Make sure you have a verified webserver on this Ægir install!'));
     }
   }
+}
+
+/**
+ * The build fields of a platform that a build would misread, each with why.
+ *
+ * A repository address, a branch or tag, a package name or a version that
+ * starts with a dash would reach git or Composer as an option. A docroot is
+ * the name of one folder inside the project. And a Composer project built
+ * from a Git repository with no branch or tag was built from "master",
+ * whatever the repository's own default branch is.
+ *
+ * Whether a branch or a tag exists is the build's to find out.
+ *
+ * @return array
+ *   Field name => message, one for each field that is refused.
+ */
+function _hosting_platform_build_field_errors($node) {
+  $lang = isset($node->language) ? $node->language : LANGUAGE_NONE;
+  $fields = array(
+    'field_composer_project_package' => array('value', t('The package name')),
+    'field_composer_project_version' => array('value', t('The version')),
+    'field_composer_project_docroot' => array('docroot', t('The docroot')),
+    'field_composer_git_project_url' => array('value', t('The repository address')),
+    'field_composer_git_version' => array('value', t('The branch or tag')),
+    'field_composer_git_docroot' => array('docroot', t('The docroot')),
+    'field_git_repository_url' => array('value', t('The repository address')),
+    'field_git_reference' => array('value', t('The branch or tag')),
+    'field_git_docroot' => array('docroot', t('The docroot')),
+  );
+  $errors = array();
+  $values = array();
+  foreach ($fields as $name => $field) {
+    $value = (isset($node->{$name}[$lang][0]['value']) && is_scalar($node->{$name}[$lang][0]['value'])) ? trim((string) $node->{$name}[$lang][0]['value']) : '';
+    $values[$name] = $value;
+    if ($value === '') {
+      continue;
+    }
+    if ($value[0] === '-') {
+      $errors[$name] = t('@field cannot start with a dash: the build would take it for an option.', array('@field' => $field[1]));
+    }
+    elseif ($field[0] === 'docroot' && (strpos($value, '/') !== FALSE || strpos($value, '..') !== FALSE)) {
+      $errors[$name] = t('The docroot is the name of one folder inside the project, such as web or docroot: it cannot hold a slash or two dots.');
+    }
+  }
+  $strategy = (isset($node->field_deployment_strategy[$lang][0]['value']) && is_scalar($node->field_deployment_strategy[$lang][0]['value'])) ? (string) $node->field_deployment_strategy[$lang][0]['value'] : '';
+  if ($strategy === 'platform_composer_git' && $values['field_composer_git_version'] === '') {
+    $errors['field_composer_git_version'] = t('Give the branch or tag to build from: left empty, the build takes "master", which the repository may not have.');
+  }
+  return $errors;
 }
 
 /**
@@ -1076,7 +1134,8 @@ function hosting_platform_load($nodes) {
                      LEFT JOIN {hosting_package} p
                      ON p.nid=i.package_id
                      WHERE p.package_type = :package_type
-                     AND i.rid = :rid",
+                     AND i.rid = :rid
+                     AND i.platform IN (0, :rid)",
                      array(
                        ':package_type' => 'platform',
                        ':rid' => $node->nid,

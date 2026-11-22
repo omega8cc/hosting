@@ -33,6 +33,9 @@ function drush_hosting_backdrop_pre_hosting_task($task) {
     return;
   }
 
+  if (hosting_task_refuse_taken_name($task, hosting_site_get_domain($task->task_args['new_uri']))) {
+    return;
+  }
   $task->args[2] = '@' . hosting_site_get_domain($task->task_args['new_uri']);
   $platform = node_load($task->task_args['target_platform']);
   $task->args[3] = hosting_context_name($platform->nid);
