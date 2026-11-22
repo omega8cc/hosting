@@ -263,6 +263,7 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
     'i.rid' => $target_platform,
     'r.type' => 'platform',
     'n.nid' => $site->profile,
+    'platform_own' => TRUE,
   ));
   if (!$profile_instance) {
     // Check if there is a possibly renamed profile available
@@ -271,6 +272,7 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
       'i.rid' => $target_platform,
       'r.type' => 'platform',
       'p.old_short_name' => $profile->short_name,
+      'platform_own' => TRUE,
     ));
   }
   if ($profile_instance) {

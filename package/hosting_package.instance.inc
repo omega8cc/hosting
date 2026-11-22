@@ -414,6 +414,14 @@ function _hosting_package_instances_load($param, $multiple = FALSE) {
     $query->condition('i.iid', $param);
   }
   elseif (is_array($param)) {
+    // 'platform_own': only rows of a platform's own, the instance rows of a
+    // load over platforms. A profile's packages are recorded under its
+    // instance's iid, which can equal another platform's nid, on the platform
+    // that holds the profile: such a row has a platform of another number.
+    if (!empty($param['platform_own'])) {
+      $query->where('(i.platform = 0 OR i.platform = i.rid)');
+    }
+    unset($param['platform_own']);
     // Turn the conditions into a query.
     foreach ($param as $key => $value) {
       $query->condition($key, $value);
@@ -594,8 +602,8 @@ function hosting_package_instance_version_code($version) {
  * @return array
  *   The counts 'error', 'missing', 'upgrade' and 'downgrade'. 'ambiguous' is 1
  *   when a side's rows cannot be told from another entity's (see
- *   hosting_package_ref_ambiguous()): 'error' is then at least 1, so that
- *   every reader that refuses on errors refuses.
+ *   hosting_package_ref_ambiguous()): the counts may then mix the two, and a
+ *   caller that must not act on a guess refuses.
  */
 function hosting_package_comparison($current, $target, $current_type = NULL, $target_type = NULL) {
 
@@ -660,7 +668,6 @@ function hosting_package_comparison($current, $target, $current_type = NULL, $ta
   foreach (array(array($current, $current_type), array($target, $target_type)) as $side) {
     if ($side[1] !== NULL && hosting_package_ref_ambiguous($side[0], $side[1])) {
       $status['ambiguous'] = 1;
-      $status['error'] = max(1, (int) $status['error']);
     }
   }
 
@@ -723,7 +730,15 @@ function hosting_package_ref_ambiguous($ref, $type) {
   }
   $platform = hosting_package_ref_platform($ref, $type);
   $other = '';
-  if ($platform > 0 && ($type == 'site' || $type == 'platform')) {
+  // Rows recorded before the platform column carry 0 and are read by every
+  // kind: under a number that is both a node's and a profile instance's, they
+  // belong to either.
+  $node = (int) db_query("SELECT nid FROM {node} WHERE nid = :nid AND type IN ('site', 'platform')", array(':nid' => $ref))->fetchField();
+  $profile = (int) db_query("SELECT i.iid FROM {hosting_package_instance} i INNER JOIN {hosting_package} p ON p.nid = i.package_id WHERE i.iid = :iid AND p.package_type = 'profile'", array(':iid' => $ref))->fetchField();
+  if ($node && $profile && db_query_range("SELECT 1 FROM {hosting_package_instance} WHERE rid = :rid AND platform = 0", 0, 1, array(':rid' => $ref))->fetchField()) {
+    $other = 'rows of the number ' . $ref . ' recorded before the platform column, of both a node and a profile instance';
+  }
+  elseif ($platform > 0 && ($type == 'site' || $type == 'platform')) {
     $found = db_query("SELECT i.iid FROM {hosting_package_instance} i
                        INNER JOIN {hosting_package} p ON p.nid = i.package_id
                        WHERE i.iid = :iid AND i.rid = :platform AND p.package_type = 'profile'",
@@ -742,6 +757,12 @@ function hosting_package_ref_ambiguous($ref, $type) {
                         array(':nid' => $ref, ':platform' => $platform))->fetchField();
       if ($site) {
         $other = 'site ' . $ref . ' on platform ' . $platform;
+      }
+      // A profile's rows are never switched on: one that is comes from a site
+      // of the same number, such as one that left this platform and whose
+      // rows here were kept as possibly the profile's.
+      elseif (db_query_range("SELECT 1 FROM {hosting_package_instance} WHERE rid = :rid AND platform = :platform AND status = 1", 0, 1, array(':rid' => $ref, ':platform' => $platform))->fetchField()) {
+        $other = 'rows of a site of the number ' . $ref . ' kept on platform ' . $platform;
       }
     }
   }

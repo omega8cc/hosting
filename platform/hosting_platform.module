@@ -1134,7 +1134,8 @@ function hosting_platform_load($nodes) {
                      LEFT JOIN {hosting_package} p
                      ON p.nid=i.package_id
                      WHERE p.package_type = :package_type
-                     AND i.rid = :rid",
+                     AND i.rid = :rid
+                     AND i.platform IN (0, :rid)",
                      array(
                        ':package_type' => 'platform',
                        ':rid' => $node->nid,
