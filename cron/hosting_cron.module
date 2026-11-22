@@ -361,11 +361,17 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
       $this_clog = $this_tmp . $this_cuid . '.log';
       // Add a date-stamped entry to the log.
       $date = date("Y-m-d H:i:s");
+      // The request by address goes to this server with the site's name in
+      // the Host header, and curl follows redirects. A site that redirects
+      // to one of its aliases answers its own name with a 301 to the alias's
+      // public address: followed by name, that hop leaves the server, and
+      // behind a proxy or a relay it ends where the request by domain did,
+      // refused. --connect-to keeps every followed hop on the same address.
       if (!empty($use_proxy_mode)) {
         $date = date("Y-m-d H:i:s");
         file_put_contents($this_clog, "\n$date cURL command via IP request\n", FILE_APPEND);
         file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
-        $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy' . _hosting_cron_guard_header() . ' ' . $this_host . ' ' . $url;
+        $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 --connect-to ::127.0.0.1: -A iCabProXy' . _hosting_cron_guard_header() . ' ' . $this_host . ' ' . $url;
         $second_output = [];
         $second_return_var = 0;
         exec($second_cmd, $second_output, $second_return_var);
@@ -390,7 +396,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
           file_put_contents($this_clog, $response . "\n", FILE_APPEND);
           file_put_contents($this_clog, "$date Another cURL command, this time via IP request\n", FILE_APPEND);
           file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
-          $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy' . _hosting_cron_guard_header() . ' ' . $this_host . ' ' . $url;
+          $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 --connect-to ::127.0.0.1: -A iCabProXy' . _hosting_cron_guard_header() . ' ' . $this_host . ' ' . $url;
           $second_output = [];
           $second_return_var = 0;
           exec($second_cmd, $second_output, $second_return_var);
