@@ -218,7 +218,7 @@ function hosting_task_migrate_form($node) {
       )
         );
       if (!empty($status['ambiguous'])) {
-        $description .= ' ' . t("Not comparable: the panel's package records of this site, or of this platform's install profile, share their number and platform with another record (the panel's log names both), so these counts may mix the two.");
+        $description .= ' ' . t('Not comparable: @why, so these counts may mix the two.', array('@why' => isset($status['ambiguous_why']) ? $status['ambiguous_why'] : t('two package records share one number')));
       }
       $platform = node_load($profile_instance->rid);
 

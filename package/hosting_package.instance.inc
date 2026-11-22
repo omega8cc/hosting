@@ -601,9 +601,10 @@ function hosting_package_instance_version_code($version) {
  *
  * @return array
  *   The counts 'error', 'missing', 'upgrade' and 'downgrade'. 'ambiguous' is 1
- *   when a side's rows cannot be told from another entity's (see
- *   hosting_package_ref_ambiguous()): the counts may then mix the two, and a
- *   caller that must not act on a guess refuses.
+ *   when a side's rows cannot be told from another entity's, with
+ *   'ambiguous_why' saying which (see hosting_package_ref_ambiguous()): the
+ *   counts may then mix the two, and a caller that must not act on a guess
+ *   refuses.
  */
 function hosting_package_comparison($current, $target, $current_type = NULL, $target_type = NULL) {
 
@@ -666,8 +667,10 @@ function hosting_package_comparison($current, $target, $current_type = NULL, $ta
   }
 
   foreach (array(array($current, $current_type), array($target, $target_type)) as $side) {
-    if ($side[1] !== NULL && hosting_package_ref_ambiguous($side[0], $side[1])) {
+    $why = ($side[1] === NULL) ? '' : hosting_package_ref_ambiguous($side[0], $side[1]);
+    if ($why !== '' && empty($status['ambiguous'])) {
       $status['ambiguous'] = 1;
+      $status['ambiguous_why'] = $why;
     }
   }
 
@@ -718,8 +721,8 @@ function hosting_package_ref_platform($ref, $type) {
  * @param string $type
  *   'site', 'platform' or 'profile'.
  *
- * @return bool
- *   TRUE when another entity shares this one's rows.
+ * @return string
+ *   Which records share this one's rows, as a clause, or '' when none do.
  */
 function hosting_package_ref_ambiguous($ref, $type) {
   $ambiguous = &drupal_static(__FUNCTION__, array());
@@ -736,7 +739,7 @@ function hosting_package_ref_ambiguous($ref, $type) {
   $node = (int) db_query("SELECT nid FROM {node} WHERE nid = :nid AND type IN ('site', 'platform')", array(':nid' => $ref))->fetchField();
   $profile = (int) db_query("SELECT i.iid FROM {hosting_package_instance} i INNER JOIN {hosting_package} p ON p.nid = i.package_id WHERE i.iid = :iid AND p.package_type = 'profile'", array(':iid' => $ref))->fetchField();
   if ($node && $profile && db_query_range("SELECT 1 FROM {hosting_package_instance} WHERE rid = :rid AND platform = 0", 0, 1, array(':rid' => $ref))->fetchField()) {
-    $other = 'rows of the number ' . $ref . ' recorded before the platform column, of both a node and a profile instance';
+    $other = $type . ' ' . $ref . ' and a profile instance share that number, and some of its rows were recorded before the panel noted their platform';
   }
   elseif ($platform > 0 && ($type == 'site' || $type == 'platform')) {
     $found = db_query("SELECT i.iid FROM {hosting_package_instance} i
@@ -744,32 +747,32 @@ function hosting_package_ref_ambiguous($ref, $type) {
                        WHERE i.iid = :iid AND i.rid = :platform AND p.package_type = 'profile'",
                        array(':iid' => $ref, ':platform' => $platform))->fetchField();
     if ($found) {
-      $other = 'the profile instance ' . $ref . ' of platform ' . $platform;
+      $other = $type . ' ' . $ref . ' and the profile instance ' . $ref . ' of platform ' . $platform . ' share their number and platform';
     }
   }
   elseif ($platform > 0 && $type == 'profile') {
     if ($ref == $platform) {
-      $other = 'platform ' . $platform . ' itself';
+      $other = 'the profile instance ' . $ref . ' and platform ' . $platform . ', which holds it, share their number';
     }
     else {
       $site = db_query("SELECT n.nid FROM {node} n INNER JOIN {hosting_site} s ON s.vid = n.vid
                         WHERE n.nid = :nid AND n.type = 'site' AND s.platform = :platform",
                         array(':nid' => $ref, ':platform' => $platform))->fetchField();
       if ($site) {
-        $other = 'site ' . $ref . ' on platform ' . $platform;
+        $other = 'the profile instance ' . $ref . ' and site ' . $ref . ' share their number and platform ' . $platform;
       }
       // A profile's rows are never switched on: one that is comes from a site
       // of the same number, such as one that left this platform and whose
       // rows here were kept as possibly the profile's.
       elseif (db_query_range("SELECT 1 FROM {hosting_package_instance} WHERE rid = :rid AND platform = :platform AND status = 1", 0, 1, array(':rid' => $ref, ':platform' => $platform))->fetchField()) {
-        $other = 'rows of a site of the number ' . $ref . ' kept on platform ' . $platform;
+        $other = 'the profile instance ' . $ref . ' of platform ' . $platform . ' holds rows of a site of the same number';
       }
     }
   }
   if ($other !== '') {
-    watchdog('hosting_package', 'The package records of @type @ref share their number and platform with @other, so they cannot be compared.', array('@type' => $type, '@ref' => $ref, '@other' => $other), WATCHDOG_WARNING);
+    watchdog('hosting_package', 'Package records that cannot be compared: @other.', array('@other' => $other), WATCHDOG_WARNING);
   }
-  $ambiguous[$key] = ($other !== '');
+  $ambiguous[$key] = $other;
   return $ambiguous[$key];
 }
 
