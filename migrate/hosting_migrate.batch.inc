@@ -274,7 +274,7 @@ function hosting_migrate_platform_batch($site_id, $target_platform, $context) {
     ));
   }
   if ($profile_instance) {
-    $status = hosting_package_comparison($site->nid, $profile_instance->iid);
+    $status = hosting_package_comparison($site->nid, $profile_instance->iid, 'site', 'profile');
     $batch['form_state']['storage']['status'][$site->nid] = $status;
     $batch['form_state']['storage']['instance'][$site->nid] = $profile_instance->iid;
     // If there were no errors, this site passes and can be migrated

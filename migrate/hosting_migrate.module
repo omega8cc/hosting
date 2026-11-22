@@ -207,16 +207,21 @@ function hosting_task_migrate_form($node) {
   }
   foreach ($profile_platform_instances as $profile_instance) {
     if (($profile_instance->rid != $node->platform) && (in_array($profile_instance->rid, $valid_options['platform']))) {
-      $status = hosting_package_comparison($node->nid, $profile_instance->iid);
+      $status = hosting_package_comparison($node->nid, $profile_instance->iid, 'site', 'profile');
 
-      $description = t("Upgrades: !upgrades, Warnings: !missing, Errors: !errors | <a href='!url' class='hosting-package-comparison-link'>Compare platforms</a>",
-        array(
-        '!upgrades' => $status['upgrade'],
-        '!missing' => $status['missing'] + $status['downgrade'],
-        '!errors' => $status['error'],
-        '!url' => url('hosting/migrate/compare/' . $node->nid . '/' . $profile_instance->iid),
-      )
-        );
+      if (!empty($status['ambiguous'])) {
+        $description = t("Not comparable: the panel's package records of this site, or of this platform's install profile, share their number and platform with another record (the panel's log names both).");
+      }
+      else {
+        $description = t("Upgrades: !upgrades, Warnings: !missing, Errors: !errors | <a href='!url' class='hosting-package-comparison-link'>Compare platforms</a>",
+          array(
+          '!upgrades' => $status['upgrade'],
+          '!missing' => $status['missing'] + $status['downgrade'],
+          '!errors' => $status['error'],
+          '!url' => url('hosting/migrate/compare/' . $node->nid . '/' . $profile_instance->iid),
+        )
+          );
+      }
       $platform = node_load($profile_instance->rid);
 
       $form[$platform->nid]['target_platform'] = array(
@@ -244,8 +249,9 @@ function hosting_task_migrate_form($node) {
  */
 function hosting_migrate_comparison($current, $target) {
 
-  $current_tbl = _hosting_package_temporary_table($current);
-  $target_tbl = _hosting_package_temporary_table($target);
+  // A site against a platform's profile instance, as the form links them.
+  $current_tbl = _hosting_package_temporary_table($current, 'site');
+  $target_tbl = _hosting_package_temporary_table($target, 'profile');
 
   $packages = array();
 
