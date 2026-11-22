@@ -5,6 +5,54 @@
  */
 
 /**
+ * Merge the package lists of one kind that a sync is given.
+ *
+ * The later list wins a name found in more than one. From Drupal 8 on the
+ * backend tags each copy it found with its origin, Drupal's own order of
+ * precedence (core 0, an install profile 1, sites/all 2, the root directory
+ * 3): when every copy carries one, a name keeps the copy of the highest
+ * origin, the one Drupal runs, so a profile's or a sites/all copy no longer
+ * beats the root directory's. Lists without the tag (Drupal 7, whose order
+ * the plain merge already follows, or an older backend) merge as before.
+ *
+ * @param array $args
+ *   The package lists the sync was given, each keyed by kind.
+ * @param string $plural
+ *   The kind: modules, themes, profiles, platforms.
+ *
+ * @return array
+ *   The merged packages, keyed by name.
+ */
+function _hosting_package_merge_lists($args, $plural) {
+  $lists = array();
+  $tagged = TRUE;
+  foreach ($args as $arg) {
+    if (is_array($arg) && array_key_exists($plural, $arg) && is_array($arg[$plural])) {
+      $lists[] = $arg[$plural];
+      foreach ($arg[$plural] as $package) {
+        if (!is_array($package) || !isset($package['origin']) || !is_numeric($package['origin'])) {
+          $tagged = FALSE;
+        }
+      }
+    }
+  }
+  $merged = array();
+  foreach ($lists as $list) {
+    if (!$tagged) {
+      $merged = array_merge($merged, $list);
+      continue;
+    }
+    foreach ($list as $name => $package) {
+      if (isset($merged[$name]) && (int) $merged[$name]['origin'] > (int) $package['origin']) {
+        continue;
+      }
+      $merged[$name] = $package;
+    }
+  }
+  return $merged;
+}
+
+/**
  * Generate instances to reference nodes to releases.
  *
  * This function uses extensible parameters, so you
@@ -72,12 +120,7 @@ function hosting_package_instance_sync($rid, $type) {
   $mark->execute();
 
   foreach ($map as $plural => $key) {
-    $merged = array();
-    foreach ($args as $index => $arg) {
-      if (is_array($args[$index]) && array_key_exists($plural, $args[$index])) {
-        $merged = array_merge($merged, $args[$index][$plural]);
-      }
-    }
+    $merged = _hosting_package_merge_lists($args, $plural);
 
     foreach ($merged as $name => $package) {
       $conditions = array(
