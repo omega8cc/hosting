@@ -230,6 +230,9 @@ function hosting_site_delete($node) {
   $delete = db_delete('hosting_package_instance')
     ->condition('rid', $node->nid);
   if ($keep) {
+    // Rows from before the platform column carry 0 and may be the
+    // profile's too: its next sync rewrites them or sweeps them.
+    $keep[] = 0;
     $delete->condition('platform', $keep, 'NOT IN');
   }
   $delete->execute();

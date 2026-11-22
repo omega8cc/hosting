@@ -80,7 +80,8 @@ function hosting_migrate_platform($form, $form_state, $node) {
               'class' => array('hosting-status'),
             ), $status['upgrade'], $status['missing'], $status['error']);
           if (isset($form_state['storage']['instance'][$site_id])) {
-            $link = l(t('Compare'), 'hosting/migrate/compare/' . $node->nid . '/' . $form_state['storage']['instance'][$site_id], $options);
+            // The compare page reads a site against a profile instance.
+            $link = l(t('Compare'), 'hosting/migrate/compare/' . $site_id . '/' . $form_state['storage']['instance'][$site_id], $options);
           }
           else {
             $link = t('Profile not found');
