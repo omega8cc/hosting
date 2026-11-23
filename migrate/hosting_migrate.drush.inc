@@ -90,6 +90,7 @@ function _hosting_migrate_get_target_profile_name($task) {
   $profile_instance = hosting_package_instance_load(array(
     'i.rid' => $task->task_args['target_platform'],
     'p.short_name' => $profile->short_name,
+    'platform_own' => TRUE,
   ));
 
   if (empty($profile_instance)) {
@@ -97,6 +98,7 @@ function _hosting_migrate_get_target_profile_name($task) {
     $profile_instance = hosting_package_instance_load(array(
       'i.rid' => $task->task_args['target_platform'],
       'p.old_short_name' => $profile->short_name,
+      'platform_own' => TRUE,
     ));
   }
 
@@ -246,6 +248,7 @@ function _hosting_migrate_record_on_target($task, $data) {
     $profile = hosting_package_instance_load(array(
       'i.rid' => $target,
       'p.short_name' => $data['context']['profile'],
+      'platform_own' => TRUE,
     ));
     if ($profile) {
       $site->profile = $profile->package_id;

@@ -702,6 +702,7 @@ function hosting_backdrop_post_hosting_backdrop_upgrade_task($task, $data) {
     $profile = hosting_package_instance_load(array(
       'i.rid' => $target,
       'p.short_name' => $data['context']['profile'],
+      'platform_own' => TRUE,
     ));
     if ($profile) {
       $upgrade->profile = $profile->package_id;
@@ -782,6 +783,7 @@ function hosting_backdrop_post_hosting_backdrop_d6_upgrade_task($task, $data) {
     $profile = hosting_package_instance_load(array(
       'i.rid' => $target,
       'p.short_name' => $data['context']['profile'],
+      'platform_own' => TRUE,
     ));
     if ($profile) {
       $upgrade->profile = $profile->package_id;
