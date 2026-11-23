@@ -129,6 +129,7 @@ function hosting_site_available_options($node, $platform = NULL) {
                         ON l.nid = i.rid
                         WHERE i.package_id = :package_id
                         AND p.package_type = :package_type
+                        AND i.platform IN (0, i.rid)
                         AND l.status = :status;",
                         array(
                           ':package_id' => $id,

@@ -54,6 +54,7 @@ function drush_hosting_backdrop_pre_hosting_task($task) {
     $instance = hosting_package_instance_load(array(
       'i.rid' => $platform->nid,
       'p.short_name' => $profile->short_name,
+      'platform_own' => TRUE,
     ));
     if (is_object($instance) && isset($instance->short_name)) {
       $task->options['profile'] = $instance->short_name;

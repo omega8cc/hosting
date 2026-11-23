@@ -106,6 +106,7 @@ function hosting_get_profiles($platform_nid = NULL, $field = 'title') {
       'i.rid' => $platform_nid,
       'p.package_type' => 'profile',
       'n.status' => 1,
+      'platform_own' => TRUE,
     ));
   }
   else {
@@ -113,6 +114,7 @@ function hosting_get_profiles($platform_nid = NULL, $field = 'title') {
       'p.package_type' => 'profile',
       'n.status' => 1,
       'r.type' => 'platform',
+      'platform_own' => TRUE,
     ));
   }
 
@@ -137,6 +139,7 @@ function hosting_get_profile_platforms($profile, $check_old_short_name = FALSE) 
     'n.status' => 1,
     'r.status' => 1,
     'r.type' => 'platform',
+    'platform_own' => TRUE,
   ));
 
   // The old-name lookup keys off the FIRST instance found above, so it has
@@ -149,6 +152,7 @@ function hosting_get_profile_platforms($profile, $check_old_short_name = FALSE) 
       'n.status' => 1,
       'r.status' => 1,
       'r.type' => 'platform',
+      'platform_own' => TRUE,
     )));
   }
   foreach ($instances as $iid => $instance) {
@@ -177,8 +181,11 @@ function hosting_get_profile_languages($profile = NULL, $platform = NULL) {
     $instance = hosting_package_instance_load(array(
       'i.rid' => $platform,
       'i.package_id' => $profile,
+      'platform_own' => TRUE,
     ));
-    if ($instance->languages) {
+    // No instance, a profile the platform does not hold, loads as an empty
+    // array.
+    if (is_object($instance) && $instance->languages) {
       $languages = array_merge($languages, $instance->languages);
     }
     // A Drupal 8+ profile ships no .po files: the installer fetches the

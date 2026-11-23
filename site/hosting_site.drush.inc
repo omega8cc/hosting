@@ -51,6 +51,7 @@ function hosting_site_drush_context_import($context, &$node) {
     $profile = hosting_package_instance_load(array(
       'i.rid' => $node->platform,
       'p.short_name' => $context->profile,
+      'platform_own' => TRUE,
     ));
 
     if (!$profile) {
@@ -59,6 +60,7 @@ function hosting_site_drush_context_import($context, &$node) {
         $profile = hosting_package_instance_load(array(
           'i.rid' => $node->platform,
           'p.short_name' => 'standard',
+          'platform_own' => TRUE,
         ));
         if ($profile) {
            drush_log(dt("Could not find the Profile !profile for Platfrom ID !platform, substituted standard", array('!profile' => $context->profile, '!platform' => $node->platform)), 'warning');
