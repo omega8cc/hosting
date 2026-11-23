@@ -2306,7 +2306,7 @@ function hosting_get_new_tasks($limit = 20, $rid = NULL, $task_type = NULL) {
     $targets = db_select('hosting_task_arguments', 'a')
       ->fields('a', array('vid'))
       ->condition('a.name', 'target_platform')
-      ->condition('a.value', $held);
+      ->condition('a.value', array_map('strval', $held));
     $query->condition('t.vid', $targets, 'NOT IN');
   }
 
@@ -2528,9 +2528,11 @@ function hosting_task_note_held() {
   if (!$held) {
     return;
   }
-  $result = db_query_range('SELECT t.nid FROM {hosting_task} t INNER JOIN {node} n ON t.vid = n.vid WHERE t.task_status = :queued AND t.rid IN (:refs) ORDER BY n.changed', 0, 100, array(
+  $result = db_query_range('SELECT t.nid FROM {hosting_task} t INNER JOIN {node} n ON t.vid = n.vid WHERE t.task_status = :queued AND (t.rid IN (:refs) OR t.vid IN (SELECT a.vid FROM {hosting_task_arguments} a WHERE a.name = :name AND a.value IN (:targets))) ORDER BY n.changed', 0, 100, array(
     ':queued' => HOSTING_TASK_QUEUED,
     ':refs' => hosting_task_held_refs($held),
+    ':name' => 'target_platform',
+    ':targets' => array_map('strval', $held),
   ));
   foreach ($result as $row) {
     $task = node_load($row->nid);
