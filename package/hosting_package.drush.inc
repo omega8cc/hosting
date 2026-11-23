@@ -17,6 +17,7 @@ function drush_hosting_package_pre_hosting_task() {
           'i.rid' => $task->ref->platform,
           'p.package_type' => 'profile',
           'p.short_name' => $task->ref->profile_name,
+          'platform_own' => TRUE,
         ));
 
         // If instance is found, save the package ID to hosting_site table.

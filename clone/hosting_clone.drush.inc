@@ -69,6 +69,7 @@ function hosting_clone_post_hosting_clone_task($task, $data) {
     $profile = hosting_package_instance_load(array(
       'i.rid' => $target,
       'p.short_name' => $data['context']['profile'],
+      'platform_own' => TRUE,
     ));
     if ($profile) {
       $clone->profile = $profile->package_id;

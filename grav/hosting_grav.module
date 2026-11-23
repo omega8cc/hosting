@@ -451,6 +451,7 @@ function hosting_grav_post_hosting_grav_copy_upgrade_task($task, $data) {
   $profile = hosting_package_instance_load(array(
     'i.rid' => $target,
     'p.short_name' => $short_name,
+    'platform_own' => TRUE,
   ));
   if ($profile) {
     $upgrade->profile = $profile->package_id;
