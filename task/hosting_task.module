@@ -2322,9 +2322,9 @@ function hosting_get_new_tasks($limit = 20, $rid = NULL, $task_type = NULL) {
  * websh, the shell BOA keeps at /bin/sh, gives every backend line the PHP its
  * codebase runs on: the platform's line in cli-per-platform.info, else the
  * account's phpNN.info or cli.info. A pass points /bin/sh at a plain shell
- * until it ends, and a task's child commands then run on the server's default
- * PHP whatever those files say. Only while a pass is in flight: a server whose
- * shell is something else for any other reason holds nothing.
+ * until it ends, and a task's child commands then run on the php their PATH
+ * finds whatever those files say. Only while a pass is in flight: a server
+ * whose shell is something else for any other reason holds nothing.
  *
  * @param string $sh
  *   The system shell.
@@ -2351,7 +2351,25 @@ function hosting_task_shell_off_websh($sh = '/bin/sh', $websh = '/opt/local/bin/
 }
 
 /**
- * The folders of an account whose tasks run on another PHP than the default.
+ * The php a child command started by its bare name runs on.
+ *
+ * @param string $path
+ *   A PATH.
+ *
+ * @return string
+ *   The real path of the first php on it, '' when there is none.
+ */
+function hosting_task_path_php($path) {
+  foreach (explode(':', (string) $path) as $dir) {
+    if ($dir !== '' && is_file($dir . '/php') && is_executable($dir . '/php')) {
+      return (string) realpath($dir . '/php');
+    }
+  }
+  return '';
+}
+
+/**
+ * The folders of an account whose tasks run on another PHP than a given one.
  *
  * Read as websh reads them, and loosely: a line that websh would not apply at
  * most keeps a task queued until the pass ends.
@@ -2359,17 +2377,17 @@ function hosting_task_shell_off_websh($sh = '/bin/sh', $websh = '/opt/local/bin/
  * @param string $home
  *   The account's directory, /data/disk/<account>.
  * @param string $php
- *   The server's default PHP, as /opt/phpNN/bin/php.
+ *   The PHP a task's child commands find, as /opt/phpNN/bin/php.
  * @param string $opt
  *   The directory the PHP versions are installed in.
  *
  * @return array
  *   Absolute paths. The account's own directory is one of them when its
- *   command line PHP is not the server's default.
+ *   command line PHP is not that one.
  */
 function hosting_task_own_php_folders($home, $php, $opt = '/opt') {
   $folders = array();
-  $default = preg_match('#/php([0-9]{2})/bin/php$#', (string) $php, $found) ? $found[1] : '';
+  $found = preg_match('#/php([0-9]{2})/bin/php$#', (string) $php, $match) ? $match[1] : '';
   $control = $home . '/static/control';
 
   // The account's own version: the highest marker file, else cli.info.
@@ -2386,7 +2404,7 @@ function hosting_task_own_php_folders($home, $php, $opt = '/opt') {
       $own = $version;
     }
   }
-  if ($own !== '' && $own !== $default) {
+  if ($own !== '' && $own !== $found) {
     $folders[] = $home;
   }
 
@@ -2400,7 +2418,7 @@ function hosting_task_own_php_folders($home, $php, $opt = '/opt') {
         continue;
       }
       $version = preg_replace('/[^0-9]/', '', $words[1]);
-      if ($version === $default || strlen($version) != 2 || !is_executable($opt . '/php' . $version . '/bin/php')) {
+      if ($version === $found || strlen($version) != 2 || !is_executable($opt . '/php' . $version . '/bin/php')) {
         continue;
       }
       $folder = hosting_task_codebase_folder($words[0], $home);
@@ -2450,7 +2468,7 @@ function hosting_task_codebase_folder($path, $home) {
  *
  * @return array
  *   Platform node ids; empty outside a pass, and on every account whose
- *   tasks run on the server's default PHP anyway.
+ *   tasks find their own PHP anyway.
  */
 function hosting_task_held_platforms() {
   if (!hosting_task_shell_off_websh() || !function_exists('posix_getpwuid')) {
@@ -2461,7 +2479,7 @@ function hosting_task_held_platforms() {
   if (!preg_match('#^/data/disk/[a-z0-9-]+$#', $home)) {
     return array();
   }
-  $folders = hosting_task_own_php_folders($home, realpath('/usr/bin/php'));
+  $folders = hosting_task_own_php_folders($home, hosting_task_path_php(getenv('PATH')));
   if (!$folders) {
     return array();
   }
