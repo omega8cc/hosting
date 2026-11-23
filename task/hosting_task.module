@@ -963,6 +963,7 @@ function hosting_task_set_title(&$node) {
 function hosting_tasks_queue($count = 20) {
   global $provision_errors;
 
+  hosting_task_note_held();
   $tasks = hosting_get_new_tasks($count);
 
   if (count($tasks)) {
@@ -2298,10 +2299,227 @@ function hosting_get_new_tasks($limit = 20, $rid = NULL, $task_type = NULL) {
     $query->condition('t.task_type', $task_type);
   }
 
+  // Tasks that would run on another PHP than their own wait for websh.
+  $held = hosting_task_held_platforms();
+  if ($held) {
+    $query->condition('t.rid', hosting_task_held_refs($held), 'NOT IN');
+    $targets = db_select('hosting_task_arguments', 'a')
+      ->fields('a', array('vid'))
+      ->condition('a.name', 'target_platform')
+      ->condition('a.value', $held);
+    $query->condition('t.vid', $targets, 'NOT IN');
+  }
+
   foreach ($query->execute() as $node) {
     $return[$node->nid] = node_load($node->nid);
   }
   return $return;
+}
+
+/**
+ * Whether a BOA pass has the system shell away from websh.
+ *
+ * websh, the shell BOA keeps at /bin/sh, gives every backend line the PHP its
+ * codebase runs on: the platform's line in cli-per-platform.info, else the
+ * account's phpNN.info or cli.info. A pass points /bin/sh at a plain shell
+ * until it ends, and a task's child commands then run on the server's default
+ * PHP whatever those files say. Only while a pass is in flight: a server whose
+ * shell is something else for any other reason holds nothing.
+ *
+ * @param string $sh
+ *   The system shell.
+ * @param string $websh
+ *   Where websh is installed.
+ * @param string $run
+ *   The directory of the pass markers.
+ *
+ * @return bool
+ *   TRUE when a task started now would not get its own PHP.
+ */
+function hosting_task_shell_off_websh($sh = '/bin/sh', $websh = '/opt/local/bin/websh', $run = '/run') {
+  $target = @readlink($sh);
+  if ($target === FALSE || basename($target) === 'websh' || !is_executable($websh)) {
+    return FALSE;
+  }
+  clearstatcache();
+  foreach (array('boa_run.pid', 'boa_wait.pid', 'octopus_install_run.pid') as $marker) {
+    if (file_exists($run . '/' . $marker)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * The folders of an account whose tasks run on another PHP than the default.
+ *
+ * Read as websh reads them, and loosely: a line that websh would not apply at
+ * most keeps a task queued until the pass ends.
+ *
+ * @param string $home
+ *   The account's directory, /data/disk/<account>.
+ * @param string $php
+ *   The server's default PHP, as /opt/phpNN/bin/php.
+ * @param string $opt
+ *   The directory the PHP versions are installed in.
+ *
+ * @return array
+ *   Absolute paths. The account's own directory is one of them when its
+ *   command line PHP is not the server's default.
+ */
+function hosting_task_own_php_folders($home, $php, $opt = '/opt') {
+  $folders = array();
+  $default = preg_match('#/php([0-9]{2})/bin/php$#', (string) $php, $found) ? $found[1] : '';
+  $control = $home . '/static/control';
+
+  // The account's own version: the highest marker file, else cli.info.
+  $own = '';
+  foreach (array('56', '70', '71', '72', '73', '74', '80', '81', '82', '83', '84', '85', '86') as $version) {
+    if (is_file($control . '/php' . $version . '.info') && is_executable($opt . '/php' . $version . '/bin/php')) {
+      $own = $version;
+    }
+  }
+  if ($own === '' && is_file($control . '/cli.info')) {
+    $line = strtok((string) @file_get_contents($control . '/cli.info', FALSE, NULL, 0, 64), "\n");
+    $version = preg_replace('/[^0-9]/', '', (string) $line);
+    if (strlen($version) == 2 && is_executable($opt . '/php' . $version . '/bin/php')) {
+      $own = $version;
+    }
+  }
+  if ($own !== '' && $own !== $default) {
+    $folders[] = $home;
+  }
+
+  // One platform folder and version a line.
+  if (is_file($control . '/cli-per-platform.info')) {
+    $text = (string) @file_get_contents($control . '/cli-per-platform.info', FALSE, NULL, 0, 65536);
+    foreach (array_slice(explode("\n", $text), 0, 200) as $line) {
+      $line = trim(preg_replace('/#.*$/', '', $line));
+      $words = preg_split('/\s+/', $line);
+      if (count($words) != 2) {
+        continue;
+      }
+      $version = preg_replace('/[^0-9]/', '', $words[1]);
+      if ($version === $default || strlen($version) != 2 || !is_executable($opt . '/php' . $version . '/bin/php')) {
+        continue;
+      }
+      $folder = hosting_task_codebase_folder($words[0], $home);
+      if ($folder !== '') {
+        $folders[] = $folder;
+      }
+    }
+  }
+  return array_values(array_unique($folders));
+}
+
+/**
+ * The folder of a codebase, from a pin line's spelling or a publish path.
+ *
+ * @param string $path
+ *   As written: below the account's static directory, or absolute.
+ * @param string $home
+ *   The account's directory, /data/disk/<account>.
+ *
+ * @return string
+ *   The absolute path without a docroot's own name, '' when it is none.
+ */
+function hosting_task_codebase_folder($path, $home) {
+  $path = rtrim($path, '/');
+  $shell = '/home/' . basename($home) . '.ftp';
+  foreach (array('~', $shell) as $own) {
+    if (strpos($path, $own . '/') === 0) {
+      $path = $home . substr($path, strlen($own));
+    }
+  }
+  if (strpos($path, 'static/') === 0) {
+    $path = $home . '/' . $path;
+  }
+  elseif ($path !== '' && $path[0] !== '/') {
+    $path = $home . '/static/' . $path;
+  }
+  $path = preg_replace('#/(web|docroot|html)$#', '', $path);
+  if ($path === '' || strpos($path . '/', '/../') !== FALSE) {
+    return '';
+  }
+  $real = realpath($path);
+  return ($real === FALSE) ? $path : $real;
+}
+
+/**
+ * The platforms whose tasks wait until websh is the system shell again.
+ *
+ * @return array
+ *   Platform node ids; empty outside a pass, and on every account whose
+ *   tasks run on the server's default PHP anyway.
+ */
+function hosting_task_held_platforms() {
+  if (!hosting_task_shell_off_websh() || !function_exists('posix_getpwuid')) {
+    return array();
+  }
+  $user = posix_getpwuid(posix_geteuid());
+  $home = isset($user['dir']) ? rtrim($user['dir'], '/') : '';
+  if (!preg_match('#^/data/disk/[a-z0-9-]+$#', $home)) {
+    return array();
+  }
+  $folders = hosting_task_own_php_folders($home, realpath('/usr/bin/php'));
+  if (!$folders) {
+    return array();
+  }
+  $held = array();
+  $result = db_query('SELECT p.nid, p.publish_path FROM {hosting_platform} p INNER JOIN {node} n ON p.vid = n.vid WHERE p.publish_path IS NOT NULL');
+  foreach ($result as $platform) {
+    // The panel's own platform is BOA's code: it runs on any version.
+    if (strpos($platform->publish_path, $home . '/aegir/') === 0) {
+      continue;
+    }
+    // As written too: a folder of the account may be linked elsewhere.
+    $paths = array($platform->publish_path, hosting_task_codebase_folder($platform->publish_path, $home));
+    foreach ($folders as $folder) {
+      if (strpos($paths[0] . '/', $folder . '/') === 0 || strpos($paths[1] . '/', $folder . '/') === 0) {
+        $held[] = $platform->nid;
+        break;
+      }
+    }
+  }
+  return $held;
+}
+
+/**
+ * The nodes whose tasks run on a held platform: it, and the sites on it.
+ *
+ * @param array $platforms
+ *   Platform node ids, not empty.
+ *
+ * @return array
+ *   Node ids.
+ */
+function hosting_task_held_refs($platforms) {
+  $refs = $platforms;
+  $result = db_query('SELECT s.nid FROM {hosting_site} s INNER JOIN {node} n ON s.vid = n.vid WHERE s.platform IN (:platforms)', array(':platforms' => $platforms));
+  foreach ($result as $site) {
+    $refs[] = $site->nid;
+  }
+  return $refs;
+}
+
+/**
+ * Say on each queued task that waits for websh why it does not start.
+ */
+function hosting_task_note_held() {
+  $held = hosting_task_held_platforms();
+  if (!$held) {
+    return;
+  }
+  $result = db_query_range('SELECT t.nid FROM {hosting_task} t INNER JOIN {node} n ON t.vid = n.vid WHERE t.task_status = :queued AND t.rid IN (:refs) ORDER BY n.changed', 0, 100, array(
+    ':queued' => HOSTING_TASK_QUEUED,
+    ':refs' => hosting_task_held_refs($held),
+  ));
+  foreach ($result as $row) {
+    $task = node_load($row->nid);
+    if ($task) {
+      hosting_task_note_waiting($task, t('Not started yet: the server is being upgraded, and this platform\'s own command line PHP version is available to its tasks again when the upgrade ends; this one starts then.'));
+    }
+  }
 }
 
 /**
