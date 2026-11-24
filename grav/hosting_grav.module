@@ -755,10 +755,18 @@ function _hosting_grav_site_version($node) {
     return $capsule;
   }
   if (function_exists('hosting_package_instance_load')) {
-    $instance = hosting_package_instance_load(array(
+    $param = array(
       'i.rid' => $node->nid,
       'p.short_name' => 'grav',
-    ));
+    );
+    // Only the site's own rows: another record can carry the same number.
+    if (function_exists('hosting_package_node_rows_scope')) {
+      $scope = hosting_package_node_rows_scope($node);
+      if (is_array($scope)) {
+        $param['i.platform'] = $scope;
+      }
+    }
+    $instance = hosting_package_instance_load($param);
     if (is_object($instance) && !empty($instance->version)
       && preg_match('/^[0-9]/', $instance->version)) {
       return $instance->version;

@@ -519,6 +519,60 @@ function hosting_package_sync(&$data) {
 }
 
 /**
+ * The platform values that a record's own package rows carry, or NULL.
+ *
+ * A row's rid is a site's or a platform's nid, or the iid of a profile's
+ * instance, which can equal either; the platform column tells them apart. A
+ * platform's rows name the platform, a site's its platform or -1 (its own
+ * packages), rows written before the column 0.
+ *
+ * @param object $node
+ *   A site or platform node.
+ *
+ * @return array|null
+ *   NULL for any other node.
+ */
+function hosting_package_node_rows_scope($node) {
+  if (!is_object($node) || empty($node->nid)) {
+    return NULL;
+  }
+  if ($node->type == 'platform') {
+    return array(0, (int) $node->nid);
+  }
+  if ($node->type == 'site') {
+    $scope = array(0, HOSTING_PACKAGE_INSTANCE_EXCLUDE);
+    $platform = hosting_package_ref_platform($node->nid, 'site');
+    if ($platform > 0) {
+      $scope[] = $platform;
+    }
+    return $scope;
+  }
+  return NULL;
+}
+
+/**
+ * Implements hook_views_query_alter().
+ *
+ * The Packages page of a site or a platform lists that record's rows alone.
+ */
+function hosting_package_views_query_alter(&$view, &$query) {
+  if ($view->name != 'hosting_package_list' || $view->current_display != 'page_packages' || empty($view->argument['rid'])) {
+    return;
+  }
+  $nid = $view->argument['rid']->get_value();
+  if (is_array($nid)) {
+    $nid = reset($nid);
+  }
+  if (!is_numeric($nid) || $nid < 1) {
+    return;
+  }
+  $scope = hosting_package_node_rows_scope(node_load((int) $nid));
+  if (is_array($scope)) {
+    $query->add_where(0, $view->base_table . '.platform', $scope, 'IN');
+  }
+}
+
+/**
  * Implements hook_views_api().
  */
 function hosting_package_views_api() {
