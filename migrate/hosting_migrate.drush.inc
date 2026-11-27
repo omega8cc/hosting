@@ -43,7 +43,9 @@ function drush_hosting_migrate_pre_hosting_task($task) {
  * nothing to act on. The usual cause is a target platform whose packages
  * were never registered -- a platform that has not been verified since it
  * was created, or whose verify failed -- and the profile the site needs is
- * simply absent from the package list.
+ * simply absent from the package list. A profile the platform's Drupal core
+ * marks hidden is never registered, so the message names that case as well:
+ * a Verify cannot help there.
  */
 function _hosting_migrate_no_valid_profile_message($task, $platform = NULL) {
   $profile_name = '';
@@ -76,7 +78,10 @@ function _hosting_migrate_no_valid_profile_message($task, $platform = NULL) {
     $platform_name = dt('selected as the target');
   }
 
-  return dt('The @profile install profile is not registered on the target platform @platform; run a Verify task on that platform first.', array(
+  // A Verify registers every profile the platform's code offers. One that is
+  // still missing after it is not in that code, or its Drupal core marks it
+  // hidden (Drupal 12 hides the Umami demo), and no later Verify adds it.
+  return dt('The @profile install profile is not registered on the target platform @platform. Run a Verify task on that platform first. If the profile is still missing after it, that platform does not offer it: its code lacks the profile, or its Drupal core marks the profile hidden, as Drupal 12 does with the Umami demo, and this site cannot be moved or copied onto it.', array(
     '@profile' => $profile_name,
     '@platform' => $platform_name,
   ));

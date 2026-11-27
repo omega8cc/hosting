@@ -1376,7 +1376,21 @@ function hosting_task_runner_lock_holder_record($holder = FALSE) {
   if (!$holder) {
     return FALSE;
   }
-  $record = variable_get('hosting_task_runner_lock_holder', array());
+  // From the variable table, not from the cached variables: a bootstrap
+  // that read the table just before the holder's variable_set() and cached
+  // what it read just after that set cleared the cache leaves the earlier
+  // record there, and a task run inside the holder's own runner would then
+  // wait on its parent and be refused.
+  $record = FALSE;
+  try {
+    $raw = db_query("SELECT value FROM {variable} WHERE name = :name", array(':name' => 'hosting_task_runner_lock_holder'))->fetchField();
+    if (is_string($raw)) {
+      $record = @unserialize($raw);
+    }
+  }
+  catch (Exception $e) {
+    $record = variable_get('hosting_task_runner_lock_holder', array());
+  }
   if (is_array($record) && isset($record['conn'], $record['pid'], $record['nid'], $record['since']) && (int) $record['conn'] === (int) $holder) {
     return $record;
   }
